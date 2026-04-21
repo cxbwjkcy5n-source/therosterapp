@@ -1,8 +1,16 @@
 import { createApplication } from "@specific-dev/framework";
-import * as schema from './db/schema/schema.js';
+import * as appSchema from './db/schema/schema.js';
+import * as authSchema from './db/schema/auth-schema.js';
 
 // Import route registration functions
-// import { registerUserRoutes } from './routes/users.js';
+import { registerPersonsRoutes } from './routes/persons.js';
+import { registerDatesRoutes } from './routes/dates.js';
+import { registerAnalyticsRoutes } from './routes/analytics.js';
+import { registerAIRoutes } from './routes/ai.js';
+import { registerStorageRoutes } from './routes/storage.js';
+
+// Combine schemas
+const schema = { ...appSchema, ...authSchema };
 
 // Create application with schema for full database type support
 export const app = await createApplication(schema);
@@ -10,9 +18,18 @@ export const app = await createApplication(schema);
 // Export App type for use in route files
 export type App = typeof app;
 
-// Register routes - add your route modules here
-// IMPORTANT: Always use registration functions to avoid circular dependency issues
-// registerUserRoutes(app);
+// Enable authentication with email/password and OAuth providers
+app.withAuth();
+
+// Enable file storage for uploads
+app.withStorage();
+
+// Register routes - IMPORTANT: Always use registration functions to avoid circular dependency issues
+registerPersonsRoutes(app);
+registerDatesRoutes(app);
+registerAnalyticsRoutes(app);
+registerAIRoutes(app);
+registerStorageRoutes(app);
 
 await app.run();
 app.logger.info('Application running');

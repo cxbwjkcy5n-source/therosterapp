@@ -1,13 +1,107 @@
-/**
- * Define your database schema here using Drizzle ORM.
- * Avoid conflicting with potential other schema files in the same directory.
- *
- * Example:
- * import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
- *
- * export const notes = pgTable('notes', {
- *   id: uuid('id').primaryKey().defaultRandom(),
- *   name: text('name').notNull(),
- *   createdAt: timestamp('created_at').notNull().defaultNow(),
- * });
- */
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  integer,
+  numeric,
+  boolean,
+  pgEnum,
+} from 'drizzle-orm/pg-core';
+import { user } from './auth-schema.js';
+
+export const zodiacEnum = pgEnum('zodiac', [
+  'aries',
+  'taurus',
+  'gemini',
+  'cancer',
+  'leo',
+  'virgo',
+  'libra',
+  'scorpio',
+  'sagittarius',
+  'capricorn',
+  'aquarius',
+  'pisces',
+]);
+
+export const connectionTypeEnum = pgEnum('connection_type', [
+  'friend',
+  'casual',
+  'booty_call',
+  'foodie_call',
+  'figuring_it_out',
+  'serious',
+  'other',
+]);
+
+export const dateStatusEnum = pgEnum('date_status', [
+  'planned',
+  'confirmed',
+  'completed',
+  'cancelled',
+]);
+
+export const chatRoleEnum = pgEnum('chat_role', ['user', 'assistant']);
+
+export const persons = pgTable('persons', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  location: text('location').notNull(),
+  photoUrl: text('photo_url'),
+  age: integer('age'),
+  birthday: text('birthday'),
+  zodiac: zodiacEnum('zodiac'),
+  instagram: text('instagram'),
+  tiktok: text('tiktok'),
+  twitterX: text('twitter_x'),
+  interestLevel: integer('interest_level'),
+  attractiveness: integer('attractiveness'),
+  sexualChemistry: integer('sexual_chemistry'),
+  communication: integer('communication'),
+  connectionType: connectionTypeEnum('connection_type'),
+  connectionTypeCustom: text('connection_type_custom'),
+  favoriteFoods: text('favorite_foods').array(),
+  hobbies: text('hobbies').array(),
+  redFlags: text('red_flags').array(),
+  greenFlags: text('green_flags').array(),
+  isBenched: boolean('is_benched').default(false).notNull(),
+  benchReason: text('bench_reason'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const dates = pgTable('dates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  personId: uuid('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  location: text('location'),
+  dateTime: text('date_time'),
+  budget: text('budget'),
+  status: dateStatusEnum('status').default('planned').notNull(),
+  reminder3Days: boolean('reminder_3_days').default(false).notNull(),
+  reminder1Day: boolean('reminder_1_day').default(false).notNull(),
+  reminder1Hour: boolean('reminder_1_hour').default(false).notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const safetyCheckins = pgTable('safety_checkins', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  personId: uuid('person_id').references(() => persons.id, { onDelete: 'set null' }),
+  dateLocation: text('date_location'),
+  personDescription: text('person_description'),
+  emergencyContacts: text('emergency_contacts').array(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const chatMessages = pgTable('chat_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  role: chatRoleEnum('role').notNull(),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});

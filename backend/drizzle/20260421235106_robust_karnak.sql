@@ -1,0 +1,1 @@
+ALTER TABLE "dates" ALTER COLUMN "budget" SET DATA TYPE text;

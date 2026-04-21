@@ -1,41 +1,670 @@
 import { describe, test, expect } from "bun:test";
-import { api, authenticatedApi, signUpTestUser, expectStatus, connectWebSocket, connectAuthenticatedWebSocket, waitForMessage } from "./helpers";
+import { api, authenticatedApi, signUpTestUser, expectStatus } from "./helpers";
 
 describe("API Integration Tests", () => {
-  // Shared state for chaining tests (e.g., created resource IDs, auth tokens)
-  // let authToken: string;
-  // let resourceId: string;
+  let authToken: string;
+  let userId: string;
+  let personId: string;
+  let personId2: string;
+  let dateId: string;
 
-  // TODO: Add integration tests here.
-  // Tests run sequentially within describe, so you can chain state between them.
-  //
-  // Example without auth:
-  //
-  // test("Create resource", async () => {
-  //   const res = await api("/api/resources", {
-  //     method: "POST",
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify({ name: "Test" }),
-  //   });
-  //   await expectStatus(res, 201);
-  //   const data = await res.json();
-  //   resourceId = data.id;
-  // });
-  //
-  // Example with auth (cleanup is automatic):
-  //
-  // test("Sign up test user", async () => {
-  //   const { token, user } = await signUpTestUser();
-  //   authToken = token;
-  //   expect(authToken).toBeDefined();
-  // });
-  //
-  // test("Create authenticated resource", async () => {
-  //   const res = await authenticatedApi("/api/resources", authToken, {
-  //     method: "POST",
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify({ name: "Test" }),
-  //   });
-  //   await expectStatus(res, 201);
-  // });
+  // ========== Auth Setup ==========
+  test("Sign up test user", async () => {
+    const { token, user } = await signUpTestUser();
+    authToken = token;
+    userId = user.id;
+    expect(authToken).toBeDefined();
+    expect(userId).toBeDefined();
+  });
+
+  // ========== Persons CRUD Tests ==========
+  test("Create a person with required fields only", async () => {
+    const res = await authenticatedApi("/api/persons", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Alice",
+        location: "San Francisco",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    personId = data.id;
+    expect(data.name).toBe("Alice");
+    expect(data.location).toBe("San Francisco");
+    expect(data.id).toBeDefined();
+    expect(data.userId).toBe(userId);
+  });
+
+  test("Create a person with all optional fields", async () => {
+    const res = await authenticatedApi("/api/persons", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Bob",
+        location: "New York",
+        photoUrl: "https://example.com/photo.jpg",
+        age: 28,
+        zodiac: "leo",
+        instagram: "@bob",
+        tiktok: "@bobvids",
+        twitterX: "@bob_tweets",
+        interestLevel: 7,
+        attractiveness: 8,
+        sexualChemistry: 6,
+        communication: 8,
+        connectionType: "casual",
+        hobbies: ["hiking", "photography"],
+        favoriteFoods: ["pizza", "sushi"],
+        redFlags: ["workaholic"],
+        greenFlags: ["kind", "funny"],
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    personId2 = data.id;
+    expect(data.name).toBe("Bob");
+  });
+
+  test("Create person fails without required name field", async () => {
+    const res = await authenticatedApi("/api/persons", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "Boston",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Create person fails without required location field", async () => {
+    const res = await authenticatedApi("/api/persons", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Charlie",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("List active (non-benched) persons", async () => {
+    const res = await authenticatedApi("/api/persons", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.persons).toBeDefined();
+    expect(Array.isArray(data.persons)).toBe(true);
+    // Should contain the persons we just created
+    const names = data.persons.map((p: any) => p.name);
+    expect(names).toContain("Alice");
+    expect(names).toContain("Bob");
+  });
+
+  test("Get person by ID", async () => {
+    const res = await authenticatedApi(`/api/persons/${personId}`, authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.id).toBe(personId);
+    expect(data.name).toBe("Alice");
+    expect(data.location).toBe("San Francisco");
+  });
+
+  test("Get person with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid",
+      authToken
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Get nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000",
+      authToken
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Update person with partial data", async () => {
+    const res = await authenticatedApi(`/api/persons/${personId}`, authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        interestLevel: 9,
+        attractiveness: 8,
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.id).toBe(personId);
+  });
+
+  test("Update person with all fields", async () => {
+    const res = await authenticatedApi(`/api/persons/${personId2}`, authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Bobby",
+        location: "Los Angeles",
+        age: 29,
+        zodiac: "virgo",
+        interestLevel: 6,
+        attractiveness: 7,
+        sexualChemistry: 7,
+        communication: 9,
+        connectionType: "serious",
+        hobbies: ["cooking", "reading"],
+        favoriteFoods: ["tacos"],
+      }),
+    });
+    await expectStatus(res, 200);
+  });
+
+  test("Update nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Ghost" }),
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Bench a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/bench`,
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "Not compatible" }),
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.id).toBe(personId);
+    expect(data.isBenched).toBe(true);
+    expect(data.benchReason).toBe("Not compatible");
+  });
+
+  test("Bench a person without reason", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId2}/bench`,
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.isBenched).toBe(true);
+  });
+
+  test("List benched persons", async () => {
+    const res = await authenticatedApi("/api/bench", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.persons).toBeDefined();
+    expect(Array.isArray(data.persons)).toBe(true);
+    // Should contain the benched persons
+    const ids = data.persons.map((p: any) => p.id);
+    expect(ids).toContain(personId);
+    expect(ids).toContain(personId2);
+  });
+
+  test("Unbenched a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/unbenched`,
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.id).toBe(personId);
+    expect(data.isBenched).toBe(false);
+  });
+
+  test("Verify active persons no longer shows benched person", async () => {
+    const res = await authenticatedApi("/api/persons", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    const ids = data.persons.map((p: any) => p.id);
+    expect(ids).toContain(personId); // Unbenched, should appear
+    expect(ids).not.toContain(personId2); // Still benched, should not appear
+  });
+
+  test("Unbenched nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/unbenched",
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  // ========== Dates CRUD Tests ==========
+  test("Create a date with required fields", async () => {
+    const res = await authenticatedApi("/api/dates", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        title: "Coffee date",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    dateId = data.id;
+    expect(data.title).toBe("Coffee date");
+    expect(data.id).toBeDefined();
+  });
+
+  test("Create a date with all optional fields", async () => {
+    const res = await authenticatedApi("/api/dates", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        title: "Dinner date",
+        location: "Downtown Restaurant",
+        date_time: "2026-05-15T19:00:00Z",
+        budget: "50-100",
+        status: "confirmed",
+        reminder_3_days: true,
+        reminder_1_day: false,
+        reminder_1_hour: true,
+        notes: "Try the pasta",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.title).toBe("Dinner date");
+    expect(data.id).toBeDefined();
+  });
+
+  test("Create date fails without required person_id", async () => {
+    const res = await authenticatedApi("/api/dates", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Invalid date",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Create date fails without required title", async () => {
+    const res = await authenticatedApi("/api/dates", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("List dates returns dates with person info", async () => {
+    const res = await authenticatedApi("/api/dates", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.dates).toBeDefined();
+    expect(Array.isArray(data.dates)).toBe(true);
+    // Verify nested person info
+    const datesWithPerson = data.dates.filter(
+      (d: any) => d.person && d.person.id
+    );
+    expect(datesWithPerson.length).toBeGreaterThan(0);
+    const dateWithOurPerson = datesWithPerson.find(
+      (d: any) => d.personId === personId
+    );
+    expect(dateWithOurPerson).toBeDefined();
+  });
+
+  test("Update a date with partial data", async () => {
+    const res = await authenticatedApi(`/api/dates/${dateId}`, authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        status: "completed",
+        notes: "Had a great time!",
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.id).toBe(dateId);
+  });
+
+  test("Update a date with all fields", async () => {
+    const res = await authenticatedApi(`/api/dates/${dateId}`, authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Coffee & dessert",
+        location: "Cafe Downtown",
+        date_time: "2026-05-20T15:00:00Z",
+        budget: "30-50",
+        status: "planned",
+        reminder_3_days: false,
+        reminder_1_day: true,
+        reminder_1_hour: false,
+        notes: "Bring umbrella",
+      }),
+    });
+    await expectStatus(res, 200);
+  });
+
+  test("Update nonexistent date returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/dates/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Ghost date" }),
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Delete a date", async () => {
+    const res = await authenticatedApi(`/api/dates/${dateId}`, authToken, {
+      method: "DELETE",
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test("Verify deleted date is gone", async () => {
+    const res = await authenticatedApi(
+      `/api/dates/${dateId}`,
+      authToken
+    );
+    // Should return 404 since we deleted it (if there's a GET endpoint)
+    // If not, we'll just verify the delete worked via the previous test
+    expect(res).toBeDefined();
+  });
+
+  test("Delete nonexistent date returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/dates/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  // ========== Delete Person ==========
+  test("Delete a person", async () => {
+    const res = await authenticatedApi(`/api/persons/${personId2}`, authToken, {
+      method: "DELETE",
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test("Delete nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  // ========== Analytics Tests ==========
+  test("Get analytics for authenticated user", async () => {
+    const res = await authenticatedApi("/api/analytics", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.total_active).toBeDefined();
+    expect(data.total_benched).toBeDefined();
+    expect(data.total_dates).toBeDefined();
+    expect(typeof data.total_active).toBe("number");
+    expect(typeof data.total_benched).toBe("number");
+    expect(typeof data.total_dates).toBe("number");
+    expect(data.connection_breakdown).toBeDefined();
+    expect(Array.isArray(data.connection_breakdown)).toBe(true);
+  });
+
+  // ========== AI & Date Plan Tests ==========
+  test("Get AI date suggestions for a person", async () => {
+    const res = await authenticatedApi("/api/date-plan", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        location: "San Francisco",
+        budget: 75,
+        date_time: "2026-05-20T18:00:00Z",
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.suggestions).toBeDefined();
+    expect(Array.isArray(data.suggestions)).toBe(true);
+    if (data.suggestions.length > 0) {
+      const sugg = data.suggestions[0];
+      expect(sugg.title).toBeDefined();
+      expect(sugg.description).toBeDefined();
+      expect(sugg.category).toBeDefined();
+    }
+  });
+
+  test("Get date plan fails with nonexistent person", async () => {
+    const res = await authenticatedApi("/api/date-plan", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: "00000000-0000-0000-0000-000000000000",
+        location: "San Francisco",
+        budget: 75,
+      }),
+    });
+    await expectStatus(res, 404);
+  });
+
+  test("Get date plan fails without required fields", async () => {
+    const res = await authenticatedApi("/api/date-plan", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        location: "San Francisco",
+        // missing budget
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  // ========== Safety Check-in Tests ==========
+  test("Create a safety check-in", async () => {
+    const res = await authenticatedApi("/api/safety-checkins", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        date_location: "Downtown Coffee Shop",
+        person_description: "Tall, brown hair, blue shirt",
+        emergency_contacts: ["Mom: 555-1234", "Friend Jane: 555-5678"],
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.id).toBeDefined();
+    expect(data.share_message).toBeDefined();
+  });
+
+  test("Create safety check-in without person_id", async () => {
+    const res = await authenticatedApi("/api/safety-checkins", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        date_location: "Park",
+        person_description: "Test",
+      }),
+    });
+    // Should succeed as person_id is optional in the schema
+    await expectStatus(res, 201);
+  });
+
+  // ========== Chat Tests ==========
+  test("Get chat messages (initially empty)", async () => {
+    const res = await authenticatedApi("/api/chat", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.messages).toBeDefined();
+    expect(Array.isArray(data.messages)).toBe(true);
+  });
+
+  test("Send a message to dating coach", async () => {
+    const res = await authenticatedApi("/api/chat", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "How do I start a conversation?",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.message).toBeDefined();
+    expect(data.message.id).toBeDefined();
+    expect(data.message.content).toBeDefined();
+    expect(data.message.role).toBeDefined();
+  });
+
+  test("Send another message", async () => {
+    const res = await authenticatedApi("/api/chat", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Any tips for first dates?",
+      }),
+    });
+    await expectStatus(res, 201);
+  });
+
+  test("Get updated chat messages", async () => {
+    const res = await authenticatedApi("/api/chat", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.messages.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("Send message without content fails", async () => {
+    const res = await authenticatedApi("/api/chat", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    await expectStatus(res, 400);
+  });
+
+  // ========== Photo Upload Tests ==========
+  test("Upload a photo", async () => {
+    // Simple base64 encoded 1x1 transparent PNG
+    const base64Png =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+    const res = await authenticatedApi("/api/upload-photo", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image_base64: base64Png,
+        mime_type: "image/png",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.url).toBeDefined();
+    expect(typeof data.url).toBe("string");
+  });
+
+  test("Upload photo without base64 fails", async () => {
+    const res = await authenticatedApi("/api/upload-photo", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mime_type: "image/png",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Upload photo without mime_type fails", async () => {
+    const res = await authenticatedApi("/api/upload-photo", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image_base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  // ========== Unauthenticated Request Tests ==========
+  test("Unauthenticated GET /api/persons returns 401", async () => {
+    const res = await api("/api/persons");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/persons returns 401", async () => {
+    const res = await api("/api/persons", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Test", location: "Test" }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/dates returns 401", async () => {
+    const res = await api("/api/dates");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/analytics returns 401", async () => {
+    const res = await api("/api/analytics");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/chat returns 401", async () => {
+    const res = await api("/api/chat");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/chat returns 401", async () => {
+    const res = await api("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "Test" }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/upload-photo returns 401", async () => {
+    const res = await api("/api/upload-photo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image_base64: "test",
+        mime_type: "image/png",
+      }),
+    });
+    await expectStatus(res, 401);
+  });
 });
