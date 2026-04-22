@@ -80,14 +80,14 @@ export const commonStyles = StyleSheet.create({
     padding: 16,
     marginVertical: 8,
     width: '100%',
-    shadowColor: COLORS.primary,
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     elevation: 2,
   },
   icon: {
     width: 60,
     height: 60,
-    tintColor: 'white',
+    tintColor: COLORS.text,
   },
 });

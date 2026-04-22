@@ -11,7 +11,7 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: COLORS.surface,
+          backgroundColor: COLORS.background,
           borderTopColor: COLORS.border,
           borderTopWidth: 1,
           height: 80,
@@ -50,7 +50,7 @@ export default function TabLayout() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: 16,
-                boxShadow: '0 4px 16px rgba(232,97,74,0.4)',
+                boxShadow: '0 4px 16px rgba(232,25,44,0.35)',
               }}
             >
               <Plus size={26} color="#fff" />

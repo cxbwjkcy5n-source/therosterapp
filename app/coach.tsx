@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   FlatList,
-  Pressable,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -38,10 +37,10 @@ export default function CoachScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    console.log('[Coach] Loading chat history');
-    apiGet<{ messages: ChatMessage[] }>('/api/chat')
+    console.log('[Coach] Loading chat history from GET /api/chat/history');
+    apiGet<{ messages: ChatMessage[] }>('/api/chat/history')
       .then((data) => {
-        console.log('[Coach] Loaded', data.messages?.length, 'messages');
+        console.log('[Coach] Loaded', data.messages?.length ?? 0, 'messages');
         setMessages(data.messages || []);
       })
       .catch((e) => console.error('[Coach] Failed to load history:', e))
@@ -64,15 +63,17 @@ export default function CoachScreen() {
     setLoading(true);
 
     try {
-      const result = await apiPost<{ message: ChatMessage; reply: ChatMessage }>('/api/chat', {
-        message: trimmed,
-      });
+      console.log('[Coach] POST /api/chat with message');
+      const result = await apiPost<{
+        userMessage: ChatMessage;
+        assistantMessage: ChatMessage;
+      }>('/api/chat', { message: trimmed });
       console.log('[Coach] Got reply from AI');
       setMessages((prev) => {
         const filtered = prev.filter((m) => m.id !== tempUserMsg.id);
         const newMsgs: ChatMessage[] = [];
-        if (result?.message) newMsgs.push(result.message);
-        if (result?.reply) newMsgs.push(result.reply);
+        if (result?.userMessage) newMsgs.push(result.userMessage);
+        if (result?.assistantMessage) newMsgs.push(result.assistantMessage);
         return [...filtered, ...newMsgs];
       });
     } catch (e: any) {
@@ -101,7 +102,7 @@ export default function CoachScreen() {
               width: 32,
               height: 32,
               borderRadius: 16,
-              backgroundColor: 'rgba(168,85,247,0.2)',
+              backgroundColor: 'rgba(168,85,247,0.15)',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
@@ -122,11 +123,71 @@ export default function CoachScreen() {
             borderColor: COLORS.border,
           }}
         >
-          <Text style={{ color: COLORS.text, fontSize: 15, lineHeight: 21 }}>{item.content}</Text>
+          <Text style={{ color: isUser ? '#fff' : COLORS.text, fontSize: 15, lineHeight: 21 }}>
+            {item.content}
+          </Text>
         </View>
       </View>
     );
   };
+
+  const inputBar = (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        padding: 12,
+        paddingBottom: insets.bottom + 12,
+        borderTopWidth: 1,
+        borderTopColor: COLORS.border,
+        gap: 10,
+        backgroundColor: COLORS.background,
+      }}
+    >
+      <TextInput
+        value={input}
+        onChangeText={setInput}
+        placeholder="Ask me anything..."
+        placeholderTextColor={COLORS.textTertiary}
+        multiline
+        style={{
+          flex: 1,
+          backgroundColor: COLORS.surface,
+          borderRadius: 20,
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          color: COLORS.text,
+          fontSize: 15,
+          borderWidth: 1,
+          borderColor: COLORS.border,
+          maxHeight: 100,
+        }}
+      />
+      <AnimatedPressable
+        onPress={() => {
+          console.log('[Coach] Send button pressed');
+          sendMessage(input);
+        }}
+        disabled={!input.trim() || loading}
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: input.trim() ? COLORS.primary : COLORS.surface,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 1,
+          borderColor: input.trim() ? COLORS.primary : COLORS.border,
+        }}
+      >
+        {loading ? (
+          <ActivityIndicator color={input.trim() ? '#fff' : COLORS.textTertiary} size="small" />
+        ) : (
+          <Send size={18} color={input.trim() ? '#fff' : COLORS.textTertiary} />
+        )}
+      </AnimatedPressable>
+    </View>
+  );
 
   return (
     <KeyboardAvoidingView
@@ -148,7 +209,7 @@ export default function CoachScreen() {
                 width: 72,
                 height: 72,
                 borderRadius: 20,
-                backgroundColor: 'rgba(168,85,247,0.15)',
+                backgroundColor: 'rgba(168,85,247,0.12)',
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: 16,
@@ -194,58 +255,7 @@ export default function CoachScreen() {
               ))}
             </View>
           </View>
-
-          {/* Input */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-end',
-              padding: 12,
-              paddingBottom: insets.bottom + 12,
-              borderTopWidth: 1,
-              borderTopColor: COLORS.border,
-              gap: 10,
-              backgroundColor: COLORS.background,
-            }}
-          >
-            <TextInput
-              value={input}
-              onChangeText={setInput}
-              placeholder="Ask me anything..."
-              placeholderTextColor={COLORS.textTertiary}
-              multiline
-              style={{
-                flex: 1,
-                backgroundColor: COLORS.surface,
-                borderRadius: 20,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                color: COLORS.text,
-                fontSize: 15,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                maxHeight: 100,
-              }}
-            />
-            <AnimatedPressable
-              onPress={() => sendMessage(input)}
-              disabled={!input.trim() || loading}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: input.trim() ? COLORS.primary : COLORS.surface,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Send size={18} color={input.trim() ? '#fff' : COLORS.textTertiary} />
-              )}
-            </AnimatedPressable>
-          </View>
+          {inputBar}
         </View>
       ) : (
         <>
@@ -256,6 +266,7 @@ export default function CoachScreen() {
             renderItem={renderMessage}
             contentContainerStyle={{ paddingTop: 16, paddingBottom: 16 }}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
             showsVerticalScrollIndicator={false}
           />
 
@@ -266,7 +277,7 @@ export default function CoachScreen() {
                   width: 32,
                   height: 32,
                   borderRadius: 16,
-                  backgroundColor: 'rgba(168,85,247,0.2)',
+                  backgroundColor: 'rgba(168,85,247,0.15)',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
@@ -288,60 +299,7 @@ export default function CoachScreen() {
             </View>
           )}
 
-          {/* Input */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'flex-end',
-              padding: 12,
-              paddingBottom: insets.bottom + 12,
-              borderTopWidth: 1,
-              borderTopColor: COLORS.border,
-              gap: 10,
-              backgroundColor: COLORS.background,
-            }}
-          >
-            <TextInput
-              value={input}
-              onChangeText={setInput}
-              placeholder="Ask me anything..."
-              placeholderTextColor={COLORS.textTertiary}
-              multiline
-              style={{
-                flex: 1,
-                backgroundColor: COLORS.surface,
-                borderRadius: 20,
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                color: COLORS.text,
-                fontSize: 15,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                maxHeight: 100,
-              }}
-            />
-            <AnimatedPressable
-              onPress={() => {
-                console.log('[Coach] Send button pressed');
-                sendMessage(input);
-              }}
-              disabled={!input.trim() || loading}
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: input.trim() ? COLORS.primary : COLORS.surface,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Send size={18} color={input.trim() ? '#fff' : COLORS.textTertiary} />
-              )}
-            </AnimatedPressable>
-          </View>
+          {inputBar}
         </>
       )}
     </KeyboardAvoidingView>

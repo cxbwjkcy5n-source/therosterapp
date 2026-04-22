@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { Stack, router, useFocusEffect, Redirect } from 'expo-router';
-import { Plus, MoreHorizontal, Heart } from 'lucide-react-native';
+import { Plus, MoreHorizontal, Heart, ClipboardList } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
@@ -26,6 +26,14 @@ interface Person {
   connection_type?: string;
   connection_type_custom?: string;
   is_benched?: boolean;
+}
+
+interface PendingDate {
+  id: string;
+  title: string;
+  date_time: string;
+  person_name: string;
+  person_photo_url?: string;
 }
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
@@ -128,25 +136,91 @@ function GhostCard({ width }: { width: number }) {
   );
 }
 
+function PendingReviewBanner({ dates }: { dates: PendingDate[] }) {
+  if (dates.length === 0) return null;
+  const first = dates[0];
+  const countText = dates.length === 1 ? '1 date to review!' : `${dates.length} dates to review!`;
+
+  return (
+    <AnimatedPressable
+      onPress={() => {
+        console.log('[Home iOS] Pending review banner pressed, navigating to date-review for:', first.id);
+        router.push({
+          pathname: '/date-review',
+          params: {
+            dateId: first.id,
+            personName: first.person_name,
+            personPhoto: first.person_photo_url || '',
+          },
+        });
+      }}
+    >
+      <View
+        style={{
+          marginHorizontal: 12,
+          marginTop: 12,
+          marginBottom: 4,
+          backgroundColor: COLORS.primary,
+          borderRadius: 14,
+          padding: 14,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ClipboardList size={20} color="#fff" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 2 }}>
+            You have {countText}
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>
+            Tap to review your date with {first.person_name}
+          </Text>
+        </View>
+        <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 20 }}>›</Text>
+      </View>
+    </AnimatedPressable>
+  );
+}
+
 export default function HomeScreen() {
   const { user, loading: authLoading } = useAuth();
   const { width } = useWindowDimensions();
   const [persons, setPersons] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingDates, setPendingDates] = useState<PendingDate[]>([]);
 
   const cardWidth = (width - 48) / 2;
 
-  const loadPersons = useCallback(async () => {
+  const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      console.log('[Home iOS] Loading persons');
+      console.log('[Home iOS] Loading persons and pending reviews');
       setLoading(true);
       setError(null);
-      const data = await apiGet<{ persons: Person[] }>('/api/persons');
-      const active = (data.persons || []).filter((p) => !p.is_benched);
-      console.log('[Home iOS] Loaded', active.length, 'active persons');
+      const [personsData, pendingData] = await Promise.all([
+        apiGet<{ persons: Person[] }>('/api/persons'),
+        apiGet<{ dates: PendingDate[] }>('/api/dates/pending-review').catch((e) => {
+          console.error('[Home iOS] Failed to load pending reviews (non-fatal):', e);
+          return { dates: [] };
+        }),
+      ]);
+      const active = (personsData.persons || []).filter((p) => !p.is_benched);
+      console.log('[Home iOS] Loaded', active.length, 'active persons,', pendingData.dates?.length ?? 0, 'pending reviews');
       setPersons(active);
+      setPendingDates(pendingData.dates || []);
     } catch (e: any) {
       console.error('[Home iOS] Failed to load persons:', e);
       setError('Could not load your roster');
@@ -157,8 +231,8 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadPersons();
-    }, [loadPersons])
+      loadData();
+    }, [loadData])
   );
 
   if (!authLoading && !user) {
@@ -211,7 +285,7 @@ export default function HomeScreen() {
               <Image source={resolveImageSource(item.photo_url)} style={{ width: '100%', height: '100%' }} contentFit="cover" />
             ) : (
               <LinearGradient
-                colors={['#2A1A1A', '#1A0D0D']}
+                colors={['#F5E8E8', '#EDD5D5']}
                 style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
               >
                 <Text style={{ fontSize: 36, fontWeight: '700', color: COLORS.primary }}>{initials}</Text>
@@ -224,28 +298,28 @@ export default function HomeScreen() {
                   position: 'absolute',
                   top: 8,
                   right: 8,
-                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  backgroundColor: 'rgba(0,0,0,0.55)',
                   borderRadius: 8,
                   paddingHorizontal: 8,
                   paddingVertical: 3,
                 }}
               >
-                <Text style={{ color: COLORS.text, fontSize: 10, fontWeight: '600' }}>{connectionLabel}</Text>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>{connectionLabel}</Text>
               </View>
             ) : null}
 
             <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.85)']}
+              colors={['transparent', 'rgba(0,0,0,0.75)']}
               style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 10, paddingTop: 24 }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '700', flex: 1 }} numberOfLines={1}>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', flex: 1 }} numberOfLines={1}>
                   {item.name}
                 </Text>
                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: interestColor, marginLeft: 4 }} />
               </View>
               {item.location ? (
-                <Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
+                <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, marginTop: 1 }} numberOfLines={1}>
                   {item.location}
                 </Text>
               ) : null}
@@ -261,6 +335,9 @@ export default function HomeScreen() {
       <Stack.Screen
         options={{
           title: 'Home',
+          headerStyle: { backgroundColor: COLORS.background },
+          headerTintColor: COLORS.text,
+          headerShadowVisible: false,
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 8, marginRight: 4 }}>
               <AnimatedPressable
@@ -275,6 +352,8 @@ export default function HomeScreen() {
                   backgroundColor: COLORS.surface,
                   alignItems: 'center',
                   justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
                 }}
               >
                 <Heart size={18} color={COLORS.primary} />
@@ -288,6 +367,8 @@ export default function HomeScreen() {
                   backgroundColor: COLORS.surface,
                   alignItems: 'center',
                   justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
                 }}
               >
                 <MoreHorizontal size={18} color={COLORS.textSecondary} />
@@ -312,7 +393,7 @@ export default function HomeScreen() {
             Check your connection and try again
           </Text>
           <AnimatedPressable
-            onPress={loadPersons}
+            onPress={loadData}
             style={{ backgroundColor: COLORS.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
           >
             <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
@@ -327,6 +408,7 @@ export default function HomeScreen() {
           contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
           columnWrapperStyle={{ justifyContent: 'flex-start' }}
           contentInsetAdjustmentBehavior="automatic"
+          ListHeaderComponent={<PendingReviewBanner dates={pendingDates} />}
           ListEmptyComponent={
             <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
               <GhostCard width={cardWidth} />

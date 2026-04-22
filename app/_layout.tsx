@@ -7,7 +7,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SystemBars } from 'react-native-edge-to-edge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ThemeProvider, DarkTheme } from '@react-navigation/native';
+import { ThemeProvider, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -23,12 +23,12 @@ export const unstable_settings = {
   initialRouteName: 'auth-screen',
 };
 
-const NewlyDarkTheme = {
-  ...DarkTheme,
+const AppLightTheme = {
+  ...DefaultTheme,
   colors: {
-    ...DarkTheme.colors,
+    ...DefaultTheme.colors,
     background: COLORS.background,
-    card: COLORS.surface,
+    card: COLORS.background,
     text: COLORS.text,
     border: COLORS.border,
     primary: COLORS.primary,
@@ -76,10 +76,10 @@ export default function RootLayout() {
 
   return (
     <DevErrorBoundary>
-      <StatusBar style="light" animated />
+      <StatusBar style="dark" animated />
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <ThemeProvider value={NewlyDarkTheme}>
+          <ThemeProvider value={AppLightTheme}>
             <AuthProvider>
               <AuthGuard>
                 <Stack screenOptions={{ headerShown: false }}>
@@ -115,6 +115,16 @@ export default function RootLayout() {
                       headerTintColor: COLORS.text,
                       headerShadowVisible: false,
                       title: 'Insights',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="date-review"
+                    options={{
+                      headerShown: true,
+                      headerStyle: { backgroundColor: COLORS.background },
+                      headerTintColor: COLORS.text,
+                      headerShadowVisible: false,
+                      title: 'Review Date',
                     }}
                   />
                   <Stack.Screen
@@ -164,7 +174,7 @@ export default function RootLayout() {
                   />
                 </Stack>
               </AuthGuard>
-              <SystemBars style="light" />
+              <SystemBars style="dark" />
             </AuthProvider>
           </ThemeProvider>
         </SafeAreaProvider>
