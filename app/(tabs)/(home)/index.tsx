@@ -4,18 +4,23 @@ import {
   Text,
   FlatList,
   Animated,
-  useWindowDimensions,
-  Alert,
+  Pressable,
+  TextInput,
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router, useFocusEffect, Redirect } from 'expo-router';
-import { Plus, MoreHorizontal, Heart, ClipboardList } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Bell, Search, SlidersHorizontal } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import Svg, { Circle } from 'react-native-svg';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet } from '@/utils/api';
 import type { ImageSourcePropType } from 'react-native';
+
+const RED = '#E53935';
 
 interface Person {
   id: string;
@@ -26,40 +31,22 @@ interface Person {
   connection_type?: string;
   connection_type_custom?: string;
   is_benched?: boolean;
-}
-
-interface PendingDate {
-  id: string;
-  title: string;
-  date_time: string;
-  person_name: string;
-  person_photo_url?: string;
+  attractiveness?: number;
+  sexual_chemistry?: number;
+  overall_chemistry?: number;
+  communication?: number;
+  consistency?: number;
+  emotional_availability?: number;
+  date_planning?: number;
+  alignment?: number;
+  created_at?: string;
+  category?: string;
 }
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
   if (!source) return { uri: '' };
   if (typeof source === 'string') return { uri: source };
   return source as ImageSourcePropType;
-}
-
-function getInterestColor(level?: number) {
-  if (!level) return COLORS.textTertiary;
-  if (level <= 3) return COLORS.interestLow;
-  if (level <= 7) return COLORS.interestMid;
-  return COLORS.interestHigh;
-}
-
-function getConnectionLabel(type?: string, custom?: string) {
-  const map: Record<string, string> = {
-    friend: 'Friend',
-    casual: 'Casual',
-    booty_call: 'Booty Call',
-    foodie_call: 'Foodie Call',
-    figuring_it_out: 'Figuring It Out',
-    serious: 'Serious',
-    other: custom || 'Other',
-  };
-  return type ? (map[type] || type) : '';
 }
 
 function getInitials(name: string) {
@@ -71,26 +58,234 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
-function AnimatedCard({ index, children }: { index: number; children: React.ReactNode }) {
+function computeScore(person: Person): number | null {
+  const fields = [
+    person.attractiveness,
+    person.sexual_chemistry,
+    person.overall_chemistry,
+    person.communication,
+    person.consistency,
+    person.emotional_availability,
+    person.date_planning,
+    person.alignment,
+  ].filter((v): v is number => v !== undefined && v !== null);
+  if (fields.length === 0) return null;
+  const avg = fields.reduce((a, b) => a + b, 0) / fields.length;
+  return Math.round(avg * 10) / 10;
+}
+
+function getCategoryLabel(type?: string, custom?: string): string {
+  const map: Record<string, string> = {
+    friend: 'Friend',
+    casual: 'Casual',
+    booty_call: 'Booty Call',
+    foodie_call: 'Foodie buddy',
+    figuring_it_out: 'Still deciding',
+    serious: 'Potential partner',
+    other: custom || 'Other',
+    situationship: 'Situationship',
+    cuddle_buddy: 'Cuddle buddy',
+    travel_buddy: 'Travel buddy',
+    one_night_stand: 'One night stand',
+  };
+  return type ? (map[type] || type) : '';
+}
+
+// ─── CircleScore ─────────────────────────────────────────────────────────────
+
+function CircleScore({ score, size }: { score: number | null; size: number }) {
+  const strokeWidth = 3.5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const progress = score !== null ? Math.min(Math.max(score / 10, 0), 1) : 0;
+  const strokeDashoffset = circumference * (1 - progress);
+  const cx = size / 2;
+  const cy = size / 2;
+
+  const scoreInt = score !== null ? Math.floor(score) : null;
+  const scoreDec = score !== null ? (score % 1 !== 0 ? `.${String(Math.round((score % 1) * 10))}` : '') : null;
+
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={radius}
+          stroke="#EEEEEE"
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        {score !== null && (
+          <Circle
+            cx={cx}
+            cy={cy}
+            r={radius}
+            stroke={RED}
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeDasharray={`${circumference} ${circumference}`}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${cx}, ${cy}`}
+          />
+        )}
+      </Svg>
+      {score !== null ? (
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A' }}>{scoreInt}</Text>
+          {scoreDec ? <Text style={{ fontSize: 10, fontWeight: '600', color: '#999' }}>{scoreDec}</Text> : null}
+          <Text style={{ fontSize: 10, color: '#999', fontWeight: '500' }}>/10</Text>
+        </View>
+      ) : (
+        <Text style={{ fontSize: 15, fontWeight: '700', color: '#BBBBBB' }}>—</Text>
+      )}
+    </View>
+  );
+}
+
+// ─── Filter chips ─────────────────────────────────────────────────────────────
+
+const SORT_OPTIONS = ['Chemistry', 'Newest', 'Category', 'Name'] as const;
+type SortOption = typeof SORT_OPTIONS[number];
+
+const CATEGORY_OPTIONS = [
+  'All',
+  'Situationship',
+  'Cuddle buddy',
+  'Foodie buddy',
+  'Travel buddy',
+  'Potential partner',
+  'One night stand',
+  'Still deciding',
+];
+
+function Chip({
+  label,
+  selected,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={{
+        backgroundColor: selected ? RED : '#F5F5F5',
+        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        marginRight: 8,
+        marginBottom: 8,
+      }}
+    >
+      <Text style={{ fontSize: 13, fontWeight: '500', color: selected ? '#fff' : '#444' }}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+// ─── Person row card ──────────────────────────────────────────────────────────
+
+function PersonCard({ item, index }: { item: Person; index: number }) {
   const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(16)).current;
+  const translateY = useRef(new Animated.Value(12)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 1, duration: 350, delay: index * 60, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: 0, duration: 350, delay: index * 60, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 300, delay: index * 50, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 300, delay: index * 50, useNativeDriver: true }),
     ]).start();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const hasPhoto = !!item.photo_url;
+  const initials = getInitials(item.name);
+  const score = computeScore(item);
+  const categoryLabel = getCategoryLabel(item.connection_type, item.connection_type_custom);
+
   return (
     <Animated.View style={{ opacity, transform: [{ translateY }] }}>
-      {children}
+      <AnimatedPressable
+        onPress={() => {
+          console.log('[Roster] Navigating to person:', item.id, item.name);
+          router.push(`/person/${item.id}`);
+        }}
+        style={{
+          marginHorizontal: 16,
+          marginVertical: 5,
+          backgroundColor: '#fff',
+          borderRadius: 16,
+          padding: 14,
+          flexDirection: 'row',
+          alignItems: 'center',
+          shadowColor: '#000',
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 2,
+        }}
+      >
+        {/* Avatar */}
+        <View
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: 26,
+            borderWidth: 2,
+            borderColor: RED,
+            overflow: 'hidden',
+            backgroundColor: RED,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 12,
+          }}
+        >
+          {hasPhoto ? (
+            <Image
+              source={resolveImageSource(item.photo_url)}
+              style={{ width: 48, height: 48, borderRadius: 24 }}
+              contentFit="cover"
+            />
+          ) : (
+            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>{initials}</Text>
+          )}
+        </View>
+
+        {/* Name + category */}
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 5 }} numberOfLines={1}>
+            {item.name}
+          </Text>
+          {categoryLabel ? (
+            <View
+              style={{
+                alignSelf: 'flex-start',
+                backgroundColor: '#F5F5F5',
+                borderRadius: 6,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+              }}
+            >
+              <Text style={{ fontSize: 11, color: '#666', fontWeight: '500' }}>{categoryLabel}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Score ring */}
+        <CircleScore score={score} size={52} />
+      </AnimatedPressable>
     </Animated.View>
   );
 }
 
-function SkeletonCard({ width }: { width: number }) {
+// ─── Skeleton row ─────────────────────────────────────────────────────────────
+
+function SkeletonRow() {
   const opacity = useRef(new Animated.Value(0.3)).current;
   useEffect(() => {
     Animated.loop(
@@ -103,141 +298,43 @@ function SkeletonCard({ width }: { width: number }) {
   }, []);
   return (
     <Animated.View
-      style={{ width, height: width, borderRadius: 16, backgroundColor: COLORS.surface, opacity, margin: 4 }}
+      style={{
+        opacity,
+        marginHorizontal: 16,
+        marginVertical: 5,
+        backgroundColor: '#F5F5F5',
+        borderRadius: 16,
+        height: 80,
+      }}
     />
   );
 }
 
-function GhostCard({ width }: { width: number }) {
-  return (
-    <AnimatedPressable
-      onPress={() => {
-        console.log('[Home] Ghost card pressed — opening add person');
-        router.push('/add-person');
-      }}
-      style={{ margin: 4 }}
-    >
-      <View
-        style={{
-          width,
-          height: width,
-          borderRadius: 16,
-          borderWidth: 1.5,
-          borderColor: COLORS.primary,
-          borderStyle: 'dashed',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: COLORS.primaryMuted,
-        }}
-      >
-        <View
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            backgroundColor: COLORS.primary,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 10,
-          }}
-        >
-          <Plus size={24} color="#fff" />
-        </View>
-        <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
-          Add your first person
-        </Text>
-      </View>
-    </AnimatedPressable>
-  );
-}
+// ─── Main screen ──────────────────────────────────────────────────────────────
 
-function PendingReviewBanner({ dates }: { dates: PendingDate[] }) {
-  if (dates.length === 0) return null;
-  const first = dates[0];
-  const countText = dates.length === 1 ? '1 date to review!' : `${dates.length} dates to review!`;
-
-  return (
-    <AnimatedPressable
-      onPress={() => {
-        console.log('[Home] Pending review banner pressed, navigating to date-review for:', first.id);
-        router.push({
-          pathname: '/date-review',
-          params: {
-            dateId: first.id,
-            personName: first.person_name,
-            personPhoto: first.person_photo_url || '',
-          },
-        });
-      }}
-    >
-      <View
-        style={{
-          marginHorizontal: 12,
-          marginTop: 12,
-          marginBottom: 4,
-          backgroundColor: COLORS.primary,
-          borderRadius: 14,
-          padding: 14,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-        }}
-      >
-        <View
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: 'rgba(255,255,255,0.2)',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <ClipboardList size={20} color="#fff" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 2 }}>
-            You have {countText}
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>
-            Tap to review your date with {first.person_name}
-          </Text>
-        </View>
-        <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 20 }}>›</Text>
-      </View>
-    </AnimatedPressable>
-  );
-}
-
-export default function HomeScreen() {
+export default function RosterScreen() {
   const { user, loading: authLoading } = useAuth();
-  const { width } = useWindowDimensions();
   const [persons, setPersons] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pendingDates, setPendingDates] = useState<PendingDate[]>([]);
-
-  const cardWidth = (width - 48) / 2;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>('Newest');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const filterHeight = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
     if (!user) return;
     try {
-      console.log('[Home] Loading persons and pending reviews');
+      console.log('[Roster] Loading persons from /api/persons');
       setLoading(true);
       setError(null);
-      const [personsData, pendingData] = await Promise.all([
-        apiGet<{ persons: Person[] }>('/api/persons'),
-        apiGet<{ dates: PendingDate[] }>('/api/dates/pending-review').catch((e) => {
-          console.error('[Home] Failed to load pending reviews (non-fatal):', e);
-          return { dates: [] };
-        }),
-      ]);
-      const active = (personsData.persons || []).filter((p) => !p.is_benched);
-      console.log('[Home] Loaded', active.length, 'active persons,', pendingData.dates?.length ?? 0, 'pending reviews');
+      const data = await apiGet<{ persons: Person[] }>('/api/persons');
+      const active = (data.persons || []).filter((p) => !p.is_benched);
+      console.log('[Roster] Loaded', active.length, 'active persons');
       setPersons(active);
-      setPendingDates(pendingData.dates || []);
     } catch (e: any) {
-      console.error('[Home] Failed to load persons:', e);
+      console.error('[Roster] Failed to load persons:', e);
       setError('Could not load your roster');
     } finally {
       setLoading(false);
@@ -250,189 +347,219 @@ export default function HomeScreen() {
     }, [loadData])
   );
 
+  useEffect(() => {
+    Animated.timing(filterHeight, {
+      toValue: filterOpen ? 1 : 0,
+      duration: 250,
+      useNativeDriver: false,
+    }).start();
+  }, [filterOpen, filterHeight]);
+
   if (!authLoading && !user) {
     return <Redirect href="/auth-screen" />;
   }
 
-  const handleLongPress = (person: Person) => {
-    console.log('[Home] Long press on person:', person.id, person.name);
-    Alert.alert(
-      person.name,
-      'What would you like to do?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Move to Bench',
-          style: 'destructive',
-          onPress: () => {
-            console.log('[Home] Moving to bench:', person.id);
-            router.push({ pathname: '/bench-reason', params: { personId: person.id, personName: person.name } });
-          },
-        },
-      ]
-    );
-  };
+  // ── filtering + sorting ──
+  const lowerQuery = searchQuery.toLowerCase();
 
-  const renderCard = ({ item, index }: { item: Person; index: number }) => {
-    const hasPhoto = !!item.photo_url;
-    const initials = getInitials(item.name);
-    const interestColor = getInterestColor(item.interest_level);
-    const connectionLabel = getConnectionLabel(item.connection_type, item.connection_type_custom);
+  const filtered = persons.filter((p) => {
+    const matchesSearch = !lowerQuery || p.name.toLowerCase().includes(lowerQuery);
+    if (!matchesSearch) return false;
+    if (selectedCategory === 'All') return true;
+    const label = getCategoryLabel(p.connection_type, p.connection_type_custom);
+    return label === selectedCategory;
+  });
 
-    return (
-      <AnimatedCard index={index}>
-        <AnimatedPressable
-          onPress={() => {
-            console.log('[Home] Navigating to person:', item.id);
-            router.push(`/person/${item.id}`);
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === 'Chemistry') {
+      const sa = computeScore(a) ?? -1;
+      const sb = computeScore(b) ?? -1;
+      return sb - sa;
+    }
+    if (sortBy === 'Newest') {
+      const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return db - da;
+    }
+    if (sortBy === 'Category') {
+      const ca = getCategoryLabel(a.connection_type, a.connection_type_custom);
+      const cb = getCategoryLabel(b.connection_type, b.connection_type_custom);
+      return ca.localeCompare(cb);
+    }
+    if (sortBy === 'Name') {
+      return a.name.localeCompare(b.name);
+    }
+    return 0;
+  });
+
+  const firstName = user?.name ? user.name.split(' ')[0] : 'there';
+
+  const filterMaxHeight = filterHeight.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 260],
+  });
+
+  const filterOpacity = filterHeight.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0, 1],
+  });
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* ── Red header ── */}
+      <SafeAreaView edges={['top']} style={{ backgroundColor: RED }}>
+        <View
+          style={{
+            backgroundColor: RED,
+            paddingHorizontal: 16,
+            paddingTop: 8,
+            paddingBottom: 28,
+            flexDirection: 'row',
+            alignItems: 'center',
           }}
-          onLongPress={() => handleLongPress(item)}
-          style={{ margin: 4 }}
         >
+          {/* Avatar + greeting */}
           <View
             style={{
-              width: cardWidth,
-              height: cardWidth,
-              borderRadius: 16,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255,255,255,0.25)',
               overflow: 'hidden',
-              backgroundColor: COLORS.surface,
-              borderWidth: 1,
-              borderColor: COLORS.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 12,
             }}
           >
-            {hasPhoto ? (
+            {user?.image ? (
               <Image
-                source={resolveImageSource(item.photo_url)}
-                style={{ width: '100%', height: '100%' }}
+                source={resolveImageSource(user.image)}
+                style={{ width: 40, height: 40 }}
                 contentFit="cover"
               />
             ) : (
-              <LinearGradient
-                colors={['#F5E8E8', '#EDD5D5']}
-                style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Text style={{ fontSize: 36, fontWeight: '700', color: COLORS.primary }}>
-                  {initials}
-                </Text>
-              </LinearGradient>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+                {firstName[0]?.toUpperCase() ?? '?'}
+              </Text>
             )}
+          </View>
 
-            {connectionLabel ? (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 8,
-                  backgroundColor: 'rgba(0,0,0,0.55)',
-                  borderRadius: 8,
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>
-                  {connectionLabel}
-                </Text>
-              </View>
-            ) : null}
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>
+              Hey, {firstName}
+            </Text>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 1 }}>
+              Here's your dating overview
+            </Text>
+          </View>
 
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.75)']}
-              style={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                padding: 10,
-                paddingTop: 24,
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text
-                  style={{ color: '#fff', fontSize: 14, fontWeight: '700', flex: 1 }}
-                  numberOfLines={1}
-                >
-                  {item.name}
-                </Text>
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: interestColor,
-                    marginLeft: 4,
+          <Pressable
+            onPress={() => console.log('[Roster] Notification bell pressed')}
+            style={{ padding: 4 }}
+          >
+            <Bell size={22} color="#fff" />
+          </Pressable>
+        </View>
+      </SafeAreaView>
+
+      {/* ── Search + filter card (overlaps header) ── */}
+      <View
+        style={{
+          marginHorizontal: 16,
+          marginTop: -20,
+          backgroundColor: '#fff',
+          borderRadius: 12,
+          shadowColor: '#000',
+          shadowOpacity: 0.10,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 4,
+          zIndex: 10,
+        }}
+      >
+        {/* Search row */}
+        <View
+          style={{
+            height: 48,
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 14,
+          }}
+        >
+          <Search size={18} color="#999" style={{ marginRight: 8 }} />
+          <TextInput
+            value={searchQuery}
+            onChangeText={(t) => {
+              console.log('[Roster] Search query changed:', t);
+              setSearchQuery(t);
+            }}
+            placeholder="Search your roster..."
+            placeholderTextColor="#999"
+            style={{ flex: 1, fontSize: 14, color: '#1A1A1A' }}
+            returnKeyType="search"
+          />
+          <Pressable
+            onPress={() => {
+              console.log('[Roster] Filter toggle pressed, open:', !filterOpen);
+              setFilterOpen((v) => !v);
+            }}
+            style={{ padding: 4 }}
+          >
+            <SlidersHorizontal size={18} color={filterOpen ? RED : '#999'} />
+          </Pressable>
+        </View>
+
+        {/* Animated filter panel */}
+        <Animated.View style={{ maxHeight: filterMaxHeight, overflow: 'hidden', opacity: filterOpacity }}>
+          <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+            {/* Divider */}
+            <View style={{ height: 1, backgroundColor: '#F0F0F0', marginBottom: 12 }} />
+
+            {/* Sort by */}
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#999', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+              Sort by
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              {SORT_OPTIONS.map((opt) => (
+                <Chip
+                  key={opt}
+                  label={opt}
+                  selected={sortBy === opt}
+                  onPress={() => {
+                    console.log('[Roster] Sort by selected:', opt);
+                    setSortBy(opt);
                   }}
                 />
-              </View>
-              {item.location ? (
-                <Text
-                  style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, marginTop: 1 }}
-                  numberOfLines={1}
-                >
-                  {item.location}
-                </Text>
-              ) : null}
-            </LinearGradient>
-          </View>
-        </AnimatedPressable>
-      </AnimatedCard>
-    );
-  };
+              ))}
+            </ScrollView>
 
-  return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <Stack.Screen
-        options={{
-          title: 'Home',
-          headerStyle: { backgroundColor: COLORS.background },
-          headerTintColor: COLORS.text,
-          headerShadowVisible: false,
-          headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 8, marginRight: 4 }}>
-              <AnimatedPressable
-                onPress={() => {
-                  console.log('[Home] Analytics pressed');
-                  router.push('/analytics');
-                }}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: COLORS.surface,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: COLORS.border,
-                }}
-              >
-                <Heart size={18} color={COLORS.primary} />
-              </AnimatedPressable>
-              <AnimatedPressable
-                onPress={() => console.log('[Home] Menu pressed')}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: COLORS.surface,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: COLORS.border,
-                }}
-              >
-                <MoreHorizontal size={18} color={COLORS.textSecondary} />
-              </AnimatedPressable>
+            {/* Category */}
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#999', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+              Category
+            </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+              {CATEGORY_OPTIONS.map((cat) => (
+                <Chip
+                  key={cat}
+                  label={cat}
+                  selected={selectedCategory === cat}
+                  onPress={() => {
+                    console.log('[Roster] Category filter selected:', cat);
+                    setSelectedCategory(cat);
+                  }}
+                />
+              ))}
             </View>
-          ),
-        }}
-      />
-
-      {loading ? (
-        <View style={{ flex: 1, padding: 12 }}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-            {[0, 1, 2, 3].map((i) => (
-              <SkeletonCard key={i} width={cardWidth} />
-            ))}
           </View>
+        </Animated.View>
+      </View>
+
+      {/* ── List ── */}
+      {loading ? (
+        <View style={{ flex: 1, paddingTop: 16 }}>
+          {[0, 1, 2, 3].map((i) => <SkeletonRow key={i} />)}
         </View>
       ) : error ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
@@ -443,33 +570,75 @@ export default function HomeScreen() {
             Check your connection and try again
           </Text>
           <AnimatedPressable
-            onPress={loadData}
-            style={{
-              backgroundColor: COLORS.primary,
-              borderRadius: 12,
-              paddingHorizontal: 24,
-              paddingVertical: 12,
+            onPress={() => {
+              console.log('[Roster] Retry pressed');
+              loadData();
             }}
+            style={{ backgroundColor: RED, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
           >
             <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
           </AnimatedPressable>
         </View>
       ) : (
         <FlatList
-          data={persons}
+          data={sorted}
           keyExtractor={(item) => item.id}
-          renderItem={renderCard}
-          numColumns={2}
-          contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
-          columnWrapperStyle={{ justifyContent: 'flex-start' }}
-          contentInsetAdjustmentBehavior="automatic"
-          ListHeaderComponent={<PendingReviewBanner dates={pendingDates} />}
+          renderItem={({ item, index }) => <PersonCard item={item} index={index} />}
+          contentContainerStyle={{ paddingTop: 16, paddingBottom: 120 }}
+          showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 0 }}>
-              <GhostCard width={cardWidth} />
+            <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>
+              <Text style={{ color: '#999', fontSize: 15, marginBottom: 12 }}>
+                No one on your roster yet
+              </Text>
+              <Pressable
+                onPress={() => {
+                  console.log('[Roster] Empty state add someone pressed');
+                  router.push('/add-person');
+                }}
+              >
+                <Text style={{ color: RED, fontSize: 15, fontWeight: '600' }}>+ Add someone</Text>
+              </Pressable>
             </View>
           }
         />
+      )}
+
+      {/* ── Add New Person button ── */}
+      {!loading && !error && (
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            paddingHorizontal: 16,
+            paddingBottom: 100,
+            paddingTop: 8,
+            backgroundColor: 'transparent',
+          }}
+        >
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[Roster] Add New Person button pressed');
+              router.push('/add-person');
+            }}
+            style={{
+              backgroundColor: RED,
+              borderRadius: 12,
+              height: 52,
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: RED,
+              shadowOpacity: 0.35,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 6,
+            }}
+          >
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>⊕ Add New Person</Text>
+          </AnimatedPressable>
+        </View>
       )}
     </View>
   );
