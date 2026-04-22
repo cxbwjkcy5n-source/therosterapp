@@ -8,6 +8,8 @@ import { registerDatesRoutes } from './routes/dates.js';
 import { registerAnalyticsRoutes } from './routes/analytics.js';
 import { registerAIRoutes } from './routes/ai.js';
 import { registerStorageRoutes } from './routes/storage.js';
+import { registerInteractionsRoutes } from './routes/interactions.js';
+import { registerProfilesRoutes } from './routes/profiles.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -30,6 +32,8 @@ registerDatesRoutes(app);
 registerAnalyticsRoutes(app);
 registerAIRoutes(app);
 registerStorageRoutes(app);
+registerInteractionsRoutes(app);
+registerProfilesRoutes(app);
 
 await app.run();
 app.logger.info('Application running');

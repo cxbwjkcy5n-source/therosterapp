@@ -44,6 +44,8 @@ export const dateStatusEnum = pgEnum('date_status', [
 
 export const chatRoleEnum = pgEnum('chat_role', ['user', 'assistant']);
 
+export const interactionTypeEnum = pgEnum('interaction_type', ['date', 'text', 'call', 'other']);
+
 export const persons = pgTable('persons', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
@@ -104,4 +106,39 @@ export const chatMessages = pgTable('chat_messages', {
   role: chatRoleEnum('role').notNull(),
   content: text('content').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const interactions = pgTable('interactions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  personId: uuid('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  type: interactionTypeEnum('type').notNull(),
+  title: text('title').notNull(),
+  notes: text('notes'),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const userProfiles = pgTable('user_profiles', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
+  photoUrl: text('photo_url'),
+  age: integer('age'),
+  birthday: text('birthday'),
+  zodiac: text('zodiac'),
+  location: text('location'),
+  occupation: text('occupation'),
+  bio: text('bio'),
+  favoriteFoods: text('favorite_foods').array(),
+  hobbies: text('hobbies').array(),
+  greenFlags: text('green_flags').array(),
+  redFlags: text('red_flags').array(),
+  attractivenessSelf: integer('attractiveness_self'),
+  communicationSelf: integer('communication_self'),
+  instagram: text('instagram'),
+  tiktok: text('tiktok'),
+  twitterX: text('twitter_x'),
+  phoneNumber: text('phone_number'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

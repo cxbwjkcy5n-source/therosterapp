@@ -7,6 +7,7 @@ describe("API Integration Tests", () => {
   let personId: string;
   let personId2: string;
   let dateId: string;
+  let interactionId: string;
 
   // ========== Auth Setup ==========
   test("Sign up test user", async () => {
@@ -617,6 +618,207 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 400);
   });
 
+  // ========== Interactions Tests ==========
+  test("Create an interaction with required fields", async () => {
+    const res = await authenticatedApi("/api/interactions", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        type: "date",
+        title: "Had coffee",
+        occurred_at: "2026-04-20T14:00:00Z",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    interactionId = data.interaction.id;
+    expect(data.interaction.id).toBeDefined();
+    expect(data.interaction.personId).toBe(personId);
+    expect(data.interaction.type).toBe("date");
+    expect(data.interaction.title).toBe("Had coffee");
+  });
+
+  test("Create an interaction with notes", async () => {
+    const res = await authenticatedApi("/api/interactions", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        type: "text",
+        title: "Sent message",
+        notes: "Talked about weekend plans",
+        occurred_at: "2026-04-21T10:00:00Z",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.interaction.notes).toBe("Talked about weekend plans");
+  });
+
+  test("Create interaction fails without required person_id", async () => {
+    const res = await authenticatedApi("/api/interactions", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "call",
+        title: "Phone call",
+        occurred_at: "2026-04-22T15:00:00Z",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Create interaction fails without required type", async () => {
+    const res = await authenticatedApi("/api/interactions", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        title: "Some interaction",
+        occurred_at: "2026-04-22T15:00:00Z",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Create interaction fails without required title", async () => {
+    const res = await authenticatedApi("/api/interactions", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        type: "call",
+        occurred_at: "2026-04-22T15:00:00Z",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Create interaction fails without required occurred_at", async () => {
+    const res = await authenticatedApi("/api/interactions", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        type: "call",
+        title: "Phone call",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Create interaction with nonexistent person returns 404", async () => {
+    const res = await authenticatedApi("/api/interactions", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: "00000000-0000-0000-0000-000000000000",
+        type: "call",
+        title: "Phone call",
+        occurred_at: "2026-04-22T15:00:00Z",
+      }),
+    });
+    await expectStatus(res, 404);
+  });
+
+  test("List interactions for a person", async () => {
+    const res = await authenticatedApi(`/api/interactions?person_id=${personId}`, authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.interactions).toBeDefined();
+    expect(Array.isArray(data.interactions)).toBe(true);
+    // Should contain interactions we created
+    const titles = data.interactions.map((i: any) => i.title);
+    expect(titles).toContain("Had coffee");
+    expect(titles).toContain("Sent message");
+  });
+
+  test("Get interactions without person_id returns 400", async () => {
+    const res = await authenticatedApi("/api/interactions", authToken);
+    await expectStatus(res, 400);
+  });
+
+  test("Get interactions with invalid person_id format returns 400", async () => {
+    const res = await authenticatedApi("/api/interactions?person_id=invalid-uuid", authToken);
+    await expectStatus(res, 400);
+  });
+
+  test("Delete an interaction", async () => {
+    const res = await authenticatedApi(`/api/interactions/${interactionId}`, authToken, {
+      method: "DELETE",
+    });
+    await expectStatus(res, 204);
+  });
+
+  test("Delete nonexistent interaction returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/interactions/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  // ========== Profile Tests ==========
+  test("Get authenticated user profile", async () => {
+    const res = await authenticatedApi("/api/profile", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.profile).toBeDefined();
+    expect(data.profile.id).toBeDefined();
+    expect(data.profile.email).toBeDefined();
+    expect(data.profile.name).toBeDefined();
+  });
+
+  test("Update user profile with partial data", async () => {
+    const res = await authenticatedApi("/api/profile", authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        age: 30,
+        location: "San Francisco",
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.profile).toBeDefined();
+    expect(data.profile.id).toBeDefined();
+  });
+
+  test("Update user profile with all fields", async () => {
+    const res = await authenticatedApi("/api/profile", authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Updated Name",
+        photo_url: "https://example.com/photo.jpg",
+        age: 31,
+        birthday: "1995-05-15",
+        zodiac: "taurus",
+        location: "New York",
+        occupation: "Software Engineer",
+        bio: "Love hiking and coffee",
+        favorite_foods: ["pizza", "sushi"],
+        hobbies: ["hiking", "reading"],
+        green_flags: ["kind", "funny"],
+        red_flags: ["dishonest"],
+        attractiveness_self: 7,
+        communication_self: 8,
+        instagram: "@myprofile",
+        tiktok: "@mytiktok",
+        twitter_x: "@mytwitter",
+        phone_number: "555-1234",
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.profile).toBeDefined();
+    expect(data.profile.id).toBeDefined();
+  });
+
   // ========== Unauthenticated Request Tests ==========
   test("Unauthenticated GET /api/persons returns 401", async () => {
     const res = await api("/api/persons");
@@ -664,6 +866,49 @@ describe("API Integration Tests", () => {
         image_base64: "test",
         mime_type: "image/png",
       }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/interactions returns 401", async () => {
+    const res = await api(`/api/interactions?person_id=${personId}`);
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/interactions returns 401", async () => {
+    const res = await api("/api/interactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        type: "call",
+        title: "Test",
+        occurred_at: "2026-04-22T15:00:00Z",
+      }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated DELETE /api/interactions/{id} returns 401", async () => {
+    const res = await api(
+      "/api/interactions/00000000-0000-0000-0000-000000000000",
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/profile returns 401", async () => {
+    const res = await api("/api/profile");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated PUT /api/profile returns 401", async () => {
+    const res = await api("/api/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Test" }),
     });
     await expectStatus(res, 401);
   });
