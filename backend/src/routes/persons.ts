@@ -1,6 +1,6 @@
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import * as schema from '../db/schema/schema.js';
 
 interface PersonInput {
@@ -28,13 +28,19 @@ interface PersonInput {
 export function registerPersonsRoutes(app: App) {
   const requireAuth = app.requireAuth();
 
-  // GET /api/persons - List all active persons
+  // GET /api/persons - List persons (active or benched based on query param)
   app.fastify.get(
     '/api/persons',
     {
       schema: {
-        description: 'List all active (not benched) persons for the authenticated user',
+        description: 'List persons for the authenticated user, filtered by benched status',
         tags: ['persons'],
+        querystring: {
+          type: 'object',
+          properties: {
+            benched: { type: 'string', enum: ['true', 'false'], description: 'Filter by benched status' },
+          },
+        },
         response: {
           200: {
             type: 'object',
@@ -78,18 +84,21 @@ export function registerPersonsRoutes(app: App) {
         },
       },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Querystring: { benched?: string } }>, reply: FastifyReply) => {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
-      app.logger.info({ userId: session.user.id }, 'Listing active persons');
+      const { benched } = request.query;
+      const isBenchedFilter = benched === 'true' ? true : false;
+
+      app.logger.info({ userId: session.user.id, benched: isBenchedFilter }, 'Listing persons');
 
       const persons = await app.db
         .select()
         .from(schema.persons)
-        .where(and(eq(schema.persons.userId, session.user.id), eq(schema.persons.isBenched, false)));
+        .where(and(eq(schema.persons.userId, session.user.id), eq(schema.persons.isBenched, isBenchedFilter)));
 
-      app.logger.info({ userId: session.user.id, count: persons.length }, 'Listed active persons');
+      app.logger.info({ userId: session.user.id, count: persons.length }, 'Listed persons');
       return { persons };
     }
   );
@@ -576,6 +585,61 @@ export function registerPersonsRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id, count: persons.length }, 'Listed benched persons');
       return { persons };
+    }
+  );
+
+  // GET /api/persons/stats - Get stats about persons and dates
+  app.fastify.get(
+    '/api/persons/stats',
+    {
+      schema: {
+        description: 'Get statistics about persons and dates for the authenticated user',
+        tags: ['persons'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              active_count: { type: 'integer' },
+              benched_count: { type: 'integer' },
+              dates_count: { type: 'integer' },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      app.logger.info({ userId: session.user.id }, 'Getting person and date stats');
+
+      // Count active persons
+      const activeResult = await app.db
+        .select({ count: count() })
+        .from(schema.persons)
+        .where(and(eq(schema.persons.userId, session.user.id), eq(schema.persons.isBenched, false)));
+
+      // Count benched persons
+      const benchedResult = await app.db
+        .select({ count: count() })
+        .from(schema.persons)
+        .where(and(eq(schema.persons.userId, session.user.id), eq(schema.persons.isBenched, true)));
+
+      // Count dates
+      const datesResult = await app.db
+        .select({ count: count() })
+        .from(schema.dates)
+        .where(eq(schema.dates.userId, session.user.id));
+
+      const stats = {
+        active_count: activeResult[0]?.count || 0,
+        benched_count: benchedResult[0]?.count || 0,
+        dates_count: datesResult[0]?.count || 0,
+      };
+
+      app.logger.info({ userId: session.user.id, stats }, 'Stats retrieved');
+      return stats;
     }
   );
 }

@@ -24,7 +24,7 @@ export function registerDatesRoutes(app: App) {
     '/api/dates',
     {
       schema: {
-        description: 'List all dates for the authenticated user with person info',
+        description: 'List all dates for the authenticated user',
         tags: ['dates'],
         response: {
           200: {
@@ -36,19 +36,12 @@ export function registerDatesRoutes(app: App) {
                   type: 'object',
                   properties: {
                     id: { type: 'string', format: 'uuid' },
-                    user_id: { type: 'string' },
                     person_id: { type: 'string', format: 'uuid' },
-                    person_name: { type: ['string', 'null'] },
-                    person_photo_url: { type: ['string', 'null'] },
                     title: { type: 'string' },
-                    location: { type: ['string', 'null'] },
                     date_time: { type: ['string', 'null'] },
-                    budget: { type: ['string', 'null'] },
-                    status: { type: 'string' },
                     rating: { type: ['integer', 'null'] },
-                    went_well: { type: ['string', 'null'] },
-                    went_poorly: { type: ['string', 'null'] },
-                    want_another_date: { type: ['boolean', 'null'] },
+                    status: { type: 'string' },
+                    location: { type: ['string', 'null'] },
                     notes: { type: ['string', 'null'] },
                     created_at: { type: 'string', format: 'date-time' },
                   },
@@ -69,43 +62,28 @@ export function registerDatesRoutes(app: App) {
       const datesData = await app.db
         .select({
           id: schema.dates.id,
-          userId: schema.dates.userId,
           personId: schema.dates.personId,
           title: schema.dates.title,
-          location: schema.dates.location,
           dateTime: schema.dates.dateTime,
-          budget: schema.dates.budget,
-          status: schema.dates.status,
           rating: schema.dates.rating,
-          wentWell: schema.dates.wentWell,
-          wentPoorly: schema.dates.wentPoorly,
-          wantAnotherDate: schema.dates.wantAnotherDate,
+          status: schema.dates.status,
+          location: schema.dates.location,
           notes: schema.dates.notes,
           createdAt: schema.dates.createdAt,
-          personName: schema.persons.name,
-          personPhotoUrl: schema.persons.photoUrl,
         })
         .from(schema.dates)
-        .leftJoin(schema.persons, eq(schema.dates.personId, schema.persons.id))
         .where(eq(schema.dates.userId, session.user.id))
-        .orderBy(sql`${schema.dates.dateTime} DESC NULLS LAST`);
+        .orderBy(sql`${schema.dates.dateTime} DESC NULLS LAST`, sql`${schema.dates.createdAt} DESC`);
 
       // Convert camelCase to snake_case for response
       const dates = datesData.map((date) => ({
         id: date.id,
-        user_id: date.userId,
         person_id: date.personId,
-        person_name: date.personName,
-        person_photo_url: date.personPhotoUrl,
         title: date.title,
-        location: date.location,
         date_time: date.dateTime,
-        budget: date.budget,
-        status: date.status,
         rating: date.rating,
-        went_well: date.wentWell,
-        went_poorly: date.wentPoorly,
-        want_another_date: date.wantAnotherDate,
+        status: date.status,
+        location: date.location,
         notes: date.notes,
         created_at: date.createdAt,
       }));

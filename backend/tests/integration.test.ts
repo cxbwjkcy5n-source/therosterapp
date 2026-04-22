@@ -255,6 +255,40 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 404);
   });
 
+  test("List persons filtered by benched=true", async () => {
+    const res = await authenticatedApi("/api/persons?benched=true", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.persons).toBeDefined();
+    expect(Array.isArray(data.persons)).toBe(true);
+    const ids = data.persons.map((p: any) => p.id);
+    expect(ids).toContain(personId2); // personId2 is benched
+    expect(ids).not.toContain(personId); // personId is not benched
+  });
+
+  test("List persons filtered by benched=false", async () => {
+    const res = await authenticatedApi("/api/persons?benched=false", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.persons).toBeDefined();
+    expect(Array.isArray(data.persons)).toBe(true);
+    const ids = data.persons.map((p: any) => p.id);
+    expect(ids).toContain(personId); // personId is not benched
+    expect(ids).not.toContain(personId2); // personId2 is benched
+  });
+
+  test("Get persons stats", async () => {
+    const res = await authenticatedApi("/api/persons/stats", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.active_count).toBeDefined();
+    expect(data.benched_count).toBeDefined();
+    expect(data.dates_count).toBeDefined();
+    expect(typeof data.active_count).toBe("number");
+    expect(typeof data.benched_count).toBe("number");
+    expect(typeof data.dates_count).toBe("number");
+  });
+
   // ========== Dates CRUD Tests ==========
   test("Create a date with required fields", async () => {
     const res = await authenticatedApi("/api/dates", authToken, {
@@ -1159,6 +1193,11 @@ describe("API Integration Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: "Test", location: "Test" }),
     });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/persons/stats returns 401", async () => {
+    const res = await api("/api/persons/stats");
     await expectStatus(res, 401);
   });
 
