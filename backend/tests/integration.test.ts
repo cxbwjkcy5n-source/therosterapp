@@ -337,13 +337,11 @@ describe("API Integration Tests", () => {
     const data = await res.json();
     expect(data.dates).toBeDefined();
     expect(Array.isArray(data.dates)).toBe(true);
-    // Verify nested person info
-    const datesWithPerson = data.dates.filter(
-      (d: any) => d.person && d.person.id
-    );
-    expect(datesWithPerson.length).toBeGreaterThan(0);
-    const dateWithOurPerson = datesWithPerson.find(
-      (d: any) => d.personId === personId
+    // Verify at least one date has person_id
+    const datesWithPersonId = data.dates.filter((d: any) => d.person_id);
+    expect(datesWithPersonId.length).toBeGreaterThan(0);
+    const dateWithOurPerson = datesWithPersonId.find(
+      (d: any) => d.person_id === personId
     );
     expect(dateWithOurPerson).toBeDefined();
   });
@@ -414,9 +412,9 @@ describe("API Integration Tests", () => {
     const data = await res.json();
     expect(data.id).toBe(reviewDateId);
     expect(data.rating).toBe(4);
-    expect(data.wentWell).toBe("Great conversation and good chemistry");
-    expect(data.wentPoorly).toBe("Noisy restaurant");
-    expect(data.wantAnotherDate).toBe(true);
+    expect(data.went_well).toBe("Great conversation and good chemistry");
+    expect(data.went_poorly).toBe("Noisy restaurant");
+    expect(data.want_another_date).toBe(true);
   });
 
   test("Add partial review with just rating", async () => {

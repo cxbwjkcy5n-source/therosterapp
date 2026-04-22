@@ -36,26 +36,21 @@ export function registerDatesRoutes(app: App) {
                   type: 'object',
                   properties: {
                     id: { type: 'string', format: 'uuid' },
-                    userId: { type: 'string' },
-                    personId: { type: 'string', format: 'uuid' },
+                    user_id: { type: 'string' },
+                    person_id: { type: 'string', format: 'uuid' },
+                    person_name: { type: ['string', 'null'] },
+                    person_photo_url: { type: ['string', 'null'] },
                     title: { type: 'string' },
                     location: { type: ['string', 'null'] },
-                    dateTime: { type: ['string', 'null'] },
+                    date_time: { type: ['string', 'null'] },
                     budget: { type: ['string', 'null'] },
                     status: { type: 'string' },
-                    reminder3Days: { type: 'boolean' },
-                    reminder1Day: { type: 'boolean' },
-                    reminder1Hour: { type: 'boolean' },
+                    rating: { type: ['integer', 'null'] },
+                    went_well: { type: ['string', 'null'] },
+                    went_poorly: { type: ['string', 'null'] },
+                    want_another_date: { type: ['boolean', 'null'] },
                     notes: { type: ['string', 'null'] },
-                    createdAt: { type: 'string', format: 'date-time' },
-                    person: {
-                      type: 'object',
-                      properties: {
-                        id: { type: 'string', format: 'uuid' },
-                        name: { type: 'string' },
-                        photoUrl: { type: ['string', 'null'] },
-                      },
-                    },
+                    created_at: { type: 'string', format: 'date-time' },
                   },
                 },
               },
@@ -71,7 +66,7 @@ export function registerDatesRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id }, 'Listing dates');
 
-      const dates = await app.db
+      const datesData = await app.db
         .select({
           id: schema.dates.id,
           userId: schema.dates.userId,
@@ -81,20 +76,39 @@ export function registerDatesRoutes(app: App) {
           dateTime: schema.dates.dateTime,
           budget: schema.dates.budget,
           status: schema.dates.status,
-          reminder3Days: schema.dates.reminder3Days,
-          reminder1Day: schema.dates.reminder1Day,
-          reminder1Hour: schema.dates.reminder1Hour,
+          rating: schema.dates.rating,
+          wentWell: schema.dates.wentWell,
+          wentPoorly: schema.dates.wentPoorly,
+          wantAnotherDate: schema.dates.wantAnotherDate,
           notes: schema.dates.notes,
           createdAt: schema.dates.createdAt,
-          person: {
-            id: schema.persons.id,
-            name: schema.persons.name,
-            photoUrl: schema.persons.photoUrl,
-          },
+          personName: schema.persons.name,
+          personPhotoUrl: schema.persons.photoUrl,
         })
         .from(schema.dates)
         .leftJoin(schema.persons, eq(schema.dates.personId, schema.persons.id))
-        .where(eq(schema.dates.userId, session.user.id));
+        .where(eq(schema.dates.userId, session.user.id))
+        .orderBy(sql`${schema.dates.dateTime} DESC NULLS LAST`);
+
+      // Convert camelCase to snake_case for response
+      const dates = datesData.map((date) => ({
+        id: date.id,
+        user_id: date.userId,
+        person_id: date.personId,
+        person_name: date.personName,
+        person_photo_url: date.personPhotoUrl,
+        title: date.title,
+        location: date.location,
+        date_time: date.dateTime,
+        budget: date.budget,
+        status: date.status,
+        rating: date.rating,
+        went_well: date.wentWell,
+        went_poorly: date.wentPoorly,
+        want_another_date: date.wantAnotherDate,
+        notes: date.notes,
+        created_at: date.createdAt,
+      }));
 
       app.logger.info({ userId: session.user.id, count: dates.length }, 'Listed dates');
       return { dates };
@@ -426,7 +440,17 @@ export function registerDatesRoutes(app: App) {
       });
 
       app.logger.info({ userId: session.user.id, dateId: id }, 'Date review updated');
-      return updatedDate;
+
+      // Convert camelCase to snake_case for response
+      return {
+        id: updatedDate?.id,
+        title: updatedDate?.title,
+        rating: updatedDate?.rating,
+        went_well: updatedDate?.wentWell,
+        went_poorly: updatedDate?.wentPoorly,
+        want_another_date: updatedDate?.wantAnotherDate,
+        status: updatedDate?.status,
+      };
     }
   );
 
