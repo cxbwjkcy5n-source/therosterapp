@@ -167,61 +167,56 @@ function SliderDisplay({ label, value, editing, onChange }: {
   label: string; value?: number; editing: boolean; onChange: (v: number) => void;
 }) {
   const val = value ?? 5;
+  const fillPct = `${(val / 10) * 100}%`;
+  const valueLabel = `${val}/10`;
   return (
     <View style={{ marginBottom: 20 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' }}>{label}</Text>
-        <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '700' }}>{val}/10</Text>
+      {/* Label row */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '500' }}>{label}</Text>
+        <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '700' }}>{valueLabel}</Text>
       </View>
-      {/* Track */}
-      <View style={{ height: 4, backgroundColor: '#E0E0E0', borderRadius: 2, position: 'relative', marginHorizontal: 9 }}>
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: `${(val / 10) * 100}%`,
-            backgroundColor: '#E53935',
-            borderRadius: 2,
-          }}
-        />
-      </View>
-      {/* Tap targets */}
-      <View style={{ flexDirection: 'row', marginTop: -9 }}>
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
-          <Pressable
-            key={step}
-            onPress={() => {
-              if (editing) {
-                console.log(`[PersonDetail] ${label} slider set to:`, step);
-                onChange(step);
-              }
-            }}
-            disabled={!editing}
-            style={{ flex: 1, alignItems: 'center', paddingVertical: 9 }}
-          >
-            <View
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: 9,
-                backgroundColor: step === val ? '#fff' : 'transparent',
-                borderWidth: step === val ? 2 : 0,
-                borderColor: '#E53935',
-                shadowColor: step === val ? '#E53935' : 'transparent',
-                shadowOpacity: step === val ? 0.4 : 0,
-                shadowRadius: 4,
-                elevation: step === val ? 3 : 0,
-              }}
-            />
-          </Pressable>
-        ))}
-      </View>
-      {/* Min/max labels */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
-        <Text style={{ color: COLORS.textTertiary, fontSize: 11 }}>0</Text>
-        <Text style={{ color: COLORS.textTertiary, fontSize: 11 }}>10</Text>
+      {/* Track + thumb tap area */}
+      <View style={{ position: 'relative', height: 20, justifyContent: 'center' }}>
+        {/* Background track */}
+        <View style={{ height: 4, backgroundColor: '#E8E8E8', borderRadius: 2, overflow: 'hidden' }}>
+          <View style={{ height: 4, width: fillPct, backgroundColor: '#E53935', borderRadius: 2 }} />
+        </View>
+        {/* Tap targets row */}
+        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, flexDirection: 'row' }}>
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => {
+            const isActive = step === val;
+            return (
+              <Pressable
+                key={step}
+                onPress={() => {
+                  if (editing) {
+                    console.log(`[PersonDetail] ${label} slider set to:`, step);
+                    onChange(step);
+                  }
+                }}
+                disabled={!editing}
+                style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+              >
+                {isActive ? (
+                  <View
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      backgroundColor: '#E53935',
+                      shadowColor: '#E53935',
+                      shadowOpacity: 0.35,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                      elevation: 4,
+                    }}
+                  />
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -1081,18 +1076,70 @@ export default function PersonDetailScreen() {
           {/* Scores */}
           <View
             style={{
-              backgroundColor: COLORS.surface,
+              backgroundColor: '#FFFFFF',
               borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: COLORS.border,
+              padding: 20,
+              shadowColor: '#000',
+              shadowOpacity: 0.06,
+              shadowRadius: 12,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 3,
             }}
           >
-            <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 14 }}>Scores</Text>
+            <Text
+              style={{
+                color: '#999999',
+                fontSize: 11,
+                fontWeight: '600',
+                letterSpacing: 1.5,
+                textTransform: 'uppercase',
+                marginBottom: 20,
+              }}
+            >
+              Ratings
+            </Text>
             <SliderDisplay label="Interest Level" value={displayData.interest_level} editing={editing} onChange={(v) => update('interest_level', v)} />
             <SliderDisplay label="Attractiveness" value={displayData.attractiveness} editing={editing} onChange={(v) => update('attractiveness', v)} />
             <SliderDisplay label="Sexual Chemistry" value={displayData.sexual_chemistry} editing={editing} onChange={(v) => update('sexual_chemistry', v)} />
             <SliderDisplay label="Communication" value={displayData.communication} editing={editing} onChange={(v) => update('communication', v)} />
+
+            {/* Compatibility Score */}
+            <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 20 }} />
+            <Text
+              style={{
+                color: '#999999',
+                fontSize: 13,
+                fontWeight: '600',
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+                marginBottom: 12,
+              }}
+            >
+              Overall Compatibility
+            </Text>
+            <Text
+              style={{
+                color: '#E53935',
+                fontSize: 32,
+                fontWeight: '800',
+                letterSpacing: -1,
+                marginBottom: 10,
+              }}
+            >
+              {Math.round(((displayData.interest_level ?? 5) + (displayData.attractiveness ?? 5) + (displayData.sexual_chemistry ?? 5) + (displayData.communication ?? 5)) / 4)}
+              <Text style={{ fontSize: 18, fontWeight: '600', color: '#E53935' }}>/10</Text>
+            </Text>
+            <View style={{ height: 6, backgroundColor: '#E8E8E8', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
+              <View
+                style={{
+                  height: 6,
+                  width: `${(((displayData.interest_level ?? 5) + (displayData.attractiveness ?? 5) + (displayData.sexual_chemistry ?? 5) + (displayData.communication ?? 5)) / 4 / 10) * 100}%`,
+                  backgroundColor: '#E53935',
+                  borderRadius: 3,
+                }}
+              />
+            </View>
+            <Text style={{ color: '#AAAAAA', fontSize: 12 }}>Based on your ratings</Text>
           </View>
 
           {/* Foods + Hobbies */}

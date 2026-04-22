@@ -863,6 +863,21 @@ export default function ProfileScreen() {
               </View>
             </AnimatedPressable>
 
+            <AnimatedPressable
+              onPress={() => {
+                console.log('[Profile] Legal pressed — navigating to /legal');
+                router.push('/legal');
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.divider }}>
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <FileText size={18} color={COLORS.primary} />
+                </View>
+                <Text style={{ flex: 1, color: COLORS.text, fontSize: 15 }}>Legal</Text>
+                <ChevronRight size={18} color={COLORS.textTertiary} />
+              </View>
+            </AnimatedPressable>
+
             <AnimatedPressable onPress={() => console.log('[Profile] Terms of Service pressed')}>
               <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
                 <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
