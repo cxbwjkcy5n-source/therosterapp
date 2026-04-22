@@ -9,8 +9,8 @@ export const COLORS = {
   primary: '#E8192C',
   primaryMuted: 'rgba(232,25,44,0.12)',
   primaryLight: '#FF4D5E',
-  accent: '#FF6B35',
-  accentMuted: 'rgba(255,107,53,0.12)',
+  accent: '#F5C518',
+  accentMuted: 'rgba(245,197,24,0.12)',
   success: '#22C55E',
   successMuted: 'rgba(34,197,94,0.12)',
   warning: '#F59E0B',
@@ -20,6 +20,6 @@ export const COLORS = {
   border: 'rgba(255,255,255,0.06)',
   divider: 'rgba(255,255,255,0.04)',
   interestLow: '#E8192C',
-  interestMid: '#F59E0B',
+  interestMid: '#F5C518',
   interestHigh: '#22C55E',
 };
