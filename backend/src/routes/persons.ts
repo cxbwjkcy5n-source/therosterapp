@@ -200,10 +200,30 @@ export function registerPersonsRoutes(app: App) {
               userId: { type: 'string' },
               name: { type: 'string' },
               location: { type: 'string' },
+              photoUrl: { type: ['string', 'null'] },
+              age: { type: ['integer', 'null'] },
+              birthday: { type: ['string', 'null'] },
+              zodiac: { type: ['string', 'null'] },
+              instagram: { type: ['string', 'null'] },
+              tiktok: { type: ['string', 'null'] },
+              twitterX: { type: ['string', 'null'] },
+              interestLevel: { type: ['integer', 'null'] },
+              attractiveness: { type: ['integer', 'null'] },
+              sexualChemistry: { type: ['integer', 'null'] },
+              communication: { type: ['integer', 'null'] },
+              connectionType: { type: ['string', 'null'] },
+              connectionTypeCustom: { type: ['string', 'null'] },
+              favoriteFoods: { type: ['array', 'null'], items: { type: 'string' } },
+              hobbies: { type: ['array', 'null'], items: { type: 'string' } },
+              redFlags: { type: ['array', 'null'], items: { type: 'string' } },
+              greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
+              isBenched: { type: 'boolean' },
+              benchReason: { type: ['string', 'null'] },
+              createdAt: { type: 'string', format: 'date-time' },
+              updatedAt: { type: 'string', format: 'date-time' },
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
-          403: { type: 'object', properties: { error: { type: 'string' } } },
           404: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
@@ -216,19 +236,15 @@ export function registerPersonsRoutes(app: App) {
       app.logger.info({ userId: session.user.id, personId: id }, 'Getting person');
 
       const person = await app.db.query.persons.findFirst({
-        where: eq(schema.persons.id, id),
+        where: and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)),
       });
 
       if (!person) {
-        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found or access denied');
         return reply.status(404).send({ error: 'Person not found' });
       }
 
-      if (person.userId !== session.user.id) {
-        app.logger.warn({ userId: session.user.id, personId: id, personUserId: person.userId }, 'Access denied to person');
-        return reply.status(403).send({ error: 'Access denied' });
-      }
-
+      app.logger.info({ userId: session.user.id, personId: id }, 'Person retrieved');
       return person;
     }
   );
