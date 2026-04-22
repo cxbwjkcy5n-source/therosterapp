@@ -8,43 +8,84 @@ import {
   Alert,
   ActivityIndicator,
   Linking,
-  Modal,
   TouchableOpacity,
   Animated,
+  Platform,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import {
   Pencil,
   MapPin,
-  Instagram,
   X as XIcon,
   Trash2,
   Users,
   Check,
   Phone,
   MessageSquare,
+  Plus,
+  Bell,
+  Calendar,
+  ChevronDown,
+  ChevronUp,
   Heart,
   Star,
-  PhoneCall,
-  Plus,
-  ChevronDown,
 } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { FontAwesome } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
-import { apiGet, apiPut, apiDelete, apiPost } from '@/utils/api';
+import { apiGet, apiPut, apiDelete, apiPost, apiPatch } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
+
+// ─── helpers ────────────────────────────────────────────────────────────────
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
   if (!source) return { uri: '' };
   if (typeof source === 'string') return { uri: source };
   return source as ImageSourcePropType;
 }
+
+function getInitials(name: string) {
+  return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function formatFullDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatTimestamp(dateStr: string): string {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function getConnectionLabel(type?: string, custom?: string) {
+  const map: Record<string, string> = {
+    friend: 'Friend', casual: 'Casual', booty_call: 'Booty Call',
+    foodie_call: 'Foodie Call', figuring_it_out: 'Figuring It Out',
+    serious: 'Serious', other: custom || 'Other',
+  };
+  return type ? (map[type] || type) : '';
+}
+
+// ─── interfaces ──────────────────────────────────────────────────────────────
 
 interface Person {
   id: string;
@@ -57,30 +98,68 @@ interface Person {
   instagram?: string;
   tiktok?: string;
   twitter_x?: string;
+  facebook?: string;
   phone_number?: string;
   interest_level?: number;
   attractiveness?: number;
   sexual_chemistry?: number;
+  overall_chemistry?: number;
   communication?: number;
+  consistency?: number;
+  emotional_availability?: number;
+  date_planning?: number;
+  alignment?: number;
   connection_type?: string;
   connection_type_custom?: string;
   favorite_foods?: string[];
+  favorite_color?: string;
+  things_they_like?: string[];
+  lifestyle_vibe?: string;
+  intention?: string;
+  distance_type?: string;
   hobbies?: string[];
   green_flags?: string[];
   red_flags?: string[];
   is_benched?: boolean;
   bench_reason?: string;
+  nickname?: string;
 }
 
-interface Interaction {
+interface DateEntry {
   id: string;
   person_id: string;
-  type: 'date' | 'text' | 'call' | 'other';
-  title: string;
+  type?: string;
+  location?: string;
+  date_time?: string;
+  status?: string;
   notes?: string;
-  interaction_date: string;
+  overall_rating?: number;
+  conversation_rating?: number;
+  attraction_rating?: number;
+  effort_rating?: number;
+  would_go_again?: string;
   created_at: string;
 }
+
+interface Note {
+  id: string;
+  person_id: string;
+  content: string;
+  created_at: string;
+}
+
+interface Reminder {
+  id: string;
+  person_id: string;
+  text: string;
+  remind_at: string;
+  created_at: string;
+}
+
+// ─── constants ───────────────────────────────────────────────────────────────
+
+const DATE_TYPES = ['Coffee', 'Dinner', 'Drinks', 'Adventure', 'Movie', 'Stay-in', 'Other'];
+const WOULD_GO_AGAIN_OPTIONS = ['Yes', 'Maybe', 'No'];
 
 const CONNECTION_TYPES = [
   { value: 'friend', label: 'Friend' },
@@ -107,361 +186,163 @@ const ZODIAC_SIGNS = [
   { value: 'pisces', label: '♓ Pisces' },
 ];
 
-const INTERACTION_TYPES = [
-  { value: 'date', label: 'Date', icon: Heart },
-  { value: 'text', label: 'Text', icon: MessageSquare },
-  { value: 'call', label: 'Call', icon: PhoneCall },
-  { value: 'other', label: 'Other', icon: Star },
-] as const;
+const RED = '#E53935';
+const CARD_SHADOW = {
+  shadowColor: '#000',
+  shadowOpacity: 0.06,
+  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 3,
+};
 
-function getInterestColor(val?: number) {
-  if (!val) return COLORS.textTertiary;
-  if (val <= 3) return COLORS.interestLow;
-  if (val <= 7) return COLORS.interestMid;
-  return COLORS.interestHigh;
+// ─── sub-components ──────────────────────────────────────────────────────────
+
+function SectionHeader({ label }: { label: string }) {
+  return (
+    <Text style={{
+      fontSize: 11,
+      fontWeight: '600',
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+      color: '#999999',
+      marginBottom: 12,
+    }}>
+      {label}
+    </Text>
+  );
 }
 
-function getConnectionLabel(type?: string, custom?: string) {
-  const map: Record<string, string> = {
-    friend: 'Friend', casual: 'Casual', booty_call: 'Booty Call',
-    foodie_call: 'Foodie Call', figuring_it_out: 'Figuring It Out',
-    serious: 'Serious', other: custom || 'Other',
-  };
-  return type ? (map[type] || type) : '';
+function PillTag({ label, color = '#444444', bg = '#F5F5F5' }: { label: string; color?: string; bg?: string }) {
+  return (
+    <View style={{
+      backgroundColor: bg,
+      borderRadius: 20,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    }}>
+      <Text style={{ color, fontSize: 12, fontWeight: '500' }}>{label}</Text>
+    </View>
+  );
 }
 
-function getInitials(name: string) {
-  return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+function ReadOnlySlider({ label, value }: { label: string; value?: number }) {
+  const val = value ?? 0;
+  const fillPct = `${(val / 10) * 100}%` as any;
+  const valueStr = String(val);
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Text style={{ color: '#444444', fontSize: 14, fontWeight: '500' }}>{label}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          <Text style={{ color: RED, fontSize: 14, fontWeight: '700' }}>{valueStr}</Text>
+          <Text style={{ color: '#AAAAAA', fontSize: 12, fontWeight: '500' }}>/10</Text>
+        </View>
+      </View>
+      <View style={{ height: 4, backgroundColor: '#E8E8E8', borderRadius: 2, overflow: 'hidden' }}>
+        <View style={{ height: 4, width: fillPct, backgroundColor: RED, borderRadius: 2 }} />
+      </View>
+    </View>
+  );
 }
 
-function formatInteractionDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays} days ago`;
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
-}
-
-function getInteractionIcon(type: string) {
-  switch (type) {
-    case 'date': return Heart;
-    case 'text': return MessageSquare;
-    case 'call': return PhoneCall;
-    default: return Star;
-  }
-}
-
-function getInteractionColor(type: string) {
-  switch (type) {
-    case 'date': return COLORS.primary;
-    case 'text': return COLORS.accent;
-    case 'call': return COLORS.success;
-    default: return COLORS.textSecondary;
-  }
-}
-
-function SliderDisplay({ label, value, editing, onChange }: {
-  label: string; value?: number; editing: boolean; onChange: (v: number) => void;
-}) {
+function EditableSlider({ label, value, onChange }: { label: string; value?: number; onChange: (v: number) => void }) {
   const val = value ?? 5;
-  const fillPct = `${(val / 10) * 100}%`;
-  const valueLabel = `${val}/10`;
+  const fillPct = `${(val / 10) * 100}%` as any;
+  const valueStr = String(val);
   return (
-    <View style={{ marginBottom: 20 }}>
-      {/* Label row */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '500' }}>{label}</Text>
-        <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '700' }}>{valueLabel}</Text>
+    <View style={{ marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <Text style={{ color: '#444444', fontSize: 14, fontWeight: '500' }}>{label}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          <Text style={{ color: RED, fontSize: 14, fontWeight: '700' }}>{valueStr}</Text>
+          <Text style={{ color: '#AAAAAA', fontSize: 12, fontWeight: '500' }}>/10</Text>
+        </View>
       </View>
-      {/* Track + thumb tap area */}
       <View style={{ position: 'relative', height: 20, justifyContent: 'center' }}>
-        {/* Background track */}
         <View style={{ height: 4, backgroundColor: '#E8E8E8', borderRadius: 2, overflow: 'hidden' }}>
-          <View style={{ height: 4, width: fillPct, backgroundColor: '#E53935', borderRadius: 2 }} />
+          <View style={{ height: 4, width: fillPct, backgroundColor: RED, borderRadius: 2 }} />
         </View>
-        {/* Tap targets row */}
         <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, flexDirection: 'row' }}>
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => {
-            const isActive = step === val;
-            return (
-              <Pressable
-                key={step}
-                onPress={() => {
-                  if (editing) {
-                    console.log(`[PersonDetail] ${label} slider set to:`, step);
-                    onChange(step);
-                  }
-                }}
-                disabled={!editing}
-                style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-              >
-                {isActive ? (
-                  <View
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      backgroundColor: '#E53935',
-                      shadowColor: '#E53935',
-                      shadowOpacity: 0.35,
-                      shadowRadius: 6,
-                      shadowOffset: { width: 0, height: 2 },
-                      elevation: 4,
-                    }}
-                  />
-                ) : null}
-              </Pressable>
-            );
-          })}
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
+            <Pressable
+              key={step}
+              onPress={() => {
+                console.log(`[PersonDetail] Slider "${label}" set to:`, step);
+                onChange(step);
+              }}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+            >
+              {step === val ? (
+                <View style={{
+                  width: 18, height: 18, borderRadius: 9,
+                  backgroundColor: RED,
+                  shadowColor: RED, shadowOpacity: 0.4, shadowRadius: 4,
+                  shadowOffset: { width: 0, height: 1 }, elevation: 3,
+                }} />
+              ) : null}
+            </Pressable>
+          ))}
         </View>
       </View>
     </View>
   );
 }
 
-function TagList({ tags, color = COLORS.primary, editing, onRemove }: {
-  tags?: string[]; color?: string; editing: boolean; onRemove: (t: string) => void;
-}) {
-  if (!tags || tags.length === 0) return null;
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-      {tags.map((tag) => (
-        <View
-          key={tag}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: color + '20',
-            borderRadius: 8,
-            paddingHorizontal: 10,
-            paddingVertical: 5,
-            gap: 4,
-          }}
-        >
-          <Text style={{ color, fontSize: 13, fontWeight: '500' }}>{tag}</Text>
-          {editing && (
-            <Pressable onPress={() => onRemove(tag)}>
-              <XIcon size={12} color={color} />
-            </Pressable>
-          )}
-        </View>
-      ))}
-    </View>
-  );
-}
+// ─── main screen ─────────────────────────────────────────────────────────────
 
-function LogInteractionModal({
-  visible,
-  personId,
-  onClose,
-  onSaved,
-}: {
-  visible: boolean;
-  personId: string;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [type, setType] = useState<'date' | 'text' | 'call' | 'other'>('date');
-  const [title, setTitle] = useState('');
-  const [notes, setNotes] = useState('');
-  const [dateStr, setDateStr] = useState(() => new Date().toISOString().slice(0, 10));
-  const [saving, setSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!title.trim()) return;
-    console.log('[PersonDetail] Logging interaction:', type, title);
-    setSaving(true);
-    try {
-      await apiPost('/api/interactions', {
-        person_id: personId,
-        type,
-        title: title.trim(),
-        notes: notes.trim() || undefined,
-        interaction_date: dateStr,
-      });
-      console.log('[PersonDetail] Interaction saved');
-      setTitle('');
-      setNotes('');
-      setType('date');
-      setDateStr(new Date().toISOString().slice(0, 10));
-      onSaved();
-      onClose();
-    } catch (e: any) {
-      console.error('[PersonDetail] Failed to save interaction:', e);
-      Alert.alert('Could not save', e?.message || 'Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity
-        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}
-        activeOpacity={1}
-        onPress={onClose}
-      >
-        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-          <View
-            style={{
-              backgroundColor: COLORS.surface,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              padding: 24,
-              paddingBottom: 40,
-              borderTopWidth: 1,
-              borderColor: COLORS.border,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: '700' }}>Log Interaction</Text>
-              <AnimatedPressable onPress={onClose}>
-                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
-                  <XIcon size={16} color={COLORS.textSecondary} />
-                </View>
-              </AnimatedPressable>
-            </View>
-
-            {/* Type selector */}
-            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 10 }}>Type</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18 }}>
-              {INTERACTION_TYPES.map((t) => {
-                const IconComp = t.icon;
-                const isSelected = type === t.value;
-                const color = getInteractionColor(t.value);
-                return (
-                  <AnimatedPressable
-                    key={t.value}
-                    onPress={() => {
-                      console.log('[PersonDetail] Interaction type selected:', t.value);
-                      setType(t.value);
-                    }}
-                    style={{
-                      flex: 1,
-                      paddingVertical: 10,
-                      borderRadius: 12,
-                      alignItems: 'center',
-                      gap: 4,
-                      backgroundColor: isSelected ? color + '20' : COLORS.surfaceSecondary,
-                      borderWidth: 1,
-                      borderColor: isSelected ? color : COLORS.border,
-                    }}
-                  >
-                    <IconComp size={16} color={isSelected ? color : COLORS.textTertiary} />
-                    <Text style={{ color: isSelected ? color : COLORS.textTertiary, fontSize: 11, fontWeight: '600' }}>{t.label}</Text>
-                  </AnimatedPressable>
-                );
-              })}
-            </View>
-
-            {/* Title */}
-            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>
-              Title <Text style={{ color: COLORS.primary }}>*</Text>
-            </Text>
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="e.g. Coffee at Blue Bottle"
-              placeholderTextColor={COLORS.textTertiary}
-              style={{
-                backgroundColor: COLORS.surfaceSecondary,
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 13,
-                color: COLORS.text,
-                fontSize: 15,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                marginBottom: 14,
-              }}
-            />
-
-            {/* Notes */}
-            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>Notes (optional)</Text>
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="How did it go?"
-              placeholderTextColor={COLORS.textTertiary}
-              multiline
-              style={{
-                backgroundColor: COLORS.surfaceSecondary,
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                color: COLORS.text,
-                fontSize: 15,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                minHeight: 72,
-                textAlignVertical: 'top',
-                marginBottom: 14,
-              }}
-            />
-
-            {/* Date */}
-            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>Date</Text>
-            <TextInput
-              value={dateStr}
-              onChangeText={setDateStr}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={COLORS.textTertiary}
-              style={{
-                backgroundColor: COLORS.surfaceSecondary,
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 13,
-                color: COLORS.text,
-                fontSize: 15,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                marginBottom: 20,
-              }}
-            />
-
-            <AnimatedPressable
-              onPress={handleSave}
-              disabled={!title.trim() || saving}
-              style={{
-                backgroundColor: title.trim() ? COLORS.primary : COLORS.surfaceSecondary,
-                borderRadius: 14,
-                paddingVertical: 16,
-                alignItems: 'center',
-                shadowColor: COLORS.primary,
-                shadowOpacity: title.trim() ? 0.3 : 0,
-                shadowRadius: 12,
-              }}
-            >
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={{ color: title.trim() ? '#fff' : COLORS.textTertiary, fontSize: 16, fontWeight: '700' }}>
-                  Save interaction
-                </Text>
-              )}
-            </AnimatedPressable>
-          </View>
-        </TouchableOpacity>
-      </TouchableOpacity>
-    </Modal>
-  );
-}
+type TabName = 'Overview' | 'Dates' | 'Notes' | 'Reminders';
+const TABS: TabName[] = ['Overview', 'Dates', 'Notes', 'Reminders'];
 
 export default function PersonDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
+
+  // core data
   const [person, setPerson] = useState<Person | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState<Partial<Person>>({});
   const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
-  const [interactions, setInteractions] = useState<Interaction[]>([]);
-  const [loadingInteractions, setLoadingInteractions] = useState(true);
-  const [showLogModal, setShowLogModal] = useState(false);
+
+  // tab
+  const [activeTab, setActiveTab] = useState<TabName>('Overview');
+
+  // dates tab
+  const [dates, setDates] = useState<DateEntry[]>([]);
+  const [loadingDates, setLoadingDates] = useState(true);
+  const [expandedDateId, setExpandedDateId] = useState<string | null>(null);
+  // log date form
+  const [dateType, setDateType] = useState('Coffee');
+  const [dateWhen, setDateWhen] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [dateLocation, setDateLocation] = useState('');
+  const [dateOverall, setDateOverall] = useState(5);
+  const [dateConversation, setDateConversation] = useState(5);
+  const [dateAttraction, setDateAttraction] = useState(5);
+  const [dateEffort, setDateEffort] = useState(5);
+  const [dateWouldGoAgain, setDateWouldGoAgain] = useState('Maybe');
+  const [dateNotes, setDateNotes] = useState('');
+  const [savingDate, setSavingDate] = useState(false);
+
+  // notes tab
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [loadingNotes, setLoadingNotes] = useState(true);
+  const [addingNote, setAddingNote] = useState(false);
+  const [newNoteText, setNewNoteText] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+
+  // reminders tab
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [loadingReminders, setLoadingReminders] = useState(true);
+  const [addingReminder, setAddingReminder] = useState(false);
+  const [reminderText, setReminderText] = useState('');
+  const [reminderDate, setReminderDate] = useState(new Date());
+  const [showReminderDatePicker, setShowReminderDatePicker] = useState(false);
+  const [savingReminder, setSavingReminder] = useState(false);
+
+  // ── loaders ──────────────────────────────────────────────────────────────
 
   const loadPerson = useCallback(async () => {
     if (!id) return;
@@ -478,26 +359,56 @@ export default function PersonDetailScreen() {
     }
   }, [id]);
 
-  const loadInteractions = useCallback(async () => {
+  const loadDates = useCallback(async () => {
     if (!id) return;
-    console.log('[PersonDetail] Loading interactions for person:', id);
+    console.log('[PersonDetail] Loading dates for person:', id);
     try {
-      const data = await apiGet<{ interactions: Interaction[] }>(`/api/interactions?person_id=${id}`);
-      console.log('[PersonDetail] Loaded', data.interactions?.length ?? 0, 'interactions');
-      setInteractions(data.interactions || []);
+      const data = await apiGet<{ dates: DateEntry[] }>(`/api/dates?person_id=${id}`);
+      console.log('[PersonDetail] Loaded', data.dates?.length ?? 0, 'dates');
+      setDates(data.dates || []);
     } catch (e) {
-      console.error('[PersonDetail] Failed to load interactions:', e);
+      console.error('[PersonDetail] Failed to load dates:', e);
     } finally {
-      setLoadingInteractions(false);
+      setLoadingDates(false);
+    }
+  }, [id]);
+
+  const loadNotes = useCallback(async () => {
+    if (!id) return;
+    console.log('[PersonDetail] Loading notes for person:', id);
+    try {
+      const data = await apiGet<{ notes: Note[] }>(`/api/notes?person_id=${id}`);
+      console.log('[PersonDetail] Loaded', data.notes?.length ?? 0, 'notes');
+      setNotes(data.notes || []);
+    } catch (e) {
+      console.error('[PersonDetail] Failed to load notes:', e);
+    } finally {
+      setLoadingNotes(false);
+    }
+  }, [id]);
+
+  const loadReminders = useCallback(async () => {
+    if (!id) return;
+    console.log('[PersonDetail] Loading reminders for person:', id);
+    try {
+      const data = await apiGet<{ reminders: Reminder[] }>(`/api/reminders?person_id=${id}`);
+      console.log('[PersonDetail] Loaded', data.reminders?.length ?? 0, 'reminders');
+      setReminders(data.reminders || []);
+    } catch (e) {
+      console.error('[PersonDetail] Failed to load reminders:', e);
+    } finally {
+      setLoadingReminders(false);
     }
   }, [id]);
 
   useEffect(() => {
-    Promise.all([loadPerson(), loadInteractions()]);
-  }, [loadPerson, loadInteractions]);
+    Promise.all([loadPerson(), loadDates(), loadNotes(), loadReminders()]);
+  }, [loadPerson, loadDates, loadNotes, loadReminders]);
+
+  // ── actions ──────────────────────────────────────────────────────────────
 
   const handleEdit = () => {
-    console.log('[PersonDetail] Edit mode toggled');
+    console.log('[PersonDetail] Edit mode toggled on');
     setEditing(true);
     setEditData({ ...person });
   };
@@ -521,7 +432,6 @@ export default function PersonDetailScreen() {
           const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64, person_id: id });
           if (uploadResult?.photo_url) {
             await apiPut(`/api/persons/${id}`, { photo_url: uploadResult.photo_url });
-            setEditData((prev) => ({ ...prev, photo_url: uploadResult.photo_url }));
           }
         } catch (photoErr) {
           console.error('[PersonDetail] Photo upload failed:', photoErr);
@@ -582,39 +492,120 @@ export default function PersonDetailScreen() {
     }
   };
 
-  const openSocial = (url: string) => {
-    console.log('[PersonDetail] Opening social URL:', url);
+  const openLink = (url: string) => {
+    console.log('[PersonDetail] Opening URL:', url);
     Linking.openURL(url).catch((e) => console.error('[PersonDetail] Failed to open URL:', e));
   };
 
-  const openPhone = (phone: string) => {
-    const cleaned = phone.replace(/\s/g, '');
-    console.log('[PersonDetail] Opening phone dialer:', cleaned);
-    Linking.openURL(`tel:${cleaned}`).catch((e) => console.error('[PersonDetail] Failed to open dialer:', e));
+  const handleSaveDate = async () => {
+    console.log('[PersonDetail] Saving date for person:', id, 'type:', dateType);
+    setSavingDate(true);
+    try {
+      await apiPost('/api/dates', {
+        person_id: id,
+        type: dateType.toLowerCase(),
+        location: dateLocation.trim() || undefined,
+        date_time: dateWhen.toISOString(),
+        overall_rating: dateOverall,
+        conversation_rating: dateConversation,
+        attraction_rating: dateAttraction,
+        effort_rating: dateEffort,
+        would_go_again: dateWouldGoAgain.toLowerCase(),
+        notes: dateNotes.trim() || undefined,
+        status: 'completed',
+      });
+      console.log('[PersonDetail] Date saved successfully');
+      setDateType('Coffee');
+      setDateWhen(new Date());
+      setDateLocation('');
+      setDateOverall(5);
+      setDateConversation(5);
+      setDateAttraction(5);
+      setDateEffort(5);
+      setDateWouldGoAgain('Maybe');
+      setDateNotes('');
+      await loadDates();
+    } catch (e: any) {
+      console.error('[PersonDetail] Failed to save date:', e);
+      Alert.alert('Could not save date', e?.message || 'Please try again.');
+    } finally {
+      setSavingDate(false);
+    }
   };
 
-  const openSMS = (phone: string) => {
-    const cleaned = phone.replace(/\s/g, '');
-    console.log('[PersonDetail] Opening SMS:', cleaned);
-    Linking.openURL(`sms:${cleaned}`).catch((e) => console.error('[PersonDetail] Failed to open SMS:', e));
+  const handleSaveNote = async () => {
+    if (!newNoteText.trim()) return;
+    console.log('[PersonDetail] Saving note for person:', id);
+    setSavingNote(true);
+    try {
+      await apiPost('/api/notes', { person_id: id, content: newNoteText.trim() });
+      console.log('[PersonDetail] Note saved');
+      setNewNoteText('');
+      setAddingNote(false);
+      await loadNotes();
+    } catch (e: any) {
+      console.error('[PersonDetail] Failed to save note:', e);
+      Alert.alert('Could not save note', e?.message || 'Please try again.');
+    } finally {
+      setSavingNote(false);
+    }
   };
 
-  const handleDeleteInteraction = (interaction: Interaction) => {
-    console.log('[PersonDetail] Delete interaction pressed:', interaction.id);
-    Alert.alert('Delete interaction?', `"${interaction.title}" will be removed.`, [
+  const handleDeleteNote = (note: Note) => {
+    console.log('[PersonDetail] Delete note pressed:', note.id);
+    Alert.alert('Delete note?', 'This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Delete',
-        style: 'destructive',
+        text: 'Delete', style: 'destructive',
         onPress: async () => {
           try {
-            console.log('[PersonDetail] Deleting interaction:', interaction.id);
-            await apiDelete(`/api/interactions/${interaction.id}`);
-            console.log('[PersonDetail] Interaction deleted');
-            setInteractions((prev) => prev.filter((i) => i.id !== interaction.id));
+            await apiDelete(`/api/notes/${note.id}`);
+            console.log('[PersonDetail] Note deleted:', note.id);
+            setNotes((prev) => prev.filter((n) => n.id !== note.id));
           } catch (e) {
-            console.error('[PersonDetail] Failed to delete interaction:', e);
-            Alert.alert('Error', 'Could not delete. Try again.');
+            console.error('[PersonDetail] Failed to delete note:', e);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleSaveReminder = async () => {
+    if (!reminderText.trim()) return;
+    console.log('[PersonDetail] Saving reminder for person:', id);
+    setSavingReminder(true);
+    try {
+      await apiPost('/api/reminders', {
+        person_id: id,
+        text: reminderText.trim(),
+        remind_at: reminderDate.toISOString(),
+      });
+      console.log('[PersonDetail] Reminder saved');
+      setReminderText('');
+      setReminderDate(new Date());
+      setAddingReminder(false);
+      await loadReminders();
+    } catch (e: any) {
+      console.error('[PersonDetail] Failed to save reminder:', e);
+      Alert.alert('Could not save reminder', e?.message || 'Please try again.');
+    } finally {
+      setSavingReminder(false);
+    }
+  };
+
+  const handleDeleteReminder = (reminder: Reminder) => {
+    console.log('[PersonDetail] Delete reminder pressed:', reminder.id);
+    Alert.alert('Delete reminder?', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          try {
+            await apiDelete(`/api/reminders/${reminder.id}`);
+            console.log('[PersonDetail] Reminder deleted:', reminder.id);
+            setReminders((prev) => prev.filter((r) => r.id !== reminder.id));
+          } catch (e) {
+            console.error('[PersonDetail] Failed to delete reminder:', e);
           }
         },
       },
@@ -623,18 +614,20 @@ export default function PersonDetailScreen() {
 
   const update = (key: keyof Person, value: any) => setEditData((prev) => ({ ...prev, [key]: value }));
 
+  // ── derived ───────────────────────────────────────────────────────────────
+
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={COLORS.primary} />
+      <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={RED} />
       </View>
     );
   }
 
   if (!person) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: COLORS.textSecondary }}>Person not found</Text>
+      <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: '#666666' }}>Person not found</Text>
       </View>
     );
   }
@@ -644,734 +637,1044 @@ export default function PersonDetailScreen() {
   const hasPhoto = !!photoSource;
   const initials = getInitials(displayData.name || '');
   const connectionLabel = getConnectionLabel(displayData.connection_type, displayData.connection_type_custom);
-  const interestColor = getInterestColor(displayData.interest_level);
   const hasPhone = !!(displayData.phone_number);
-  const personName = person.name;
+  const personFirstName = (person.name || '').split(' ')[0];
 
-  return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <Stack.Screen
-        options={{
-          title: '',
-          headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {editing ? (
-                <AnimatedPressable
-                  onPress={handleSave}
-                  disabled={saving}
-                  style={{
-                    backgroundColor: COLORS.primary,
-                    borderRadius: 10,
-                    paddingHorizontal: 14,
-                    paddingVertical: 7,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 6,
+  const ratingFields = [
+    { label: 'Sexual chemistry', key: 'sexual_chemistry' as keyof Person },
+    { label: 'Overall chemistry', key: 'overall_chemistry' as keyof Person },
+    { label: 'Communication', key: 'communication' as keyof Person },
+    { label: 'Consistency', key: 'consistency' as keyof Person },
+    { label: 'Emotional availability', key: 'emotional_availability' as keyof Person },
+    { label: 'Date planning', key: 'date_planning' as keyof Person },
+    { label: 'Alignment', key: 'alignment' as keyof Person },
+  ];
+
+  const ratingValues = ratingFields.map((f) => (displayData[f.key] as number) ?? 5);
+  const avgCompatibility = Math.round(ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length);
+
+  const dateWhenLabel = dateWhen.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const dateTimeLabel = dateWhen.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const reminderDateLabel = reminderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  // ── social buttons config ─────────────────────────────────────────────────
+
+  const socialButtons = [
+    {
+      key: 'call',
+      label: 'Call',
+      icon: <Ionicons name="call" size={20} color={hasPhone ? '#1A1A1A' : '#CCCCCC'} />,
+      enabled: hasPhone,
+      onPress: () => {
+        console.log('[PersonDetail] Call button pressed');
+        Linking.openURL(`tel:${(displayData.phone_number || '').replace(/\s/g, '')}`);
+      },
+    },
+    {
+      key: 'text',
+      label: 'Text',
+      icon: <Ionicons name="chatbubble" size={20} color={hasPhone ? '#1A1A1A' : '#CCCCCC'} />,
+      enabled: hasPhone,
+      onPress: () => {
+        console.log('[PersonDetail] Text button pressed');
+        Linking.openURL(`sms:${(displayData.phone_number || '').replace(/\s/g, '')}`);
+      },
+    },
+    {
+      key: 'instagram',
+      label: 'Insta',
+      icon: <FontAwesome name="instagram" size={20} color={displayData.instagram ? '#E1306C' : '#CCCCCC'} />,
+      enabled: !!displayData.instagram,
+      onPress: () => {
+        console.log('[PersonDetail] Instagram button pressed:', displayData.instagram);
+        openLink(`https://instagram.com/${displayData.instagram}`);
+      },
+    },
+    {
+      key: 'tiktok',
+      label: 'TikTok',
+      icon: <FontAwesome name="music" size={18} color={displayData.tiktok ? '#010101' : '#CCCCCC'} />,
+      enabled: !!displayData.tiktok,
+      onPress: () => {
+        console.log('[PersonDetail] TikTok button pressed:', displayData.tiktok);
+        openLink(`https://tiktok.com/@${displayData.tiktok}`);
+      },
+    },
+    {
+      key: 'facebook',
+      label: 'Facebook',
+      icon: <FontAwesome name="facebook" size={20} color={displayData.facebook ? '#1877F2' : '#CCCCCC'} />,
+      enabled: !!displayData.facebook,
+      onPress: () => {
+        console.log('[PersonDetail] Facebook button pressed:', displayData.facebook);
+        openLink(`https://facebook.com/${displayData.facebook}`);
+      },
+    },
+  ];
+
+  // ── render tabs ───────────────────────────────────────────────────────────
+
+  const renderOverviewTab = () => {
+    const favTags: { label: string; value?: string | string[] }[] = [
+      { label: 'Fav Food', value: displayData.favorite_foods?.join(', ') },
+      { label: 'Fav Color', value: displayData.favorite_color },
+      { label: 'Things they like', value: displayData.things_they_like?.join(', ') },
+      { label: 'Lifestyle vibe', value: displayData.lifestyle_vibe },
+      { label: 'Intention', value: displayData.intention },
+      { label: displayData.distance_type || 'In-person', value: undefined },
+    ].filter((t) => t.value !== undefined || t.label === (displayData.distance_type || 'In-person'));
+
+    const sortedDates = [...dates].sort((a, b) => {
+      const da = new Date(a.date_time || a.created_at).getTime();
+      const db = new Date(b.date_time || b.created_at).getTime();
+      return db - da;
+    });
+
+    return (
+      <View style={{ gap: 16 }}>
+        {/* Dating Timeline */}
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <SectionHeader label="Dating Timeline" />
+          {loadingDates ? (
+            <ActivityIndicator color={RED} style={{ marginVertical: 12 }} />
+          ) : sortedDates.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                <Heart size={22} color={RED} />
+              </View>
+              <Text style={{ color: '#999999', fontSize: 14, textAlign: 'center' }}>No dates yet</Text>
+            </View>
+          ) : (
+            <View>
+              {sortedDates.map((d, index) => {
+                const isLast = index === sortedDates.length - 1;
+                const dateLabel = formatShortDate(d.date_time || d.created_at);
+                const typeLabel = d.type ? (d.type.charAt(0).toUpperCase() + d.type.slice(1)) : 'Date';
+                const ratingVal = d.overall_rating ?? 0;
+                const ratingStr = ratingVal > 0 ? `${ratingVal}/10` : '—';
+                return (
+                  <View key={d.id} style={{ flexDirection: 'row', gap: 12, marginBottom: isLast ? 0 : 16 }}>
+                    <View style={{ alignItems: 'center', width: 28 }}>
+                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: RED, marginTop: 4 }} />
+                      {!isLast && (
+                        <View style={{ width: 2, flex: 1, backgroundColor: '#EEEEEE', marginTop: 4, minHeight: 20 }} />
+                      )}
+                    </View>
+                    <View style={{ flex: 1, paddingBottom: isLast ? 0 : 4 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '600' }}>{typeLabel}</Text>
+                        <View style={{ backgroundColor: 'rgba(229,57,53,0.1)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
+                          <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>{ratingStr}</Text>
+                        </View>
+                      </View>
+                      <Text style={{ color: '#999999', fontSize: 12 }}>{dateLabel}</Text>
+                      {d.location ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                          <MapPin size={11} color="#AAAAAA" />
+                          <Text style={{ color: '#AAAAAA', fontSize: 12 }} numberOfLines={1}>{d.location}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
+        {/* Favorites */}
+        {(favTags.length > 0 || editing) && (
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+            <SectionHeader label="Favorites" />
+            {editing ? (
+              <View style={{ gap: 10 }}>
+                {[
+                  { label: 'Fav Food (comma-separated)', key: 'favorite_foods' as keyof Person, isArray: true },
+                  { label: 'Fav Color', key: 'favorite_color' as keyof Person, isArray: false },
+                  { label: 'Things they like (comma-separated)', key: 'things_they_like' as keyof Person, isArray: true },
+                  { label: 'Lifestyle vibe', key: 'lifestyle_vibe' as keyof Person, isArray: false },
+                  { label: 'Intention', key: 'intention' as keyof Person, isArray: false },
+                  { label: 'Distance type (e.g. In-person)', key: 'distance_type' as keyof Person, isArray: false },
+                ].map((field) => (
+                  <View key={field.key}>
+                    <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>{field.label}</Text>
+                    <TextInput
+                      value={field.isArray
+                        ? ((editData[field.key] as string[]) || []).join(', ')
+                        : (editData[field.key] as string) || ''}
+                      onChangeText={(v) => {
+                        if (field.isArray) {
+                          update(field.key, v.split(',').map((s) => s.trim()).filter(Boolean));
+                        } else {
+                          update(field.key, v);
+                        }
+                      }}
+                      placeholder={field.label}
+                      placeholderTextColor="#BBBBBB"
+                      style={{
+                        backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10,
+                        color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0',
+                      }}
+                    />
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {displayData.favorite_foods && displayData.favorite_foods.length > 0 && (
+                  <PillTag label={`Fav Food: ${displayData.favorite_foods.join(', ')}`} />
+                )}
+                {displayData.favorite_color && (
+                  <PillTag label={`Fav Color: ${displayData.favorite_color}`} />
+                )}
+                {displayData.things_they_like && displayData.things_they_like.length > 0 && (
+                  <PillTag label={`Things they like: ${displayData.things_they_like.join(', ')}`} />
+                )}
+                {displayData.lifestyle_vibe && (
+                  <PillTag label={`Lifestyle vibe: ${displayData.lifestyle_vibe}`} />
+                )}
+                {displayData.intention && (
+                  <PillTag label={`Intention: ${displayData.intention}`} />
+                )}
+                {displayData.distance_type && (
+                  <PillTag label={displayData.distance_type} />
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Flags */}
+        {((displayData.green_flags && displayData.green_flags.length > 0) ||
+          (displayData.red_flags && displayData.red_flags.length > 0) || editing) && (
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+            <View style={{ flexDirection: 'row', gap: 16 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#2E7D32', fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Green Flags</Text>
+                {editing ? (
+                  <TextInput
+                    value={((editData.green_flags || []).join(', '))}
+                    onChangeText={(v) => update('green_flags', v.split(',').map((s) => s.trim()).filter(Boolean))}
+                    placeholder="e.g. Kind, Funny"
+                    placeholderTextColor="#BBBBBB"
+                    multiline
+                    style={{
+                      backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10,
+                      color: '#1A1A1A', fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', minHeight: 60,
+                    }}
+                  />
+                ) : (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {(displayData.green_flags || []).map((flag) => (
+                      <PillTag key={flag} label={flag} color="#2E7D32" bg="rgba(46,125,50,0.08)" />
+                    ))}
+                    {(!displayData.green_flags || displayData.green_flags.length === 0) && (
+                      <Text style={{ color: '#BBBBBB', fontSize: 13 }}>None added</Text>
+                    )}
+                  </View>
+                )}
+              </View>
+              <View style={{ width: 1, backgroundColor: '#F0F0F0' }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: RED, fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Red Flags</Text>
+                {editing ? (
+                  <TextInput
+                    value={((editData.red_flags || []).join(', '))}
+                    onChangeText={(v) => update('red_flags', v.split(',').map((s) => s.trim()).filter(Boolean))}
+                    placeholder="e.g. Flaky, Rude"
+                    placeholderTextColor="#BBBBBB"
+                    multiline
+                    style={{
+                      backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10,
+                      color: '#1A1A1A', fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', minHeight: 60,
+                    }}
+                  />
+                ) : (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {(displayData.red_flags || []).map((flag) => (
+                      <PillTag key={flag} label={flag} color={RED} bg="rgba(229,57,53,0.08)" />
+                    ))}
+                    {(!displayData.red_flags || displayData.red_flags.length === 0) && (
+                      <Text style={{ color: '#BBBBBB', fontSize: 13 }}>None added</Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Ratings */}
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <SectionHeader label="Ratings" />
+          {ratingFields.map((f) =>
+            editing ? (
+              <EditableSlider
+                key={f.key}
+                label={f.label}
+                value={editData[f.key] as number}
+                onChange={(v) => update(f.key, v)}
+              />
+            ) : (
+              <ReadOnlySlider key={f.key} label={f.label} value={person[f.key] as number} />
+            )
+          )}
+          <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 16 }} />
+          <Text style={{ color: '#999999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+            Overall Compatibility
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2, marginBottom: 10 }}>
+            <Text style={{ color: RED, fontSize: 36, fontWeight: '800', letterSpacing: -1 }}>{avgCompatibility}</Text>
+            <Text style={{ color: RED, fontSize: 18, fontWeight: '600' }}>/10</Text>
+          </View>
+          <View style={{ height: 6, backgroundColor: '#E8E8E8', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
+            <View style={{ height: 6, width: `${(avgCompatibility / 10) * 100}%` as any, backgroundColor: RED, borderRadius: 3 }} />
+          </View>
+          <Text style={{ color: '#AAAAAA', fontSize: 12 }}>Based on your ratings</Text>
+        </View>
+
+        {/* Details (edit mode) */}
+        {editing && (
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+            <SectionHeader label="Details" />
+            <View style={{ gap: 12 }}>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>Nickname</Text>
+                <TextInput
+                  value={editData.nickname || ''}
+                  onChangeText={(v) => update('nickname', v)}
+                  placeholder="Nickname"
+                  placeholderTextColor="#BBBBBB"
+                  style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
+                />
+              </View>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>Age</Text>
+                <TextInput
+                  value={editData.age?.toString() || ''}
+                  onChangeText={(v) => update('age', v ? parseInt(v, 10) : undefined)}
+                  keyboardType="numeric"
+                  placeholder="Age"
+                  placeholderTextColor="#BBBBBB"
+                  style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
+                />
+              </View>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>Birthday</Text>
+                <BirthdayPicker
+                  value={editData.birthday || ''}
+                  onChange={(v) => {
+                    console.log('[PersonDetail] Birthday selected:', v);
+                    update('birthday', v);
                   }}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <>
-                      <Check size={16} color="#fff" />
-                      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Save</Text>
-                    </>
-                  )}
-                </AnimatedPressable>
+                />
+              </View>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 6 }}>Zodiac</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {ZODIAC_SIGNS.map((z) => (
+                      <Pressable
+                        key={z.value}
+                        onPress={() => update('zodiac', z.value)}
+                        style={{
+                          paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14,
+                          backgroundColor: editData.zodiac === z.value ? 'rgba(229,57,53,0.1)' : '#F5F5F5',
+                          borderWidth: 1,
+                          borderColor: editData.zodiac === z.value ? RED : '#E0E0E0',
+                        }}
+                      >
+                        <Text style={{ color: editData.zodiac === z.value ? RED : '#666666', fontSize: 11 }}>{z.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 6 }}>Connection Type</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {CONNECTION_TYPES.map((ct) => (
+                      <Pressable
+                        key={ct.value}
+                        onPress={() => update('connection_type', ct.value)}
+                        style={{
+                          paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16,
+                          backgroundColor: editData.connection_type === ct.value ? RED : '#F5F5F5',
+                          borderWidth: 1,
+                          borderColor: editData.connection_type === ct.value ? RED : '#E0E0E0',
+                        }}
+                      >
+                        <Text style={{ color: editData.connection_type === ct.value ? '#fff' : '#666666', fontSize: 12 }}>
+                          {ct.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+              {[
+                { label: 'Phone Number', key: 'phone_number' as keyof Person, keyboard: 'phone-pad' as const },
+                { label: 'Instagram', key: 'instagram' as keyof Person, keyboard: 'default' as const },
+                { label: 'TikTok', key: 'tiktok' as keyof Person, keyboard: 'default' as const },
+                { label: 'Facebook', key: 'facebook' as keyof Person, keyboard: 'default' as const },
+                { label: 'X / Twitter', key: 'twitter_x' as keyof Person, keyboard: 'default' as const },
+              ].map((field) => (
+                <View key={field.key}>
+                  <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>{field.label}</Text>
+                  <TextInput
+                    value={(editData[field.key] as string) || ''}
+                    onChangeText={(v) => update(field.key, v)}
+                    placeholder={field.label}
+                    placeholderTextColor="#BBBBBB"
+                    keyboardType={field.keyboard}
+                    autoCapitalize="none"
+                    style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Edit / Delete buttons */}
+        <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
+          <AnimatedPressable
+            onPress={editing ? handleSave : handleEdit}
+            disabled={saving}
+            style={{ flex: 1 }}
+          >
+            <View style={{
+              backgroundColor: '#1A1A1A', borderRadius: 14, paddingVertical: 16,
+              alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8,
+            }}>
+              {saving ? (
+                <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <AnimatedPressable
-                  onPress={handleEdit}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
-                    backgroundColor: COLORS.surface,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Pencil size={16} color={COLORS.textSecondary} />
-                </AnimatedPressable>
+                <>
+                  <Pencil size={16} color="#fff" />
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
+                    {editing ? 'Save' : 'Edit'}
+                  </Text>
+                </>
               )}
             </View>
-          ),
+          </AnimatedPressable>
+          <AnimatedPressable onPress={handleDelete} style={{ flex: 1 }}>
+            <View style={{
+              backgroundColor: RED, borderRadius: 14, paddingVertical: 16,
+              alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8,
+            }}>
+              <Trash2 size={16} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Delete</Text>
+            </View>
+          </AnimatedPressable>
+        </View>
+
+        {!person.is_benched && !editing && (
+          <AnimatedPressable onPress={handleBench}>
+            <View style={{
+              borderWidth: 1, borderColor: COLORS.warning, borderRadius: 14,
+              paddingVertical: 14, alignItems: 'center', flexDirection: 'row',
+              justifyContent: 'center', gap: 8,
+            }}>
+              <Users size={16} color={COLORS.warning} />
+              <Text style={{ color: COLORS.warning, fontSize: 15, fontWeight: '600' }}>Move to Bench</Text>
+            </View>
+          </AnimatedPressable>
+        )}
+      </View>
+    );
+  };
+
+  const renderDatesTab = () => {
+    const sortedDates = [...dates].sort((a, b) => {
+      const da = new Date(a.date_time || a.created_at).getTime();
+      const db = new Date(b.date_time || b.created_at).getTime();
+      return db - da;
+    });
+
+    return (
+      <View style={{ gap: 16 }}>
+        {/* Log a Date form */}
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <Text style={{ color: '#1A1A1A', fontSize: 17, fontWeight: '700', marginBottom: 20 }}>Log a Date</Text>
+
+          {/* Type */}
+          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Type</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+            {DATE_TYPES.map((t) => {
+              const isSelected = dateType === t;
+              return (
+                <AnimatedPressable
+                  key={t}
+                  onPress={() => {
+                    console.log('[PersonDetail] Date type selected:', t);
+                    setDateType(t);
+                  }}
+                >
+                  <View style={{
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                    backgroundColor: isSelected ? RED : '#F5F5F5',
+                    borderWidth: 1, borderColor: isSelected ? RED : '#E0E0E0',
+                  }}>
+                    <Text style={{ color: isSelected ? '#fff' : '#666666', fontSize: 13, fontWeight: '500' }}>{t}</Text>
+                  </View>
+                </AnimatedPressable>
+              );
+            })}
+          </View>
+
+          {/* When */}
+          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>When</Text>
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+            <AnimatedPressable
+              onPress={() => {
+                console.log('[PersonDetail] Date picker opened');
+                setShowDatePicker(true);
+              }}
+              style={{ flex: 1 }}
+            >
+              <View style={{
+                backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
+                borderWidth: 1, borderColor: '#E0E0E0', flexDirection: 'row', alignItems: 'center', gap: 8,
+              }}>
+                <Calendar size={16} color={RED} />
+                <Text style={{ color: '#1A1A1A', fontSize: 14 }}>{dateWhenLabel}</Text>
+              </View>
+            </AnimatedPressable>
+            <AnimatedPressable
+              onPress={() => {
+                console.log('[PersonDetail] Time picker opened');
+                setShowTimePicker(true);
+              }}
+              style={{ flex: 1 }}
+            >
+              <View style={{
+                backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
+                borderWidth: 1, borderColor: '#E0E0E0', alignItems: 'center',
+              }}>
+                <Text style={{ color: '#1A1A1A', fontSize: 14 }}>{dateTimeLabel}</Text>
+              </View>
+            </AnimatedPressable>
+          </View>
+          {showDatePicker && (
+            <DateTimePicker
+              value={dateWhen}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(_, d) => {
+                setShowDatePicker(false);
+                if (d) {
+                  console.log('[PersonDetail] Date selected:', d);
+                  setDateWhen(d);
+                }
+              }}
+            />
+          )}
+          {showTimePicker && (
+            <DateTimePicker
+              value={dateWhen}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(_, d) => {
+                setShowTimePicker(false);
+                if (d) {
+                  console.log('[PersonDetail] Time selected:', d);
+                  setDateWhen(d);
+                }
+              }}
+            />
+          )}
+
+          {/* Location */}
+          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Location</Text>
+          <TextInput
+            value={dateLocation}
+            onChangeText={setDateLocation}
+            placeholder="e.g. Blue Bottle Cafe"
+            placeholderTextColor="#BBBBBB"
+            style={{
+              backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
+              color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 20,
+            }}
+          />
+
+          {/* Rate the Date */}
+          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 12 }}>Rate the Date</Text>
+          <EditableSlider label="Overall" value={dateOverall} onChange={(v) => { console.log('[PersonDetail] Date overall rating:', v); setDateOverall(v); }} />
+          <EditableSlider label="Conversation" value={dateConversation} onChange={(v) => { console.log('[PersonDetail] Date conversation rating:', v); setDateConversation(v); }} />
+          <EditableSlider label="Attraction IRL" value={dateAttraction} onChange={(v) => { console.log('[PersonDetail] Date attraction rating:', v); setDateAttraction(v); }} />
+          <EditableSlider label="Effort & Intent" value={dateEffort} onChange={(v) => { console.log('[PersonDetail] Date effort rating:', v); setDateEffort(v); }} />
+
+          {/* Would go again */}
+          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Would go again?</Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+            {WOULD_GO_AGAIN_OPTIONS.map((opt) => {
+              const isSelected = dateWouldGoAgain === opt;
+              return (
+                <AnimatedPressable
+                  key={opt}
+                  onPress={() => {
+                    console.log('[PersonDetail] Would go again selected:', opt);
+                    setDateWouldGoAgain(opt);
+                  }}
+                >
+                  <View style={{
+                    paddingHorizontal: 20, paddingVertical: 9, borderRadius: 20,
+                    backgroundColor: isSelected ? RED : '#F5F5F5',
+                    borderWidth: 1, borderColor: isSelected ? RED : '#E0E0E0',
+                  }}>
+                    <Text style={{ color: isSelected ? '#fff' : '#666666', fontSize: 14, fontWeight: '500' }}>{opt}</Text>
+                  </View>
+                </AnimatedPressable>
+              );
+            })}
+          </View>
+
+          {/* Notes */}
+          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Notes</Text>
+          <TextInput
+            value={dateNotes}
+            onChangeText={setDateNotes}
+            placeholder="How did it go?"
+            placeholderTextColor="#BBBBBB"
+            multiline
+            style={{
+              backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
+              color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0',
+              minHeight: 80, textAlignVertical: 'top', marginBottom: 20,
+            }}
+          />
+
+          {/* Save Date */}
+          <AnimatedPressable onPress={handleSaveDate} disabled={savingDate}>
+            <View style={{
+              backgroundColor: RED, borderRadius: 14, paddingVertical: 16,
+              alignItems: 'center', opacity: savingDate ? 0.7 : 1,
+            }}>
+              {savingDate ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Save Date</Text>
+              )}
+            </View>
+          </AnimatedPressable>
+        </View>
+
+        {/* Past dates */}
+        {sortedDates.length > 0 && (
+          <View style={{ gap: 10 }}>
+            <Text style={{ color: '#999999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+              Past Dates
+            </Text>
+            {sortedDates.map((d) => {
+              const isExpanded = expandedDateId === d.id;
+              const typeLabel = d.type ? (d.type.charAt(0).toUpperCase() + d.type.slice(1)) : 'Date';
+              const dateLabel = formatFullDate(d.date_time || d.created_at);
+              const ratingVal = d.overall_rating ?? 0;
+              const ratingStr = ratingVal > 0 ? `${ratingVal}/10` : '—';
+              const wouldGoLabel = d.would_go_again
+                ? (d.would_go_again.charAt(0).toUpperCase() + d.would_go_again.slice(1))
+                : null;
+              return (
+                <AnimatedPressable
+                  key={d.id}
+                  onPress={() => {
+                    console.log('[PersonDetail] Date card toggled:', d.id);
+                    setExpandedDateId(isExpanded ? null : d.id);
+                  }}
+                >
+                  <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                        <View style={{ backgroundColor: 'rgba(229,57,53,0.1)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
+                          <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>{typeLabel}</Text>
+                        </View>
+                        <Text style={{ color: '#666666', fontSize: 13 }} numberOfLines={1}>{dateLabel}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ color: RED, fontSize: 13, fontWeight: '700' }}>{ratingStr}</Text>
+                        {isExpanded ? <ChevronUp size={16} color="#999999" /> : <ChevronDown size={16} color="#999999" />}
+                      </View>
+                    </View>
+                    {isExpanded && (
+                      <View style={{ marginTop: 14, gap: 8 }}>
+                        {d.location ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <MapPin size={13} color="#999999" />
+                            <Text style={{ color: '#444444', fontSize: 13 }}>{d.location}</Text>
+                          </View>
+                        ) : null}
+                        {wouldGoLabel ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ color: '#999999', fontSize: 13 }}>Would go again:</Text>
+                            <View style={{
+                              backgroundColor: wouldGoLabel === 'Yes' ? 'rgba(46,125,50,0.1)' : wouldGoLabel === 'No' ? 'rgba(229,57,53,0.1)' : '#F5F5F5',
+                              borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
+                            }}>
+                              <Text style={{
+                                color: wouldGoLabel === 'Yes' ? '#2E7D32' : wouldGoLabel === 'No' ? RED : '#666666',
+                                fontSize: 12, fontWeight: '600',
+                              }}>{wouldGoLabel}</Text>
+                            </View>
+                          </View>
+                        ) : null}
+                        {d.notes ? (
+                          <Text style={{ color: '#444444', fontSize: 13, lineHeight: 19 }}>{d.notes}</Text>
+                        ) : null}
+                        <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 4 }} />
+                        <View style={{ gap: 6 }}>
+                          {d.conversation_rating != null && <ReadOnlySlider label="Conversation" value={d.conversation_rating} />}
+                          {d.attraction_rating != null && <ReadOnlySlider label="Attraction IRL" value={d.attraction_rating} />}
+                          {d.effort_rating != null && <ReadOnlySlider label="Effort & Intent" value={d.effort_rating} />}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </AnimatedPressable>
+              );
+            })}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderNotesTab = () => (
+    <View style={{ gap: 12 }}>
+      {loadingNotes ? (
+        <ActivityIndicator color={RED} style={{ marginVertical: 20 }} />
+      ) : notes.length === 0 && !addingNote ? (
+        <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <Star size={24} color={RED} />
+          </View>
+          <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '600', marginBottom: 6 }}>No notes yet</Text>
+          <Text style={{ color: '#999999', fontSize: 14, textAlign: 'center' }}>Add notes to remember important details</Text>
+        </View>
+      ) : (
+        notes.map((note) => (
+          <View key={note.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <Text style={{ color: '#999999', fontSize: 12 }}>{formatTimestamp(note.created_at)}</Text>
+              <AnimatedPressable onPress={() => handleDeleteNote(note)}>
+                <XIcon size={16} color="#CCCCCC" />
+              </AnimatedPressable>
+            </View>
+            <Text style={{ color: '#1A1A1A', fontSize: 14, lineHeight: 21 }}>{note.content}</Text>
+          </View>
+        ))
+      )}
+
+      {addingNote && (
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
+          <TextInput
+            value={newNoteText}
+            onChangeText={setNewNoteText}
+            placeholder="Write a note..."
+            placeholderTextColor="#BBBBBB"
+            multiline
+            autoFocus
+            style={{
+              backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
+              color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0',
+              minHeight: 100, textAlignVertical: 'top', marginBottom: 12,
+            }}
+          />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <AnimatedPressable onPress={() => { setAddingNote(false); setNewNoteText(''); }} style={{ flex: 1 }}>
+              <View style={{ backgroundColor: '#F5F5F5', borderRadius: 12, paddingVertical: 13, alignItems: 'center' }}>
+                <Text style={{ color: '#666666', fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+              </View>
+            </AnimatedPressable>
+            <AnimatedPressable onPress={handleSaveNote} disabled={!newNoteText.trim() || savingNote} style={{ flex: 1 }}>
+              <View style={{ backgroundColor: newNoteText.trim() ? RED : '#F5F5F5', borderRadius: 12, paddingVertical: 13, alignItems: 'center' }}>
+                {savingNote ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ color: newNoteText.trim() ? '#fff' : '#BBBBBB', fontSize: 14, fontWeight: '600' }}>Save note</Text>
+                )}
+              </View>
+            </AnimatedPressable>
+          </View>
+        </View>
+      )}
+
+      {!addingNote && (
+        <AnimatedPressable onPress={() => {
+          console.log('[PersonDetail] Add Note button pressed');
+          setAddingNote(true);
+        }}>
+          <View style={{
+            backgroundColor: RED, borderRadius: 14, paddingVertical: 16,
+            alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8,
+          }}>
+            <Plus size={18} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Add Note</Text>
+          </View>
+        </AnimatedPressable>
+      )}
+    </View>
+  );
+
+  const renderRemindersTab = () => (
+    <View style={{ gap: 12 }}>
+      {loadingReminders ? (
+        <ActivityIndicator color={RED} style={{ marginVertical: 20 }} />
+      ) : reminders.length === 0 && !addingReminder ? (
+        <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+            <Bell size={24} color={RED} />
+          </View>
+          <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '600', marginBottom: 6 }}>No reminders yet</Text>
+          <Text style={{ color: '#999999', fontSize: 14, textAlign: 'center' }}>Set reminders to stay on top of things</Text>
+        </View>
+      ) : (
+        reminders.map((reminder) => (
+          <View key={reminder.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, ...CARD_SHADOW, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center' }}>
+              <Bell size={18} color={RED} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '500', marginBottom: 3 }}>{reminder.text}</Text>
+              <Text style={{ color: '#999999', fontSize: 12 }}>{formatFullDate(reminder.remind_at)}</Text>
+            </View>
+            <AnimatedPressable onPress={() => handleDeleteReminder(reminder)}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center' }}>
+                <Trash2 size={15} color="#CCCCCC" />
+              </View>
+            </AnimatedPressable>
+          </View>
+        ))
+      )}
+
+      {addingReminder && (
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
+          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Reminder text</Text>
+          <TextInput
+            value={reminderText}
+            onChangeText={setReminderText}
+            placeholder="e.g. Follow up after date"
+            placeholderTextColor="#BBBBBB"
+            autoFocus
+            style={{
+              backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
+              color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 14,
+            }}
+          />
+          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', marginBottom: 8 }}>When</Text>
+          <AnimatedPressable onPress={() => {
+            console.log('[PersonDetail] Reminder date picker opened');
+            setShowReminderDatePicker(true);
+          }}>
+            <View style={{
+              backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
+              borderWidth: 1, borderColor: '#E0E0E0', flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14,
+            }}>
+              <Calendar size={16} color={RED} />
+              <Text style={{ color: '#1A1A1A', fontSize: 14 }}>{reminderDateLabel}</Text>
+            </View>
+          </AnimatedPressable>
+          {showReminderDatePicker && (
+            <DateTimePicker
+              value={reminderDate}
+              mode="datetime"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={(_, d) => {
+                setShowReminderDatePicker(false);
+                if (d) {
+                  console.log('[PersonDetail] Reminder date selected:', d);
+                  setReminderDate(d);
+                }
+              }}
+              minimumDate={new Date()}
+            />
+          )}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <AnimatedPressable onPress={() => { setAddingReminder(false); setReminderText(''); }} style={{ flex: 1 }}>
+              <View style={{ backgroundColor: '#F5F5F5', borderRadius: 12, paddingVertical: 13, alignItems: 'center' }}>
+                <Text style={{ color: '#666666', fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+              </View>
+            </AnimatedPressable>
+            <AnimatedPressable onPress={handleSaveReminder} disabled={!reminderText.trim() || savingReminder} style={{ flex: 1 }}>
+              <View style={{ backgroundColor: reminderText.trim() ? RED : '#F5F5F5', borderRadius: 12, paddingVertical: 13, alignItems: 'center' }}>
+                {savingReminder ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={{ color: reminderText.trim() ? '#fff' : '#BBBBBB', fontSize: 14, fontWeight: '600' }}>Save reminder</Text>
+                )}
+              </View>
+            </AnimatedPressable>
+          </View>
+        </View>
+      )}
+
+      {!addingReminder && (
+        <AnimatedPressable onPress={() => {
+          console.log('[PersonDetail] Add Reminder button pressed');
+          setAddingReminder(true);
+        }}>
+          <View style={{
+            backgroundColor: RED, borderRadius: 14, paddingVertical: 16,
+            alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8,
+          }}>
+            <Plus size={18} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Add Reminder</Text>
+          </View>
+        </AnimatedPressable>
+      )}
+    </View>
+  );
+
+  // ── main render ───────────────────────────────────────────────────────────
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
+      <Stack.Screen
+        options={{
+          title: 'Roster Details',
+          headerBackTitle: 'Back',
         }}
       />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Hero photo */}
-        <Pressable onPress={editing ? pickPhoto : undefined}>
-          <View style={{ height: 300, backgroundColor: COLORS.surface }}>
-            {hasPhoto ? (
-              <Image source={resolveImageSource(photoSource)} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-            ) : (
-              <LinearGradient
-                colors={['#2A0A0A', '#1A0505']}
-                style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Text style={{ fontSize: 64, fontWeight: '700', color: COLORS.primary }}>{initials}</Text>
-              </LinearGradient>
-            )}
-            {editing && (
-              <View
-                style={{
-                  position: 'absolute',
-                  bottom: 12,
-                  right: 12,
-                  backgroundColor: 'rgba(0,0,0,0.7)',
-                  borderRadius: 20,
-                  paddingHorizontal: 12,
-                  paddingVertical: 6,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <Pencil size={14} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>Change photo</Text>
-              </View>
-            )}
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.75)']}
-              style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 }}
+        {/* ── Profile Header Card ─────────────────────────────────────────── */}
+        <View style={{
+          backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 16,
+          borderRadius: 20, padding: 24, alignItems: 'center', ...CARD_SHADOW,
+        }}>
+          {/* Avatar */}
+          <AnimatedPressable onPress={editing ? pickPhoto : undefined}>
+            <View style={{
+              width: 80, height: 80, borderRadius: 40,
+              borderWidth: 3, borderColor: RED,
+              overflow: 'hidden',
+              backgroundColor: RED,
+              alignItems: 'center', justifyContent: 'center',
+              marginBottom: 14,
+            }}>
+              {hasPhoto ? (
+                <Image
+                  source={resolveImageSource(photoSource)}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                />
+              ) : (
+                <Text style={{ fontSize: 28, fontWeight: '700', color: '#fff' }}>{initials}</Text>
+              )}
+            </View>
+          </AnimatedPressable>
+          {editing && (
+            <Pressable onPress={pickPhoto} style={{ marginTop: -8, marginBottom: 8 }}>
+              <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>Change photo</Text>
+            </Pressable>
+          )}
+
+          {/* Name */}
+          {editing ? (
+            <TextInput
+              value={editData.name || ''}
+              onChangeText={(v) => update('name', v)}
+              style={{
+                color: '#1A1A1A', fontSize: 22, fontWeight: '700', textAlign: 'center',
+                backgroundColor: '#F5F5F5', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
+                borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 10, minWidth: 200,
+              }}
             />
-          </View>
-        </Pressable>
+          ) : (
+            <Text style={{ color: '#1A1A1A', fontSize: 22, fontWeight: '700', marginBottom: 10, textAlign: 'center' }}>
+              {displayData.name}
+            </Text>
+          )}
 
-        <View style={{ padding: 20, gap: 20 }}>
-          {/* Name + location */}
-          <View>
-            {editing ? (
-              <>
-                <TextInput
-                  value={editData.name || ''}
-                  onChangeText={(v) => update('name', v)}
-                  style={{
-                    color: COLORS.text,
-                    fontSize: 28,
-                    fontWeight: '800',
-                    backgroundColor: COLORS.surfaceSecondary,
-                    borderRadius: 10,
-                    padding: 10,
-                    marginBottom: 8,
-                    borderWidth: 1,
-                    borderColor: COLORS.border,
-                  }}
-                />
-                <AddressAutocomplete
-                  value={editData.location || ''}
-                  onChangeText={(v) => update('location', v)}
-                  onSelect={(addr) => {
-                    console.log('[PersonDetail] Location selected from autocomplete:', addr);
-                    update('location', addr);
-                  }}
-                  placeholder="Location"
-                />
-              </>
-            ) : (
-              <>
-                <Text style={{ color: COLORS.text, fontSize: 28, fontWeight: '800', marginBottom: 6, letterSpacing: -0.5 }}>
-                  {displayData.name}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <MapPin size={14} color={COLORS.textSecondary} />
-                  <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>{displayData.location}</Text>
-                </View>
-              </>
+          {/* Tags row */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 18 }}>
+            {displayData.nickname && <PillTag label={displayData.nickname} />}
+            {connectionLabel ? <PillTag label={connectionLabel} /> : null}
+            {displayData.interest_level != null && (
+              <PillTag label={`${displayData.interest_level} Chemistry`} />
             )}
-          </View>
-
-          {/* Connection + interest */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {connectionLabel ? (
-              <View
-                style={{
-                  backgroundColor: COLORS.primaryMuted,
-                  borderRadius: 8,
-                  paddingHorizontal: 12,
-                  paddingVertical: 5,
-                }}
-              >
-                <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '600' }}>{connectionLabel}</Text>
+            {displayData.location ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F5F5F5', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 }}>
+                <MapPin size={11} color="#999999" />
+                <Text style={{ color: '#666666', fontSize: 12 }}>{displayData.location}</Text>
               </View>
             ) : null}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: interestColor }} />
-              <Text style={{ color: interestColor, fontSize: 13, fontWeight: '600' }}>
-                Interest: {displayData.interest_level ?? '—'}/10
-              </Text>
-            </View>
           </View>
 
-          {/* Contact card */}
-          <View
-            style={{
-              backgroundColor: COLORS.surface,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: COLORS.border,
-              shadowColor: COLORS.primary,
-              shadowOpacity: 0.08,
-              shadowRadius: 12,
-              gap: 12,
-            }}
-          >
-            <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700' }}>Contact</Text>
-
-            {editing ? (
-              <View>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 6 }}>Phone Number</Text>
-                <TextInput
-                  value={editData.phone_number || ''}
-                  onChangeText={(v) => update('phone_number', v)}
-                  placeholder="+1 (555) 000-0000"
-                  placeholderTextColor={COLORS.textTertiary}
-                  keyboardType="phone-pad"
-                  style={{
-                    backgroundColor: COLORS.surfaceSecondary,
-                    borderRadius: 10,
-                    padding: 11,
-                    color: COLORS.text,
-                    fontSize: 15,
-                    borderWidth: 1,
-                    borderColor: COLORS.border,
-                  }}
-                />
-              </View>
-            ) : hasPhone ? (
-              <>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Phone size={15} color={COLORS.textSecondary} />
-                  <Text style={{ color: COLORS.text, fontSize: 15 }}>{displayData.phone_number}</Text>
-                </View>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <AnimatedPressable
-                    onPress={() => openSMS(displayData.phone_number!)}
-                    style={{ flex: 1 }}
-                  >
-                    <View
-                      style={{
-                        backgroundColor: COLORS.primaryMuted,
-                        borderRadius: 12,
-                        paddingVertical: 12,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        borderWidth: 1,
-                        borderColor: 'rgba(232,25,44,0.2)',
-                      }}
-                    >
-                      <MessageSquare size={16} color={COLORS.primary} />
-                      <Text style={{ color: COLORS.primary, fontSize: 14, fontWeight: '600' }}>
-                        Text {personName.split(' ')[0]}
-                      </Text>
-                    </View>
-                  </AnimatedPressable>
-                  <AnimatedPressable
-                    onPress={() => openPhone(displayData.phone_number!)}
-                    style={{ flex: 1 }}
-                  >
-                    <View
-                      style={{
-                        backgroundColor: COLORS.successMuted,
-                        borderRadius: 12,
-                        paddingVertical: 12,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                        borderWidth: 1,
-                        borderColor: 'rgba(34,197,94,0.2)',
-                      }}
-                    >
-                      <Phone size={16} color={COLORS.success} />
-                      <Text style={{ color: COLORS.success, fontSize: 14, fontWeight: '600' }}>
-                        Call {personName.split(' ')[0]}
-                      </Text>
-                    </View>
-                  </AnimatedPressable>
-                </View>
-              </>
-            ) : (
-              <AnimatedPressable onPress={handleEdit}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                    paddingVertical: 4,
-                  }}
-                >
-                  <Plus size={14} color={COLORS.textTertiary} />
-                  <Text style={{ color: COLORS.textTertiary, fontSize: 14 }}>Add phone number</Text>
+          {/* Social buttons */}
+          <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center' }}>
+            {socialButtons.map((btn) => (
+              <AnimatedPressable
+                key={btn.key}
+                onPress={() => {
+                  if (btn.enabled) btn.onPress();
+                }}
+                disabled={!btn.enabled}
+              >
+                <View style={{ alignItems: 'center', gap: 4, opacity: btn.enabled ? 1 : 0.4 }}>
+                  <View style={{
+                    width: 44, height: 44, borderRadius: 22,
+                    backgroundColor: '#FFFFFF',
+                    borderWidth: 1, borderColor: '#EEEEEE',
+                    alignItems: 'center', justifyContent: 'center',
+                    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+                  }}>
+                    {btn.icon}
+                  </View>
+                  <Text style={{ color: '#999999', fontSize: 10, fontWeight: '500' }}>{btn.label}</Text>
                 </View>
               </AnimatedPressable>
-            )}
-
-            {/* Social chips */}
-            {(displayData.instagram || displayData.tiktok || displayData.twitter_x) && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {displayData.instagram && (
-                  <AnimatedPressable onPress={() => openSocial(`https://instagram.com/${displayData.instagram}`)}>
-                    <View style={{ backgroundColor: 'rgba(225,48,108,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Instagram size={14} color="#E1306C" />
-                      <Text style={{ color: '#E1306C', fontSize: 13, fontWeight: '500' }}>@{displayData.instagram}</Text>
-                    </View>
-                  </AnimatedPressable>
-                )}
-                {displayData.tiktok && (
-                  <AnimatedPressable onPress={() => openSocial(`https://tiktok.com/@${displayData.tiktok}`)}>
-                    <View style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: COLORS.border }}>
-                      <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>TikTok @{displayData.tiktok}</Text>
-                    </View>
-                  </AnimatedPressable>
-                )}
-                {displayData.twitter_x && (
-                  <AnimatedPressable onPress={() => openSocial(`https://x.com/${displayData.twitter_x}`)}>
-                    <View style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: COLORS.border }}>
-                      <XIcon size={14} color={COLORS.text} />
-                      <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>@{displayData.twitter_x}</Text>
-                    </View>
-                  </AnimatedPressable>
-                )}
-              </View>
-            )}
+            ))}
           </View>
+        </View>
 
-          {/* Details card */}
-          <View
-            style={{
-              backgroundColor: COLORS.surface,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: COLORS.border,
-              gap: 12,
-            }}
-          >
-            <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700' }}>Details</Text>
-            {editing ? (
-              <>
-                <View>
-                  <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 4 }}>Age</Text>
-                  <TextInput
-                    value={editData.age?.toString() || ''}
-                    onChangeText={(v) => update('age', v ? parseInt(v, 10) : undefined)}
-                    keyboardType="numeric"
-                    placeholder="Age"
-                    placeholderTextColor={COLORS.textTertiary}
-                    style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 8, padding: 10, color: COLORS.text, fontSize: 14, borderWidth: 1, borderColor: COLORS.border }}
-                  />
-                </View>
-                <View>
-                  <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 4 }}>Birthday</Text>
-                  <BirthdayPicker
-                    value={editData.birthday || ''}
-                    onChange={(v) => {
-                      console.log('[PersonDetail] Birthday selected:', v, formatBirthdayDisplay(v));
-                      update('birthday', v);
-                    }}
-                  />
-                </View>
-                <View>
-                  <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 6 }}>Zodiac</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={{ flexDirection: 'row', gap: 6 }}>
-                      {ZODIAC_SIGNS.map((z) => (
-                        <Pressable
-                          key={z.value}
-                          onPress={() => update('zodiac', z.value)}
-                          style={{
-                            paddingHorizontal: 10,
-                            paddingVertical: 6,
-                            borderRadius: 14,
-                            backgroundColor: editData.zodiac === z.value ? COLORS.primaryMuted : COLORS.surfaceSecondary,
-                            borderWidth: 1,
-                            borderColor: editData.zodiac === z.value ? COLORS.primary : COLORS.border,
-                          }}
-                        >
-                          <Text style={{ color: editData.zodiac === z.value ? COLORS.primary : COLORS.textSecondary, fontSize: 11 }}>
-                            {z.label}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </ScrollView>
-                </View>
-                <View>
-                  <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 6 }}>Connection Type</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={{ flexDirection: 'row', gap: 6 }}>
-                      {CONNECTION_TYPES.map((ct) => (
-                        <Pressable
-                          key={ct.value}
-                          onPress={() => update('connection_type', ct.value)}
-                          style={{
-                            paddingHorizontal: 12,
-                            paddingVertical: 7,
-                            borderRadius: 16,
-                            backgroundColor: editData.connection_type === ct.value ? COLORS.primary : COLORS.surfaceSecondary,
-                            borderWidth: 1,
-                            borderColor: editData.connection_type === ct.value ? COLORS.primary : COLORS.border,
-                          }}
-                        >
-                          <Text style={{ color: editData.connection_type === ct.value ? '#fff' : COLORS.textSecondary, fontSize: 12 }}>
-                            {ct.label}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  </ScrollView>
-                </View>
-                {/* Social in edit mode */}
-                {[
-                  { label: 'Instagram', key: 'instagram' as keyof Person },
-                  { label: 'TikTok', key: 'tiktok' as keyof Person },
-                  { label: 'X / Twitter', key: 'twitter_x' as keyof Person },
-                ].map((field) => (
-                  <View key={field.key}>
-                    <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 4 }}>{field.label}</Text>
-                    <TextInput
-                      value={(editData[field.key] as string) || ''}
-                      onChangeText={(v) => update(field.key, v)}
-                      placeholder="@handle"
-                      placeholderTextColor={COLORS.textTertiary}
-                      autoCapitalize="none"
-                      style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 8, padding: 10, color: COLORS.text, fontSize: 14, borderWidth: 1, borderColor: COLORS.border }}
-                    />
-                  </View>
-                ))}
-              </>
-            ) : (
-              <View style={{ gap: 8 }}>
-                {displayData.age ? (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>Age</Text>
-                    <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '500' }}>{displayData.age}</Text>
-                  </View>
-                ) : null}
-                {displayData.birthday ? (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>Birthday</Text>
-                    <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '500' }}>{formatBirthdayDisplay(displayData.birthday) || displayData.birthday}</Text>
-                  </View>
-                ) : null}
-                {displayData.zodiac ? (
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>Zodiac</Text>
-                    <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '500' }}>
-                      {ZODIAC_SIGNS.find((z) => z.value === displayData.zodiac)?.label || displayData.zodiac}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            )}
-          </View>
-
-          {/* Scores */}
-          <View
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: 16,
-              padding: 20,
-              shadowColor: '#000',
-              shadowOpacity: 0.06,
-              shadowRadius: 12,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 3,
-            }}
-          >
-            <Text
-              style={{
-                color: '#999999',
-                fontSize: 11,
-                fontWeight: '600',
-                letterSpacing: 1.5,
-                textTransform: 'uppercase',
-                marginBottom: 20,
-              }}
-            >
-              Ratings
-            </Text>
-            <SliderDisplay label="Interest Level" value={displayData.interest_level} editing={editing} onChange={(v) => update('interest_level', v)} />
-            <SliderDisplay label="Attractiveness" value={displayData.attractiveness} editing={editing} onChange={(v) => update('attractiveness', v)} />
-            <SliderDisplay label="Sexual Chemistry" value={displayData.sexual_chemistry} editing={editing} onChange={(v) => update('sexual_chemistry', v)} />
-            <SliderDisplay label="Communication" value={displayData.communication} editing={editing} onChange={(v) => update('communication', v)} />
-
-            {/* Compatibility Score */}
-            <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 20 }} />
-            <Text
-              style={{
-                color: '#999999',
-                fontSize: 13,
-                fontWeight: '600',
-                letterSpacing: 1,
-                textTransform: 'uppercase',
-                marginBottom: 12,
-              }}
-            >
-              Overall Compatibility
-            </Text>
-            <Text
-              style={{
-                color: '#E53935',
-                fontSize: 32,
-                fontWeight: '800',
-                letterSpacing: -1,
-                marginBottom: 10,
-              }}
-            >
-              {Math.round(((displayData.interest_level ?? 5) + (displayData.attractiveness ?? 5) + (displayData.sexual_chemistry ?? 5) + (displayData.communication ?? 5)) / 4)}
-              <Text style={{ fontSize: 18, fontWeight: '600', color: '#E53935' }}>/10</Text>
-            </Text>
-            <View style={{ height: 6, backgroundColor: '#E8E8E8', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
-              <View
-                style={{
-                  height: 6,
-                  width: `${(((displayData.interest_level ?? 5) + (displayData.attractiveness ?? 5) + (displayData.sexual_chemistry ?? 5) + (displayData.communication ?? 5)) / 4 / 10) * 100}%`,
-                  backgroundColor: '#E53935',
-                  borderRadius: 3,
-                }}
-              />
-            </View>
-            <Text style={{ color: '#AAAAAA', fontSize: 12 }}>Based on your ratings</Text>
-          </View>
-
-          {/* Foods + Hobbies */}
-          {((displayData.favorite_foods && displayData.favorite_foods.length > 0) ||
-            (displayData.hobbies && displayData.hobbies.length > 0) || editing) && (
-            <View
-              style={{
-                backgroundColor: COLORS.surface,
-                borderRadius: 16,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                gap: 14,
-              }}
-            >
-              {(displayData.favorite_foods && displayData.favorite_foods.length > 0) || editing ? (
-                <View>
-                  <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Favorite Foods</Text>
-                  <TagList
-                    tags={editing ? editData.favorite_foods : displayData.favorite_foods}
-                    color={COLORS.accent}
-                    editing={editing}
-                    onRemove={(t) => update('favorite_foods', (editData.favorite_foods || []).filter((f) => f !== t))}
-                  />
-                </View>
-              ) : null}
-              {(displayData.hobbies && displayData.hobbies.length > 0) || editing ? (
-                <View>
-                  <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Hobbies & Interests</Text>
-                  <TagList
-                    tags={editing ? editData.hobbies : displayData.hobbies}
-                    color={COLORS.primary}
-                    editing={editing}
-                    onRemove={(t) => update('hobbies', (editData.hobbies || []).filter((h) => h !== t))}
-                  />
-                </View>
-              ) : null}
-            </View>
-          )}
-
-          {/* Flags */}
-          {((displayData.green_flags && displayData.green_flags.length > 0) ||
-            (displayData.red_flags && displayData.red_flags.length > 0) || editing) && (
-            <View
-              style={{
-                backgroundColor: COLORS.surface,
-                borderRadius: 16,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                gap: 14,
-              }}
-            >
-              {(displayData.green_flags && displayData.green_flags.length > 0) || editing ? (
-                <View>
-                  <Text style={{ color: COLORS.success, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Green Flags</Text>
-                  <TagList
-                    tags={editing ? editData.green_flags : displayData.green_flags}
-                    color={COLORS.success}
-                    editing={editing}
-                    onRemove={(t) => update('green_flags', (editData.green_flags || []).filter((f) => f !== t))}
-                  />
-                </View>
-              ) : null}
-              {(displayData.red_flags && displayData.red_flags.length > 0) || editing ? (
-                <View>
-                  <Text style={{ color: COLORS.danger, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Red Flags</Text>
-                  <TagList
-                    tags={editing ? editData.red_flags : displayData.red_flags}
-                    color={COLORS.danger}
-                    editing={editing}
-                    onRemove={(t) => update('red_flags', (editData.red_flags || []).filter((f) => f !== t))}
-                  />
-                </View>
-              ) : null}
-            </View>
-          )}
-
-          {/* Interaction Timeline */}
-          <View
-            style={{
-              backgroundColor: COLORS.surface,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: COLORS.border,
-              shadowColor: COLORS.primary,
-              shadowOpacity: 0.08,
-              shadowRadius: 12,
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700' }}>Interaction Timeline</Text>
+        {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 14, gap: 8 }}
+        >
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab;
+            return (
               <AnimatedPressable
+                key={tab}
                 onPress={() => {
-                  console.log('[PersonDetail] Log Interaction button pressed');
-                  setShowLogModal(true);
-                }}
-                style={{
-                  backgroundColor: COLORS.primary,
-                  borderRadius: 10,
-                  paddingHorizontal: 12,
-                  paddingVertical: 7,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 6,
+                  console.log('[PersonDetail] Tab selected:', tab);
+                  setActiveTab(tab);
                 }}
               >
-                <Plus size={14} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Log</Text>
-              </AnimatedPressable>
-            </View>
-
-            {loadingInteractions ? (
-              <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 16 }} />
-            ) : interactions.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-                  <Heart size={22} color={COLORS.primary} />
+                <View style={{
+                  paddingHorizontal: 20, paddingVertical: 9, borderRadius: 20,
+                  backgroundColor: isActive ? RED : 'transparent',
+                  borderWidth: 1, borderColor: isActive ? RED : '#DDDDDD',
+                }}>
+                  <Text style={{
+                    color: isActive ? '#fff' : '#999999',
+                    fontSize: 14, fontWeight: isActive ? '600' : '500',
+                  }}>
+                    {tab}
+                  </Text>
                 </View>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 14, textAlign: 'center' }}>
-                  No interactions yet.{'\n'}Log your first one!
-                </Text>
-              </View>
-            ) : (
-              <View>
-                {interactions.map((interaction, index) => {
-                  const IconComp = getInteractionIcon(interaction.type);
-                  const color = getInteractionColor(interaction.type);
-                  const dateDisplay = formatInteractionDate(interaction.interaction_date);
-                  const isLast = index === interactions.length - 1;
-                  return (
-                    <AnimatedPressable
-                      key={interaction.id}
-                      onLongPress={() => handleDeleteInteraction(interaction)}
-                    >
-                      <View style={{ flexDirection: 'row', gap: 12, marginBottom: isLast ? 0 : 16 }}>
-                        {/* Timeline line + dot */}
-                        <View style={{ alignItems: 'center', width: 32 }}>
-                          <View
-                            style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: 16,
-                              backgroundColor: color + '20',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              borderWidth: 1.5,
-                              borderColor: color,
-                            }}
-                          >
-                            <IconComp size={14} color={color} />
-                          </View>
-                          {!isLast && (
-                            <View
-                              style={{
-                                width: 2,
-                                flex: 1,
-                                backgroundColor: COLORS.primary,
-                                opacity: 0.25,
-                                marginTop: 4,
-                                minHeight: 20,
-                              }}
-                            />
-                          )}
-                        </View>
-                        {/* Content */}
-                        <View style={{ flex: 1, paddingTop: 4 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                            <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '600', flex: 1 }} numberOfLines={1}>
-                              {interaction.title}
-                            </Text>
-                            <Text style={{ color: COLORS.textTertiary, fontSize: 12, marginLeft: 8 }}>{dateDisplay}</Text>
-                          </View>
-                          {interaction.notes ? (
-                            <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 18 }} numberOfLines={2}>
-                              {interaction.notes}
-                            </Text>
-                          ) : null}
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color }} />
-                            <Text style={{ color, fontSize: 11, fontWeight: '600', textTransform: 'capitalize' }}>{interaction.type}</Text>
-                          </View>
-                        </View>
-                      </View>
-                    </AnimatedPressable>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-
-          {/* Actions */}
-          {!editing && (
-            <View style={{ gap: 10, marginTop: 8 }}>
-              {!person.is_benched && (
-                <AnimatedPressable
-                  onPress={handleBench}
-                  style={{
-                    borderWidth: 1,
-                    borderColor: COLORS.warning,
-                    borderRadius: 14,
-                    paddingVertical: 14,
-                    alignItems: 'center',
-                    flexDirection: 'row',
-                    justifyContent: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <Users size={18} color={COLORS.warning} />
-                  <Text style={{ color: COLORS.warning, fontSize: 15, fontWeight: '600' }}>Move to Bench</Text>
-                </AnimatedPressable>
-              )}
-              <AnimatedPressable onPress={handleDelete}>
-                <Text style={{ color: COLORS.danger, fontSize: 14, textAlign: 'center', paddingVertical: 8 }}>
-                  Delete person
-                </Text>
               </AnimatedPressable>
-            </View>
-          )}
+            );
+          })}
+        </ScrollView>
+
+        {/* ── Tab Content ─────────────────────────────────────────────────── */}
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+          {activeTab === 'Overview' && renderOverviewTab()}
+          {activeTab === 'Dates' && renderDatesTab()}
+          {activeTab === 'Notes' && renderNotesTab()}
+          {activeTab === 'Reminders' && renderRemindersTab()}
         </View>
       </ScrollView>
-
-      <LogInteractionModal
-        visible={showLogModal}
-        personId={id!}
-        onClose={() => {
-          console.log('[PersonDetail] Log interaction modal closed');
-          setShowLogModal(false);
-        }}
-        onSaved={loadInteractions}
-      />
     </View>
   );
 }
