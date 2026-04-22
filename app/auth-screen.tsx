@@ -8,9 +8,10 @@ import {
   Platform,
   Pressable,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Redirect, router } from 'expo-router';
-import { Eye, EyeOff, Heart } from 'lucide-react-native';
+import { Eye, EyeOff } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '@/contexts/AuthContext';
 import { COLORS } from '@/constants/Colors';
@@ -62,6 +63,10 @@ export default function AuthScreen() {
       setError('Please fill in all fields');
       return;
     }
+    if (mode === 'signup' && password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
     console.log('[Auth] Email auth attempt, mode:', mode);
     setSubmitting(true);
     setError(null);
@@ -75,7 +80,16 @@ export default function AuthScreen() {
       }
     } catch (e: any) {
       console.error('[Auth] Email auth failed:', e);
-      setError(e?.message || 'Authentication failed. Please try again.');
+      const msg = e?.message || '';
+      if (msg.includes('Invalid email') || msg.includes('invalid_email')) {
+        setError('Please enter a valid email address.');
+      } else if (msg.includes('password') || msg.includes('credentials')) {
+        setError('Incorrect email or password. Please try again.');
+      } else if (msg.includes('already exists') || msg.includes('already registered')) {
+        setError('An account with this email already exists. Try signing in.');
+      } else {
+        setError(msg || 'Authentication failed. Please try again.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -91,7 +105,7 @@ export default function AuthScreen() {
     } catch (e: any) {
       console.error('[Auth] Apple sign in failed:', e);
       if (e?.message !== 'Authentication cancelled') {
-        setError(e?.message || 'Apple sign in failed');
+        setError(e?.message || 'Apple sign in failed. Please try again.');
       }
     } finally {
       setSocialLoading(null);
@@ -108,7 +122,7 @@ export default function AuthScreen() {
     } catch (e: any) {
       console.error('[Auth] Google sign in failed:', e);
       if (e?.message !== 'Authentication cancelled') {
-        setError(e?.message || 'Google sign in failed');
+        setError(e?.message || 'Google sign in failed. Please try again.');
       }
     } finally {
       setSocialLoading(null);
@@ -127,40 +141,49 @@ export default function AuthScreen() {
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: 24,
-          paddingTop: insets.top + 48,
+          paddingTop: insets.top + 40,
           paddingBottom: insets.bottom + 32,
         }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Logo */}
-        <View style={{ alignItems: 'center', marginBottom: 48 }}>
+        <View style={{ alignItems: 'center', marginBottom: 44 }}>
           <View
             style={{
-              width: 72,
-              height: 72,
-              borderRadius: 20,
-              backgroundColor: COLORS.primary,
+              width: 88,
+              height: 88,
+              borderRadius: 22,
+              backgroundColor: '#000',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: 16,
-              boxShadow: '0 8px 32px rgba(232,97,74,0.4)',
+              marginBottom: 20,
+              shadowColor: COLORS.primary,
+              shadowOpacity: 0.4,
+              shadowRadius: 24,
+              shadowOffset: { width: 0, height: 8 },
+              borderWidth: 1,
+              borderColor: 'rgba(232,25,44,0.3)',
             }}
           >
-            <Heart size={36} color="#fff" fill="#fff" />
+            <Image
+              source={require('../assets/images/34921cf2-8b2e-4abd-bfd8-c61924bed58f.png')}
+              style={{ width: 68, height: 68 }}
+              resizeMode="contain"
+            />
           </View>
           <Text
             style={{
-              fontSize: 36,
+              fontSize: 34,
               fontWeight: '800',
               color: COLORS.text,
               letterSpacing: -0.5,
               marginBottom: 6,
             }}
           >
-            Newly
+            Roster Scout
           </Text>
-          <Text style={{ fontSize: 16, color: COLORS.textSecondary }}>
+          <Text style={{ fontSize: 15, color: COLORS.textSecondary, letterSpacing: 0.2 }}>
             Your dating life, organized.
           </Text>
         </View>
@@ -170,9 +193,11 @@ export default function AuthScreen() {
           style={{
             flexDirection: 'row',
             backgroundColor: COLORS.surface,
-            borderRadius: 12,
+            borderRadius: 14,
             padding: 4,
             marginBottom: 28,
+            borderWidth: 1,
+            borderColor: COLORS.border,
           }}
         >
           <AnimatedPressable
@@ -183,16 +208,16 @@ export default function AuthScreen() {
             }}
             style={{
               flex: 1,
-              paddingVertical: 10,
-              borderRadius: 10,
+              paddingVertical: 11,
+              borderRadius: 11,
               alignItems: 'center',
-              backgroundColor: isSignIn ? COLORS.surfaceElevated : 'transparent',
+              backgroundColor: isSignIn ? COLORS.primary : 'transparent',
             }}
           >
             <Text
               style={{
-                color: isSignIn ? COLORS.text : COLORS.textSecondary,
-                fontWeight: isSignIn ? '600' : '400',
+                color: isSignIn ? '#fff' : COLORS.textSecondary,
+                fontWeight: isSignIn ? '700' : '400',
                 fontSize: 14,
               }}
             >
@@ -207,16 +232,16 @@ export default function AuthScreen() {
             }}
             style={{
               flex: 1,
-              paddingVertical: 10,
-              borderRadius: 10,
+              paddingVertical: 11,
+              borderRadius: 11,
               alignItems: 'center',
-              backgroundColor: !isSignIn ? COLORS.surfaceElevated : 'transparent',
+              backgroundColor: !isSignIn ? COLORS.primary : 'transparent',
             }}
           >
             <Text
               style={{
-                color: !isSignIn ? COLORS.text : COLORS.textSecondary,
-                fontWeight: !isSignIn ? '600' : '400',
+                color: !isSignIn ? '#fff' : COLORS.textSecondary,
+                fontWeight: !isSignIn ? '700' : '400',
                 fontSize: 14,
               }}
             >
@@ -226,10 +251,10 @@ export default function AuthScreen() {
         </View>
 
         {/* Form */}
-        <View style={{ gap: 12, marginBottom: 20 }}>
+        <View style={{ gap: 14, marginBottom: 20 }}>
           {!isSignIn && (
             <View>
-              <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+              <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>
                 Name
               </Text>
               <TextInput
@@ -253,7 +278,7 @@ export default function AuthScreen() {
           )}
 
           <View>
-            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>
               Email
             </Text>
             <TextInput
@@ -278,7 +303,7 @@ export default function AuthScreen() {
           </View>
 
           <View>
-            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>
               Password
             </Text>
             <View style={{ position: 'relative' }}>
@@ -294,7 +319,7 @@ export default function AuthScreen() {
                   borderRadius: 12,
                   paddingHorizontal: 16,
                   paddingVertical: 14,
-                  paddingRight: 48,
+                  paddingRight: 52,
                   color: COLORS.text,
                   fontSize: 15,
                   borderWidth: 1,
@@ -328,14 +353,14 @@ export default function AuthScreen() {
           <View
             style={{
               backgroundColor: COLORS.dangerMuted,
-              borderRadius: 10,
-              padding: 12,
+              borderRadius: 12,
+              padding: 13,
               marginBottom: 16,
               borderWidth: 1,
-              borderColor: 'rgba(232,97,74,0.2)',
+              borderColor: 'rgba(232,25,44,0.25)',
             }}
           >
-            <Text style={{ color: COLORS.danger, fontSize: 13 }}>{error}</Text>
+            <Text style={{ color: COLORS.danger, fontSize: 13, lineHeight: 18 }}>{error}</Text>
           </View>
         ) : null}
 
@@ -348,13 +373,16 @@ export default function AuthScreen() {
             paddingVertical: 16,
             alignItems: 'center',
             marginBottom: 24,
-            boxShadow: '0 4px 16px rgba(232,97,74,0.3)',
+            shadowColor: COLORS.primary,
+            shadowOpacity: 0.35,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 4 },
           }}
         >
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{buttonLabel}</Text>
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.2 }}>{buttonLabel}</Text>
           )}
         </AnimatedPressable>
 
@@ -369,7 +397,6 @@ export default function AuthScreen() {
 
         {/* Social buttons */}
         <View style={{ gap: 12 }}>
-          {/* Apple first (App Store requirement) */}
           <AnimatedPressable
             onPress={handleApple}
             disabled={socialLoading !== null}
@@ -382,7 +409,7 @@ export default function AuthScreen() {
               justifyContent: 'center',
               gap: 10,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: 'rgba(255,255,255,0.12)',
             }}
           >
             {socialLoading === 'apple' ? (

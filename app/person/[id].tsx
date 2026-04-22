@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   Alert,
   ActivityIndicator,
   Linking,
+  Modal,
+  TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import {
@@ -18,6 +21,13 @@ import {
   Trash2,
   Users,
   Check,
+  Phone,
+  MessageSquare,
+  Heart,
+  Star,
+  PhoneCall,
+  Plus,
+  ChevronDown,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
@@ -45,6 +55,7 @@ interface Person {
   instagram?: string;
   tiktok?: string;
   twitter_x?: string;
+  phone_number?: string;
   interest_level?: number;
   attractiveness?: number;
   sexual_chemistry?: number;
@@ -57,6 +68,16 @@ interface Person {
   red_flags?: string[];
   is_benched?: boolean;
   bench_reason?: string;
+}
+
+interface Interaction {
+  id: string;
+  person_id: string;
+  type: 'date' | 'text' | 'call' | 'other';
+  title: string;
+  notes?: string;
+  interaction_date: string;
+  created_at: string;
 }
 
 const CONNECTION_TYPES = [
@@ -84,6 +105,13 @@ const ZODIAC_SIGNS = [
   { value: 'pisces', label: '♓ Pisces' },
 ];
 
+const INTERACTION_TYPES = [
+  { value: 'date', label: 'Date', icon: Heart },
+  { value: 'text', label: 'Text', icon: MessageSquare },
+  { value: 'call', label: 'Call', icon: PhoneCall },
+  { value: 'other', label: 'Other', icon: Star },
+] as const;
+
 function getInterestColor(val?: number) {
   if (!val) return COLORS.textTertiary;
   if (val <= 3) return COLORS.interestLow;
@@ -102,6 +130,35 @@ function getConnectionLabel(type?: string, custom?: string) {
 
 function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function formatInteractionDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+}
+
+function getInteractionIcon(type: string) {
+  switch (type) {
+    case 'date': return Heart;
+    case 'text': return MessageSquare;
+    case 'call': return PhoneCall;
+    default: return Star;
+  }
+}
+
+function getInteractionColor(type: string) {
+  switch (type) {
+    case 'date': return COLORS.primary;
+    case 'text': return COLORS.accent;
+    case 'call': return COLORS.success;
+    default: return COLORS.textSecondary;
+  }
 }
 
 function SliderDisplay({ label, value, editing, onChange }: {
@@ -166,6 +223,203 @@ function TagList({ tags, color = COLORS.primary, editing, onRemove }: {
   );
 }
 
+function LogInteractionModal({
+  visible,
+  personId,
+  onClose,
+  onSaved,
+}: {
+  visible: boolean;
+  personId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [type, setType] = useState<'date' | 'text' | 'call' | 'other'>('date');
+  const [title, setTitle] = useState('');
+  const [notes, setNotes] = useState('');
+  const [dateStr, setDateStr] = useState(() => new Date().toISOString().slice(0, 10));
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!title.trim()) return;
+    console.log('[PersonDetail] Logging interaction:', type, title);
+    setSaving(true);
+    try {
+      await apiPost('/api/interactions', {
+        person_id: personId,
+        type,
+        title: title.trim(),
+        notes: notes.trim() || undefined,
+        interaction_date: dateStr,
+      });
+      console.log('[PersonDetail] Interaction saved');
+      setTitle('');
+      setNotes('');
+      setType('date');
+      setDateStr(new Date().toISOString().slice(0, 10));
+      onSaved();
+      onClose();
+    } catch (e: any) {
+      console.error('[PersonDetail] Failed to save interaction:', e);
+      Alert.alert('Could not save', e?.message || 'Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <TouchableOpacity
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' }}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <View
+            style={{
+              backgroundColor: COLORS.surface,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 24,
+              paddingBottom: 40,
+              borderTopWidth: 1,
+              borderColor: COLORS.border,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: '700' }}>Log Interaction</Text>
+              <AnimatedPressable onPress={onClose}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
+                  <XIcon size={16} color={COLORS.textSecondary} />
+                </View>
+              </AnimatedPressable>
+            </View>
+
+            {/* Type selector */}
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 10 }}>Type</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18 }}>
+              {INTERACTION_TYPES.map((t) => {
+                const IconComp = t.icon;
+                const isSelected = type === t.value;
+                const color = getInteractionColor(t.value);
+                return (
+                  <AnimatedPressable
+                    key={t.value}
+                    onPress={() => {
+                      console.log('[PersonDetail] Interaction type selected:', t.value);
+                      setType(t.value);
+                    }}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 10,
+                      borderRadius: 12,
+                      alignItems: 'center',
+                      gap: 4,
+                      backgroundColor: isSelected ? color + '20' : COLORS.surfaceSecondary,
+                      borderWidth: 1,
+                      borderColor: isSelected ? color : COLORS.border,
+                    }}
+                  >
+                    <IconComp size={16} color={isSelected ? color : COLORS.textTertiary} />
+                    <Text style={{ color: isSelected ? color : COLORS.textTertiary, fontSize: 11, fontWeight: '600' }}>{t.label}</Text>
+                  </AnimatedPressable>
+                );
+              })}
+            </View>
+
+            {/* Title */}
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>
+              Title <Text style={{ color: COLORS.primary }}>*</Text>
+            </Text>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder="e.g. Coffee at Blue Bottle"
+              placeholderTextColor={COLORS.textTertiary}
+              style={{
+                backgroundColor: COLORS.surfaceSecondary,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 13,
+                color: COLORS.text,
+                fontSize: 15,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                marginBottom: 14,
+              }}
+            />
+
+            {/* Notes */}
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>Notes (optional)</Text>
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="How did it go?"
+              placeholderTextColor={COLORS.textTertiary}
+              multiline
+              style={{
+                backgroundColor: COLORS.surfaceSecondary,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                color: COLORS.text,
+                fontSize: 15,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                minHeight: 72,
+                textAlignVertical: 'top',
+                marginBottom: 14,
+              }}
+            />
+
+            {/* Date */}
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>Date</Text>
+            <TextInput
+              value={dateStr}
+              onChangeText={setDateStr}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={COLORS.textTertiary}
+              style={{
+                backgroundColor: COLORS.surfaceSecondary,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 13,
+                color: COLORS.text,
+                fontSize: 15,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                marginBottom: 20,
+              }}
+            />
+
+            <AnimatedPressable
+              onPress={handleSave}
+              disabled={!title.trim() || saving}
+              style={{
+                backgroundColor: title.trim() ? COLORS.primary : COLORS.surfaceSecondary,
+                borderRadius: 14,
+                paddingVertical: 16,
+                alignItems: 'center',
+                shadowColor: COLORS.primary,
+                shadowOpacity: title.trim() ? 0.3 : 0,
+                shadowRadius: 12,
+              }}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ color: title.trim() ? '#fff' : COLORS.textTertiary, fontSize: 16, fontWeight: '700' }}>
+                  Save interaction
+                </Text>
+              )}
+            </AnimatedPressable>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+}
+
 export default function PersonDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
@@ -175,19 +429,42 @@ export default function PersonDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState<Partial<Person>>({});
   const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
+  const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [loadingInteractions, setLoadingInteractions] = useState(true);
+  const [showLogModal, setShowLogModal] = useState(false);
 
-  useEffect(() => {
+  const loadPerson = useCallback(async () => {
     if (!id) return;
     console.log('[PersonDetail] Loading person:', id);
-    apiGet<{ person: Person }>(`/api/persons/${id}`)
-      .then((data) => {
-        console.log('[PersonDetail] Person loaded:', data.person?.name);
-        setPerson(data.person);
-        setEditData(data.person);
-      })
-      .catch((e) => console.error('[PersonDetail] Failed to load person:', e))
-      .finally(() => setLoading(false));
+    try {
+      const data = await apiGet<{ person: Person }>(`/api/persons/${id}`);
+      console.log('[PersonDetail] Person loaded:', data.person?.name);
+      setPerson(data.person);
+      setEditData(data.person);
+    } catch (e) {
+      console.error('[PersonDetail] Failed to load person:', e);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  const loadInteractions = useCallback(async () => {
+    if (!id) return;
+    console.log('[PersonDetail] Loading interactions for person:', id);
+    try {
+      const data = await apiGet<{ interactions: Interaction[] }>(`/api/interactions?person_id=${id}`);
+      console.log('[PersonDetail] Loaded', data.interactions?.length ?? 0, 'interactions');
+      setInteractions(data.interactions || []);
+    } catch (e) {
+      console.error('[PersonDetail] Failed to load interactions:', e);
+    } finally {
+      setLoadingInteractions(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    Promise.all([loadPerson(), loadInteractions()]);
+  }, [loadPerson, loadInteractions]);
 
   const handleEdit = () => {
     console.log('[PersonDetail] Edit mode toggled');
@@ -280,6 +557,40 @@ export default function PersonDetailScreen() {
     Linking.openURL(url).catch((e) => console.error('[PersonDetail] Failed to open URL:', e));
   };
 
+  const openPhone = (phone: string) => {
+    const cleaned = phone.replace(/\s/g, '');
+    console.log('[PersonDetail] Opening phone dialer:', cleaned);
+    Linking.openURL(`tel:${cleaned}`).catch((e) => console.error('[PersonDetail] Failed to open dialer:', e));
+  };
+
+  const openSMS = (phone: string) => {
+    const cleaned = phone.replace(/\s/g, '');
+    console.log('[PersonDetail] Opening SMS:', cleaned);
+    Linking.openURL(`sms:${cleaned}`).catch((e) => console.error('[PersonDetail] Failed to open SMS:', e));
+  };
+
+  const handleDeleteInteraction = (interaction: Interaction) => {
+    console.log('[PersonDetail] Delete interaction pressed:', interaction.id);
+    Alert.alert('Delete interaction?', `"${interaction.title}" will be removed.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            console.log('[PersonDetail] Deleting interaction:', interaction.id);
+            await apiDelete(`/api/interactions/${interaction.id}`);
+            console.log('[PersonDetail] Interaction deleted');
+            setInteractions((prev) => prev.filter((i) => i.id !== interaction.id));
+          } catch (e) {
+            console.error('[PersonDetail] Failed to delete interaction:', e);
+            Alert.alert('Error', 'Could not delete. Try again.');
+          }
+        },
+      },
+    ]);
+  };
+
   const update = (key: keyof Person, value: any) => setEditData((prev) => ({ ...prev, [key]: value }));
 
   if (loading) {
@@ -304,6 +615,8 @@ export default function PersonDetailScreen() {
   const initials = getInitials(displayData.name || '');
   const connectionLabel = getConnectionLabel(displayData.connection_type, displayData.connection_type_custom);
   const interestColor = getInterestColor(displayData.interest_level);
+  const hasPhone = !!(displayData.phone_number);
+  const personName = person.name;
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
@@ -366,7 +679,7 @@ export default function PersonDetailScreen() {
               <Image source={resolveImageSource(photoSource)} style={{ width: '100%', height: '100%' }} contentFit="cover" />
             ) : (
               <LinearGradient
-                colors={['#2A1A1A', '#1A0D0D']}
+                colors={['#2A0A0A', '#1A0505']}
                 style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
               >
                 <Text style={{ fontSize: 64, fontWeight: '700', color: COLORS.primary }}>{initials}</Text>
@@ -392,7 +705,7 @@ export default function PersonDetailScreen() {
               </View>
             )}
             <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.7)']}
+              colors={['transparent', 'rgba(0,0,0,0.75)']}
               style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 }}
             />
           </View>
@@ -436,7 +749,7 @@ export default function PersonDetailScreen() {
               </>
             ) : (
               <>
-                <Text style={{ color: COLORS.text, fontSize: 28, fontWeight: '800', marginBottom: 6 }}>
+                <Text style={{ color: COLORS.text, fontSize: 28, fontWeight: '800', marginBottom: 6, letterSpacing: -0.5 }}>
                   {displayData.name}
                 </Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -469,6 +782,143 @@ export default function PersonDetailScreen() {
             </View>
           </View>
 
+          {/* Contact card */}
+          <View
+            style={{
+              backgroundColor: COLORS.surface,
+              borderRadius: 16,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              shadowColor: COLORS.primary,
+              shadowOpacity: 0.08,
+              shadowRadius: 12,
+              gap: 12,
+            }}
+          >
+            <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700' }}>Contact</Text>
+
+            {editing ? (
+              <View>
+                <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 6 }}>Phone Number</Text>
+                <TextInput
+                  value={editData.phone_number || ''}
+                  onChangeText={(v) => update('phone_number', v)}
+                  placeholder="+1 (555) 000-0000"
+                  placeholderTextColor={COLORS.textTertiary}
+                  keyboardType="phone-pad"
+                  style={{
+                    backgroundColor: COLORS.surfaceSecondary,
+                    borderRadius: 10,
+                    padding: 11,
+                    color: COLORS.text,
+                    fontSize: 15,
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                  }}
+                />
+              </View>
+            ) : hasPhone ? (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Phone size={15} color={COLORS.textSecondary} />
+                  <Text style={{ color: COLORS.text, fontSize: 15 }}>{displayData.phone_number}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <AnimatedPressable
+                    onPress={() => openSMS(displayData.phone_number!)}
+                    style={{ flex: 1 }}
+                  >
+                    <View
+                      style={{
+                        backgroundColor: COLORS.primaryMuted,
+                        borderRadius: 12,
+                        paddingVertical: 12,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        borderWidth: 1,
+                        borderColor: 'rgba(232,25,44,0.2)',
+                      }}
+                    >
+                      <MessageSquare size={16} color={COLORS.primary} />
+                      <Text style={{ color: COLORS.primary, fontSize: 14, fontWeight: '600' }}>
+                        Text {personName.split(' ')[0]}
+                      </Text>
+                    </View>
+                  </AnimatedPressable>
+                  <AnimatedPressable
+                    onPress={() => openPhone(displayData.phone_number!)}
+                    style={{ flex: 1 }}
+                  >
+                    <View
+                      style={{
+                        backgroundColor: COLORS.successMuted,
+                        borderRadius: 12,
+                        paddingVertical: 12,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        borderWidth: 1,
+                        borderColor: 'rgba(34,197,94,0.2)',
+                      }}
+                    >
+                      <Phone size={16} color={COLORS.success} />
+                      <Text style={{ color: COLORS.success, fontSize: 14, fontWeight: '600' }}>
+                        Call {personName.split(' ')[0]}
+                      </Text>
+                    </View>
+                  </AnimatedPressable>
+                </View>
+              </>
+            ) : (
+              <AnimatedPressable onPress={handleEdit}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Plus size={14} color={COLORS.textTertiary} />
+                  <Text style={{ color: COLORS.textTertiary, fontSize: 14 }}>Add phone number</Text>
+                </View>
+              </AnimatedPressable>
+            )}
+
+            {/* Social chips */}
+            {(displayData.instagram || displayData.tiktok || displayData.twitter_x) && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {displayData.instagram && (
+                  <AnimatedPressable onPress={() => openSocial(`https://instagram.com/${displayData.instagram}`)}>
+                    <View style={{ backgroundColor: 'rgba(225,48,108,0.15)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Instagram size={14} color="#E1306C" />
+                      <Text style={{ color: '#E1306C', fontSize: 13, fontWeight: '500' }}>@{displayData.instagram}</Text>
+                    </View>
+                  </AnimatedPressable>
+                )}
+                {displayData.tiktok && (
+                  <AnimatedPressable onPress={() => openSocial(`https://tiktok.com/@${displayData.tiktok}`)}>
+                    <View style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: COLORS.border }}>
+                      <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>TikTok @{displayData.tiktok}</Text>
+                    </View>
+                  </AnimatedPressable>
+                )}
+                {displayData.twitter_x && (
+                  <AnimatedPressable onPress={() => openSocial(`https://x.com/${displayData.twitter_x}`)}>
+                    <View style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderColor: COLORS.border }}>
+                      <XIcon size={14} color={COLORS.text} />
+                      <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>@{displayData.twitter_x}</Text>
+                    </View>
+                  </AnimatedPressable>
+                )}
+              </View>
+            )}
+          </View>
+
           {/* Details card */}
           <View
             style={{
@@ -491,15 +941,7 @@ export default function PersonDetailScreen() {
                     keyboardType="numeric"
                     placeholder="Age"
                     placeholderTextColor={COLORS.textTertiary}
-                    style={{
-                      backgroundColor: COLORS.surfaceSecondary,
-                      borderRadius: 8,
-                      padding: 10,
-                      color: COLORS.text,
-                      fontSize: 14,
-                      borderWidth: 1,
-                      borderColor: COLORS.border,
-                    }}
+                    style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 8, padding: 10, color: COLORS.text, fontSize: 14, borderWidth: 1, borderColor: COLORS.border }}
                   />
                 </View>
                 <View>
@@ -509,15 +951,7 @@ export default function PersonDetailScreen() {
                     onChangeText={(v) => update('birthday', v)}
                     placeholder="YYYY-MM-DD"
                     placeholderTextColor={COLORS.textTertiary}
-                    style={{
-                      backgroundColor: COLORS.surfaceSecondary,
-                      borderRadius: 8,
-                      padding: 10,
-                      color: COLORS.text,
-                      fontSize: 14,
-                      borderWidth: 1,
-                      borderColor: COLORS.border,
-                    }}
+                    style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 8, padding: 10, color: COLORS.text, fontSize: 14, borderWidth: 1, borderColor: COLORS.border }}
                   />
                 </View>
                 <View>
@@ -532,12 +966,12 @@ export default function PersonDetailScreen() {
                             paddingHorizontal: 10,
                             paddingVertical: 6,
                             borderRadius: 14,
-                            backgroundColor: editData.zodiac === z.value ? COLORS.accentMuted : COLORS.surfaceSecondary,
+                            backgroundColor: editData.zodiac === z.value ? COLORS.primaryMuted : COLORS.surfaceSecondary,
                             borderWidth: 1,
-                            borderColor: editData.zodiac === z.value ? COLORS.accent : COLORS.border,
+                            borderColor: editData.zodiac === z.value ? COLORS.primary : COLORS.border,
                           }}
                         >
-                          <Text style={{ color: editData.zodiac === z.value ? COLORS.accent : COLORS.textSecondary, fontSize: 11 }}>
+                          <Text style={{ color: editData.zodiac === z.value ? COLORS.primary : COLORS.textSecondary, fontSize: 11 }}>
                             {z.label}
                           </Text>
                         </Pressable>
@@ -570,6 +1004,24 @@ export default function PersonDetailScreen() {
                     </View>
                   </ScrollView>
                 </View>
+                {/* Social in edit mode */}
+                {[
+                  { label: 'Instagram', key: 'instagram' as keyof Person },
+                  { label: 'TikTok', key: 'tiktok' as keyof Person },
+                  { label: 'X / Twitter', key: 'twitter_x' as keyof Person },
+                ].map((field) => (
+                  <View key={field.key}>
+                    <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 4 }}>{field.label}</Text>
+                    <TextInput
+                      value={(editData[field.key] as string) || ''}
+                      onChangeText={(v) => update(field.key, v)}
+                      placeholder="@handle"
+                      placeholderTextColor={COLORS.textTertiary}
+                      autoCapitalize="none"
+                      style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 8, padding: 10, color: COLORS.text, fontSize: 14, borderWidth: 1, borderColor: COLORS.border }}
+                    />
+                  </View>
+                ))}
               </>
             ) : (
               <View style={{ gap: 8 }}>
@@ -608,148 +1060,11 @@ export default function PersonDetailScreen() {
             }}
           >
             <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 14 }}>Scores</Text>
-            <SliderDisplay
-              label="Interest Level"
-              value={displayData.interest_level}
-              editing={editing}
-              onChange={(v) => update('interest_level', v)}
-            />
-            <SliderDisplay
-              label="Attractiveness"
-              value={displayData.attractiveness}
-              editing={editing}
-              onChange={(v) => update('attractiveness', v)}
-            />
-            <SliderDisplay
-              label="Sexual Chemistry"
-              value={displayData.sexual_chemistry}
-              editing={editing}
-              onChange={(v) => update('sexual_chemistry', v)}
-            />
-            <SliderDisplay
-              label="Communication"
-              value={displayData.communication}
-              editing={editing}
-              onChange={(v) => update('communication', v)}
-            />
+            <SliderDisplay label="Interest Level" value={displayData.interest_level} editing={editing} onChange={(v) => update('interest_level', v)} />
+            <SliderDisplay label="Attractiveness" value={displayData.attractiveness} editing={editing} onChange={(v) => update('attractiveness', v)} />
+            <SliderDisplay label="Sexual Chemistry" value={displayData.sexual_chemistry} editing={editing} onChange={(v) => update('sexual_chemistry', v)} />
+            <SliderDisplay label="Communication" value={displayData.communication} editing={editing} onChange={(v) => update('communication', v)} />
           </View>
-
-          {/* Social media */}
-          {(displayData.instagram || displayData.tiktok || displayData.twitter_x || editing) && (
-            <View
-              style={{
-                backgroundColor: COLORS.surface,
-                borderRadius: 16,
-                padding: 16,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                gap: 10,
-              }}
-            >
-              <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700' }}>Social Media</Text>
-              {editing ? (
-                <>
-                  {[
-                    { label: 'Instagram', key: 'instagram' as keyof Person },
-                    { label: 'TikTok', key: 'tiktok' as keyof Person },
-                    { label: 'X / Twitter', key: 'twitter_x' as keyof Person },
-                  ].map((field) => (
-                    <View key={field.key}>
-                      <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 4 }}>{field.label}</Text>
-                      <TextInput
-                        value={(editData[field.key] as string) || ''}
-                        onChangeText={(v) => update(field.key, v)}
-                        placeholder="@handle"
-                        placeholderTextColor={COLORS.textTertiary}
-                        autoCapitalize="none"
-                        style={{
-                          backgroundColor: COLORS.surfaceSecondary,
-                          borderRadius: 8,
-                          padding: 10,
-                          color: COLORS.text,
-                          fontSize: 14,
-                          borderWidth: 1,
-                          borderColor: COLORS.border,
-                        }}
-                      />
-                    </View>
-                  ))}
-                </>
-              ) : (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {displayData.instagram && (
-                    <AnimatedPressable
-                      onPress={() => openSocial(`https://instagram.com/${displayData.instagram}`)}
-                    >
-                      <View
-                        style={{
-                          backgroundColor: 'rgba(225,48,108,0.15)',
-                          borderRadius: 10,
-                          paddingHorizontal: 12,
-                          paddingVertical: 7,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <Instagram size={14} color="#E1306C" />
-                        <Text style={{ color: '#E1306C', fontSize: 13, fontWeight: '500' }}>
-                          @{displayData.instagram}
-                        </Text>
-                      </View>
-                    </AnimatedPressable>
-                  )}
-                  {displayData.tiktok && (
-                    <AnimatedPressable
-                      onPress={() => openSocial(`https://tiktok.com/@${displayData.tiktok}`)}
-                    >
-                      <View
-                        style={{
-                          backgroundColor: 'rgba(0,0,0,0.3)',
-                          borderRadius: 10,
-                          paddingHorizontal: 12,
-                          paddingVertical: 7,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 6,
-                          borderWidth: 1,
-                          borderColor: COLORS.border,
-                        }}
-                      >
-                        <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>
-                          TikTok @{displayData.tiktok}
-                        </Text>
-                      </View>
-                    </AnimatedPressable>
-                  )}
-                  {displayData.twitter_x && (
-                    <AnimatedPressable
-                      onPress={() => openSocial(`https://x.com/${displayData.twitter_x}`)}
-                    >
-                      <View
-                        style={{
-                          backgroundColor: COLORS.surfaceSecondary,
-                          borderRadius: 10,
-                          paddingHorizontal: 12,
-                          paddingVertical: 7,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 6,
-                          borderWidth: 1,
-                          borderColor: COLORS.border,
-                        }}
-                      >
-                        <XIcon size={14} color={COLORS.text} />
-                        <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>
-                          @{displayData.twitter_x}
-                        </Text>
-                      </View>
-                    </AnimatedPressable>
-                  )}
-                </View>
-              )}
-            </View>
-          )}
 
           {/* Foods + Hobbies */}
           {((displayData.favorite_foods && displayData.favorite_foods.length > 0) ||
@@ -766,9 +1081,7 @@ export default function PersonDetailScreen() {
             >
               {(displayData.favorite_foods && displayData.favorite_foods.length > 0) || editing ? (
                 <View>
-                  <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                    Favorite Foods
-                  </Text>
+                  <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Favorite Foods</Text>
                   <TagList
                     tags={editing ? editData.favorite_foods : displayData.favorite_foods}
                     color={COLORS.accent}
@@ -779,9 +1092,7 @@ export default function PersonDetailScreen() {
               ) : null}
               {(displayData.hobbies && displayData.hobbies.length > 0) || editing ? (
                 <View>
-                  <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                    Hobbies & Interests
-                  </Text>
+                  <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Hobbies & Interests</Text>
                   <TagList
                     tags={editing ? editData.hobbies : displayData.hobbies}
                     color={COLORS.primary}
@@ -808,9 +1119,7 @@ export default function PersonDetailScreen() {
             >
               {(displayData.green_flags && displayData.green_flags.length > 0) || editing ? (
                 <View>
-                  <Text style={{ color: COLORS.success, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                    🟢 Green Flags
-                  </Text>
+                  <Text style={{ color: COLORS.success, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Green Flags</Text>
                   <TagList
                     tags={editing ? editData.green_flags : displayData.green_flags}
                     color={COLORS.success}
@@ -821,9 +1130,7 @@ export default function PersonDetailScreen() {
               ) : null}
               {(displayData.red_flags && displayData.red_flags.length > 0) || editing ? (
                 <View>
-                  <Text style={{ color: COLORS.danger, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>
-                    🔴 Red Flags
-                  </Text>
+                  <Text style={{ color: COLORS.danger, fontSize: 14, fontWeight: '600', marginBottom: 8 }}>Red Flags</Text>
                   <TagList
                     tags={editing ? editData.red_flags : displayData.red_flags}
                     color={COLORS.danger}
@@ -834,6 +1141,120 @@ export default function PersonDetailScreen() {
               ) : null}
             </View>
           )}
+
+          {/* Interaction Timeline */}
+          <View
+            style={{
+              backgroundColor: COLORS.surface,
+              borderRadius: 16,
+              padding: 16,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              shadowColor: COLORS.primary,
+              shadowOpacity: 0.08,
+              shadowRadius: 12,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700' }}>Interaction Timeline</Text>
+              <AnimatedPressable
+                onPress={() => {
+                  console.log('[PersonDetail] Log Interaction button pressed');
+                  setShowLogModal(true);
+                }}
+                style={{
+                  backgroundColor: COLORS.primary,
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 7,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <Plus size={14} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Log</Text>
+              </AnimatedPressable>
+            </View>
+
+            {loadingInteractions ? (
+              <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 16 }} />
+            ) : interactions.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                  <Heart size={22} color={COLORS.primary} />
+                </View>
+                <Text style={{ color: COLORS.textSecondary, fontSize: 14, textAlign: 'center' }}>
+                  No interactions yet.{'\n'}Log your first one!
+                </Text>
+              </View>
+            ) : (
+              <View>
+                {interactions.map((interaction, index) => {
+                  const IconComp = getInteractionIcon(interaction.type);
+                  const color = getInteractionColor(interaction.type);
+                  const dateDisplay = formatInteractionDate(interaction.interaction_date);
+                  const isLast = index === interactions.length - 1;
+                  return (
+                    <AnimatedPressable
+                      key={interaction.id}
+                      onLongPress={() => handleDeleteInteraction(interaction)}
+                    >
+                      <View style={{ flexDirection: 'row', gap: 12, marginBottom: isLast ? 0 : 16 }}>
+                        {/* Timeline line + dot */}
+                        <View style={{ alignItems: 'center', width: 32 }}>
+                          <View
+                            style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 16,
+                              backgroundColor: color + '20',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderWidth: 1.5,
+                              borderColor: color,
+                            }}
+                          >
+                            <IconComp size={14} color={color} />
+                          </View>
+                          {!isLast && (
+                            <View
+                              style={{
+                                width: 2,
+                                flex: 1,
+                                backgroundColor: COLORS.primary,
+                                opacity: 0.25,
+                                marginTop: 4,
+                                minHeight: 20,
+                              }}
+                            />
+                          )}
+                        </View>
+                        {/* Content */}
+                        <View style={{ flex: 1, paddingTop: 4 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+                              {interaction.title}
+                            </Text>
+                            <Text style={{ color: COLORS.textTertiary, fontSize: 12, marginLeft: 8 }}>{dateDisplay}</Text>
+                          </View>
+                          {interaction.notes ? (
+                            <Text style={{ color: COLORS.textSecondary, fontSize: 13, lineHeight: 18 }} numberOfLines={2}>
+                              {interaction.notes}
+                            </Text>
+                          ) : null}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: color }} />
+                            <Text style={{ color, fontSize: 11, fontWeight: '600', textTransform: 'capitalize' }}>{interaction.type}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    </AnimatedPressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
 
           {/* Actions */}
           {!editing && (
@@ -865,6 +1286,16 @@ export default function PersonDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      <LogInteractionModal
+        visible={showLogModal}
+        personId={id!}
+        onClose={() => {
+          console.log('[PersonDetail] Log interaction modal closed');
+          setShowLogModal(false);
+        }}
+        onSaved={loadInteractions}
+      />
     </View>
   );
 }

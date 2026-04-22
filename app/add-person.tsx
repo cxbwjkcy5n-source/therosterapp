@@ -196,6 +196,7 @@ export default function AddPersonScreen() {
   const [age, setAge] = useState('');
   const [birthday, setBirthday] = useState('');
   const [zodiac, setZodiac] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [instagram, setInstagram] = useState('');
   const [tiktok, setTiktok] = useState('');
   const [twitterX, setTwitterX] = useState('');
@@ -247,6 +248,7 @@ export default function AddPersonScreen() {
       if (age) payload.age = parseInt(age, 10);
       if (birthday) payload.birthday = birthday;
       if (zodiac) payload.zodiac = zodiac;
+      if (phoneNumber) payload.phone_number = phoneNumber;
       if (instagram) payload.instagram = instagram;
       if (tiktok) payload.tiktok = tiktok;
       if (twitterX) payload.twitter_x = twitterX;
@@ -604,8 +606,9 @@ export default function AddPersonScreen() {
             gap: 12,
           }}
         >
-          <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '600', marginBottom: 4 }}>Social Media</Text>
+          <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '600', marginBottom: 4 }}>Contact & Social</Text>
           {[
+            { label: 'Phone Number', value: phoneNumber, onChange: setPhoneNumber, placeholder: '+1 (555) 000-0000' },
             { label: 'Instagram', value: instagram, onChange: setInstagram, placeholder: '@handle' },
             { label: 'TikTok', value: tiktok, onChange: setTiktok, placeholder: '@handle' },
             { label: 'X / Twitter', value: twitterX, onChange: setTwitterX, placeholder: '@handle' },
