@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { Platform } from "react-native";
 import * as Linking from "expo-linking";
 import { authClient, setBearerToken, clearAuthTokens } from "@/lib/auth";
 
@@ -149,33 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = () => signInWithSocial("google");
 
-  const signInWithApple = async () => {
-    if (Platform.OS === "ios") {
-      // Native Apple Sign In on iOS — shows the system Face ID / password modal
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const AppleAuthentication = require("expo-apple-authentication");
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-      if (!credential.identityToken) {
-        throw new Error("No identity token received from Apple");
-      }
-      const { error } = await authClient.signIn.social({
-        provider: "apple",
-        idToken: credential.identityToken,
-      });
-      if (error) {
-        throw new Error(error.message || "Apple sign in failed");
-      }
-      await fetchUser();
-    } else {
-      // Web / Android: OAuth redirect flow
-      await signInWithSocial("apple");
-    }
-  };
+  const signInWithApple = () => signInWithSocial("apple");
 
   const signOut = async () => {
     try {
