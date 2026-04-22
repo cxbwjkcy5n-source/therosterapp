@@ -11,6 +11,7 @@ import {
 import { router } from 'expo-router';
 import { Camera, Plus, X } from 'lucide-react-native';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
+import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
@@ -488,29 +489,13 @@ export default function AddPersonScreen() {
 
           <View>
             <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
-              Birthday (YYYY-MM-DD)
+              Birthday
             </Text>
-            <TextInput
+            <BirthdayPicker
               value={birthday}
-              onChangeText={(v) => {
+              onChange={(v) => {
+                console.log('[AddPerson] Birthday selected:', v, formatBirthdayDisplay(v));
                 setBirthday(v);
-                if (v.length === 10) {
-                  const z = getZodiacFromBirthday(v);
-                  console.log('[AddPerson] Auto-populated zodiac:', z);
-                  setZodiac(z);
-                }
-              }}
-              placeholder="e.g. 1995-06-15"
-              placeholderTextColor={COLORS.textTertiary}
-              style={{
-                backgroundColor: COLORS.surfaceSecondary,
-                borderRadius: 10,
-                paddingHorizontal: 12,
-                paddingVertical: 11,
-                color: COLORS.text,
-                fontSize: 14,
-                borderWidth: 1,
-                borderColor: COLORS.border,
               }}
             />
           </View>

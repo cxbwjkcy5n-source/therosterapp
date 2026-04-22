@@ -35,6 +35,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
+import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
 import { apiGet, apiPut, apiDelete, apiPost } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
@@ -974,12 +975,12 @@ export default function PersonDetailScreen() {
                 </View>
                 <View>
                   <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginBottom: 4 }}>Birthday</Text>
-                  <TextInput
+                  <BirthdayPicker
                     value={editData.birthday || ''}
-                    onChangeText={(v) => update('birthday', v)}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor={COLORS.textTertiary}
-                    style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 8, padding: 10, color: COLORS.text, fontSize: 14, borderWidth: 1, borderColor: COLORS.border }}
+                    onChange={(v) => {
+                      console.log('[PersonDetail] Birthday selected:', v, formatBirthdayDisplay(v));
+                      update('birthday', v);
+                    }}
                   />
                 </View>
                 <View>
@@ -1062,7 +1063,7 @@ export default function PersonDetailScreen() {
                 {displayData.birthday ? (
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>Birthday</Text>
-                    <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '500' }}>{displayData.birthday}</Text>
+                    <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '500' }}>{formatBirthdayDisplay(displayData.birthday) || displayData.birthday}</Text>
                   </View>
                 ) : null}
                 {displayData.zodiac ? (
