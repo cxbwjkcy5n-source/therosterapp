@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { X, Camera, Plus, Flag, ChevronDown } from 'lucide-react-native';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
@@ -405,24 +406,15 @@ export default function AddPersonScreen() {
               marginBottom: 12,
             }}
           />
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
-            Location <Text style={{ color: COLORS.primary }}>*</Text>
-          </Text>
-          <TextInput
+          <AddressAutocomplete
+            label="Location *"
             value={location}
             onChangeText={setLocation}
-            placeholder="City, neighborhood..."
-            placeholderTextColor={COLORS.textTertiary}
-            style={{
-              backgroundColor: COLORS.surfaceSecondary,
-              borderRadius: 12,
-              paddingHorizontal: 14,
-              paddingVertical: 13,
-              color: COLORS.text,
-              fontSize: 15,
-              borderWidth: 1,
-              borderColor: COLORS.border,
+            onSelect={(addr) => {
+              console.log('[AddPerson] Location selected from autocomplete:', addr);
+              setLocation(addr);
             }}
+            placeholder="City, neighborhood..."
           />
         </View>
 

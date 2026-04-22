@@ -34,6 +34,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { apiGet, apiPut, apiDelete, apiPost } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
@@ -731,20 +732,14 @@ export default function PersonDetailScreen() {
                     borderColor: COLORS.border,
                   }}
                 />
-                <TextInput
+                <AddressAutocomplete
                   value={editData.location || ''}
                   onChangeText={(v) => update('location', v)}
-                  placeholder="Location"
-                  placeholderTextColor={COLORS.textTertiary}
-                  style={{
-                    color: COLORS.textSecondary,
-                    fontSize: 15,
-                    backgroundColor: COLORS.surfaceSecondary,
-                    borderRadius: 10,
-                    padding: 10,
-                    borderWidth: 1,
-                    borderColor: COLORS.border,
+                  onSelect={(addr) => {
+                    console.log('[PersonDetail] Location selected from autocomplete:', addr);
+                    update('location', addr);
                   }}
+                  placeholder="Location"
                 />
               </>
             ) : (

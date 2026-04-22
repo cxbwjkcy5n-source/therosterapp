@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { X, MapPin, Calendar, Check } from 'lucide-react-native';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
@@ -261,30 +262,17 @@ export default function DateHaveScreen() {
         </View>
 
         {/* Location */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
-            Location
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <MapPin size={16} color={COLORS.textTertiary} />
-            <TextInput
-              value={location}
-              onChangeText={setLocation}
-              placeholder="Restaurant, park, coffee shop..."
-              placeholderTextColor={COLORS.textTertiary}
-              style={{
-                flex: 1,
-                backgroundColor: COLORS.surfaceSecondary,
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 13,
-                color: COLORS.text,
-                fontSize: 15,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-              }}
-            />
-          </View>
+        <View style={{ zIndex: 10 }}>
+          <AddressAutocomplete
+            label="Location"
+            value={location}
+            onChangeText={setLocation}
+            onSelect={(addr) => {
+              console.log('[DateHave] Location selected from autocomplete:', addr);
+              setLocation(addr);
+            }}
+            placeholder="Restaurant, park, coffee shop..."
+          />
         </View>
 
         {/* Date & Time */}

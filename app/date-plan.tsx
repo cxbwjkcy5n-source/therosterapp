@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { X, MapPin, Sparkles, ExternalLink } from 'lucide-react-native';
+import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet, apiPost } from '@/utils/api';
@@ -170,30 +171,17 @@ export default function DatePlanScreen() {
         </View>
 
         {/* Location */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
-            Location (optional)
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <MapPin size={16} color={COLORS.textTertiary} />
-            <TextInput
-              value={location}
-              onChangeText={setLocation}
-              placeholder="City or neighborhood..."
-              placeholderTextColor={COLORS.textTertiary}
-              style={{
-                flex: 1,
-                backgroundColor: COLORS.surfaceSecondary,
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 13,
-                color: COLORS.text,
-                fontSize: 15,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-              }}
-            />
-          </View>
+        <View style={{ zIndex: 10 }}>
+          <AddressAutocomplete
+            label="Location (optional)"
+            value={location}
+            onChangeText={setLocation}
+            onSelect={(addr) => {
+              console.log('[DatePlan] Location selected from autocomplete:', addr);
+              setLocation(addr);
+            }}
+            placeholder="City or neighborhood..."
+          />
         </View>
 
         {/* Budget */}
