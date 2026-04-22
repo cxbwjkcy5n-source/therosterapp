@@ -315,7 +315,17 @@ export function registerAIRoutes(app: App) {
           201: {
             type: 'object',
             properties: {
-              message: {
+              userMessage: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  userId: { type: 'string' },
+                  role: { type: 'string' },
+                  content: { type: 'string' },
+                  createdAt: { type: 'string', format: 'date-time' },
+                },
+              },
+              assistantMessage: {
                 type: 'object',
                 properties: {
                   id: { type: 'string', format: 'uuid' },
@@ -364,14 +374,14 @@ export function registerAIRoutes(app: App) {
 
       if (!hasOpenAIKey()) {
         // Provide mock response when API key is not configured
-        assistantContent = `Hi there! I'm Nova, your dating coach. That's a great question! Here's my advice: Focus on being authentic, listen actively, and remember that confidence comes from knowing your worth. Take care of yourself first, and the right connections will follow. How can I help you further?`;
+        assistantContent = `I'm Nova, your dating coach. That's a great insight! Here's my perspective: Be authentic and listen actively. Remember that confidence comes from knowing your worth. Take care of yourself first.`;
         app.logger.info({ userId: session.user.id }, 'Returning mock chat response (OPENAI_API_KEY not configured)');
       } else {
         try {
           const systemMessage = {
             role: 'system' as const,
             content:
-              'You are a warm, empathetic, and insightful dating coach named Nova. You give personalized, practical advice about dating, relationships, and self-improvement. Keep responses concise and actionable. Be supportive but honest.',
+              'You are Nova, a friendly and empathetic dating coach. Give personalized, actionable advice about dating, relationships, and self-improvement. Keep responses concise (2-4 sentences). Be warm, encouraging, and direct.',
           };
 
           const response = await getOpenAI().chat.completions.create({
@@ -399,7 +409,52 @@ export function registerAIRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id }, 'Chat message processed');
       reply.status(201);
-      return { message: assistantMessage };
+      return { userMessage, assistantMessage };
+    }
+  );
+
+  // GET /api/chat/history - Get chat message history
+  app.fastify.get(
+    '/api/chat/history',
+    {
+      schema: {
+        description: 'Get chat message history with the dating coach',
+        tags: ['chat'],
+        response: {
+          200: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                userId: { type: 'string' },
+                role: { type: 'string' },
+                content: { type: 'string' },
+                createdAt: { type: 'string', format: 'date-time' },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      app.logger.info({ userId: session.user.id }, 'Fetching chat history');
+
+      const messages = await app.db
+        .select()
+        .from(schema.chatMessages)
+        .where(eq(schema.chatMessages.userId, session.user.id))
+        .orderBy(schema.chatMessages.createdAt);
+
+      // Return last 50 messages
+      const history = messages.slice(-50);
+
+      app.logger.info({ userId: session.user.id, count: history.length }, 'Retrieved chat history');
+      return history;
     }
   );
 }

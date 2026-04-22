@@ -87,6 +87,10 @@ export const dates = pgTable('dates', {
   reminder1Day: boolean('reminder_1_day').default(false).notNull(),
   reminder1Hour: boolean('reminder_1_hour').default(false).notNull(),
   notes: text('notes'),
+  rating: integer('rating'),
+  wentWell: text('went_well'),
+  wentPoorly: text('went_poorly'),
+  wantAnotherDate: boolean('want_another_date'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

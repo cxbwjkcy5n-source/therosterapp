@@ -1,6 +1,6 @@
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { eq, and, notInArray, isNull, lt, sql } from 'drizzle-orm';
 import * as schema from '../db/schema/schema.js';
 
 interface DateInput {
@@ -323,6 +323,194 @@ export function registerDatesRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id, dateId: id }, 'Date deleted');
       return { success: true };
+    }
+  );
+
+  // PATCH /api/dates/:id/review - Update date with review
+  app.fastify.patch(
+    '/api/dates/:id/review',
+    {
+      schema: {
+        description: 'Update a date with review information',
+        tags: ['dates'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        body: {
+          type: 'object',
+          properties: {
+            rating: { type: 'integer', minimum: 1, maximum: 5 },
+            went_well: { type: 'string' },
+            went_poorly: { type: 'string' },
+            want_another_date: { type: 'boolean' },
+            status: { type: 'string', enum: ['planned', 'confirmed', 'completed', 'cancelled'] },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              title: { type: 'string' },
+              rating: { type: ['integer', 'null'] },
+              went_well: { type: ['string', 'null'] },
+              went_poorly: { type: ['string', 'null'] },
+              want_another_date: { type: ['boolean', 'null'] },
+              status: { type: 'string' },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          403: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Body: {
+          rating?: number;
+          went_well?: string;
+          went_poorly?: string;
+          want_another_date?: boolean;
+          status?: string;
+        };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      app.logger.info({ userId: session.user.id, dateId: id, body: request.body }, 'Updating date review');
+
+      const dateEntry = await app.db.query.dates.findFirst({
+        where: eq(schema.dates.id, id),
+      });
+
+      if (!dateEntry) {
+        app.logger.warn({ userId: session.user.id, dateId: id }, 'Date not found');
+        return reply.status(404).send({ error: 'Date not found' });
+      }
+
+      if (dateEntry.userId !== session.user.id) {
+        app.logger.warn({ userId: session.user.id, dateId: id }, 'Access denied');
+        return reply.status(403).send({ error: 'Access denied' });
+      }
+
+      const updateData: any = {};
+      if (request.body.rating !== undefined) updateData.rating = request.body.rating;
+      if (request.body.went_well !== undefined) updateData.wentWell = request.body.went_well;
+      if (request.body.went_poorly !== undefined) updateData.wentPoorly = request.body.went_poorly;
+      if (request.body.want_another_date !== undefined) updateData.wantAnotherDate = request.body.want_another_date;
+
+      // Set status to completed if not already set and review is being added
+      if (request.body.status !== undefined) {
+        updateData.status = request.body.status as any;
+      } else if (dateEntry.status !== 'completed' && dateEntry.status !== 'cancelled') {
+        updateData.status = 'completed';
+      }
+
+      await app.db
+        .update(schema.dates)
+        .set(updateData)
+        .where(eq(schema.dates.id, id));
+
+      // Fetch the updated record to ensure all fields are returned
+      const updatedDate = await app.db.query.dates.findFirst({
+        where: eq(schema.dates.id, id),
+      });
+
+      app.logger.info({ userId: session.user.id, dateId: id }, 'Date review updated');
+      return updatedDate;
+    }
+  );
+
+  // GET /api/dates/pending-review - List dates pending review
+  app.fastify.get(
+    '/api/dates/pending-review',
+    {
+      schema: {
+        description: 'Get dates pending review for the authenticated user',
+        tags: ['dates'],
+        response: {
+          200: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                title: { type: 'string' },
+                status: { type: 'string' },
+                dateTime: { type: ['string', 'null'] },
+                rating: { type: ['integer', 'null'] },
+                person: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    name: { type: 'string' },
+                    photoUrl: { type: ['string', 'null'] },
+                  },
+                },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      app.logger.info({ userId: session.user.id }, 'Getting dates pending review');
+
+      // Query dates that are past their scheduled time, not completed/cancelled, and have no rating
+      const dates = await app.db
+        .select({
+          id: schema.dates.id,
+          userId: schema.dates.userId,
+          personId: schema.dates.personId,
+          title: schema.dates.title,
+          location: schema.dates.location,
+          dateTime: schema.dates.dateTime,
+          budget: schema.dates.budget,
+          status: schema.dates.status,
+          reminder3Days: schema.dates.reminder3Days,
+          reminder1Day: schema.dates.reminder1Day,
+          reminder1Hour: schema.dates.reminder1Hour,
+          notes: schema.dates.notes,
+          rating: schema.dates.rating,
+          wentWell: schema.dates.wentWell,
+          wentPoorly: schema.dates.wentPoorly,
+          wantAnotherDate: schema.dates.wantAnotherDate,
+          createdAt: schema.dates.createdAt,
+          person: {
+            id: schema.persons.id,
+            name: schema.persons.name,
+            photoUrl: schema.persons.photoUrl,
+          },
+        })
+        .from(schema.dates)
+        .leftJoin(schema.persons, eq(schema.dates.personId, schema.persons.id))
+        .where(
+          and(
+            eq(schema.dates.userId, session.user.id),
+            notInArray(schema.dates.status, ['completed', 'cancelled']),
+            isNull(schema.dates.rating),
+            lt(
+              sql`cast(${schema.dates.dateTime} as timestamp)`,
+              sql`now()`
+            )
+          )
+        );
+
+      app.logger.info({ userId: session.user.id, count: dates.length }, 'Retrieved pending review dates');
+      return dates;
     }
   );
 }

@@ -7,6 +7,7 @@ describe("API Integration Tests", () => {
   let personId: string;
   let personId2: string;
   let dateId: string;
+  let reviewDateId: string;
   let interactionId: string;
 
   // ========== Auth Setup ==========
@@ -292,6 +293,22 @@ describe("API Integration Tests", () => {
     expect(data.id).toBeDefined();
   });
 
+  test("Create date for review testing", async () => {
+    const res = await authenticatedApi("/api/dates", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        title: "Review test date",
+        status: "completed",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    reviewDateId = data.id;
+    expect(data.id).toBeDefined();
+  });
+
   test("Create date fails without required person_id", async () => {
     const res = await authenticatedApi("/api/dates", authToken, {
       method: "POST",
@@ -375,6 +392,79 @@ describe("API Integration Tests", () => {
       }
     );
     await expectStatus(res, 404);
+  });
+
+  test("Add review to a completed date", async () => {
+    const res = await authenticatedApi(
+      `/api/dates/${reviewDateId}/review`,
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating: 4,
+          went_well: "Great conversation and good chemistry",
+          went_poorly: "Noisy restaurant",
+          want_another_date: true,
+          status: "completed",
+        }),
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.id).toBe(reviewDateId);
+    expect(data.rating).toBe(4);
+    expect(data.wentWell).toBe("Great conversation and good chemistry");
+    expect(data.wentPoorly).toBe("Noisy restaurant");
+    expect(data.wantAnotherDate).toBe(true);
+  });
+
+  test("Add partial review with just rating", async () => {
+    const res = await authenticatedApi(
+      `/api/dates/${dateId}/review`,
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rating: 5,
+        }),
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.id).toBe(dateId);
+    expect(data.rating).toBe(5);
+  });
+
+  test("Review nonexistent date returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/dates/00000000-0000-0000-0000-000000000000/review",
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating: 4 }),
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Get dates pending review", async () => {
+    const res = await authenticatedApi("/api/dates/pending-review", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+    // Each item should have the expected structure
+    if (data.length > 0) {
+      const dateItem = data[0];
+      expect(dateItem.id).toBeDefined();
+      expect(dateItem.title).toBeDefined();
+      expect(dateItem.status).toBeDefined();
+      expect(dateItem.person).toBeDefined();
+      expect(dateItem.person.id).toBeDefined();
+      expect(dateItem.person.name).toBeDefined();
+    }
   });
 
   test("Delete a date", async () => {
@@ -543,10 +633,13 @@ describe("API Integration Tests", () => {
     });
     await expectStatus(res, 201);
     const data = await res.json();
-    expect(data.message).toBeDefined();
-    expect(data.message.id).toBeDefined();
-    expect(data.message.content).toBeDefined();
-    expect(data.message.role).toBeDefined();
+    expect(data.userMessage).toBeDefined();
+    expect(data.userMessage.id).toBeDefined();
+    expect(data.userMessage.content).toBeDefined();
+    expect(data.userMessage.role).toBeDefined();
+    expect(data.assistantMessage).toBeDefined();
+    expect(data.assistantMessage.id).toBeDefined();
+    expect(data.assistantMessage.content).toBeDefined();
   });
 
   test("Send another message", async () => {
@@ -558,6 +651,9 @@ describe("API Integration Tests", () => {
       }),
     });
     await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.userMessage).toBeDefined();
+    expect(data.assistantMessage).toBeDefined();
   });
 
   test("Get updated chat messages", async () => {
@@ -565,6 +661,21 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 200);
     const data = await res.json();
     expect(data.messages.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("Get chat message history", async () => {
+    const res = await authenticatedApi("/api/chat/history", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+    // Each message should have the expected structure
+    if (data.length > 0) {
+      const msg = data[0];
+      expect(msg.id).toBeDefined();
+      expect(msg.role).toBeDefined();
+      expect(msg.content).toBeDefined();
+      expect(msg.createdAt).toBeDefined();
+    }
   });
 
   test("Send message without content fails", async () => {
@@ -855,6 +966,11 @@ describe("API Integration Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: "Test" }),
     });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/chat/history returns 401", async () => {
+    const res = await api("/api/chat/history");
     await expectStatus(res, 401);
   });
 
