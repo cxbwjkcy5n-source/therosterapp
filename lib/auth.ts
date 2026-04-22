@@ -2,9 +2,9 @@ import { createAuthClient } from "better-auth/react";
 import { expoClient } from "@better-auth/expo/client";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
-import Constants from "expo-constants";
 
-const API_URL = "https://yc4fa775cdfwsjk84352fx3r79cnejz4.app.specular.dev/";
+// Must be a plain string — never a URL object — iOS NSURLSession requires it
+const API_URL = "https://yc4fa775cdfwsjk84352fx3r79cnejz4.app.specular.dev";
 
 export const BEARER_TOKEN_KEY = "rosterscout_bearer_token";
 
@@ -17,6 +17,16 @@ const storage = Platform.OS === "web"
     }
   : SecureStore;
 
+// iOS native fetch (NSURLSession) cannot coerce a URL object to a string.
+// This wrapper ensures the first argument is always a plain string.
+const safeFetch: typeof fetch = (input, init?) => {
+  if (Platform.OS === "ios" && input instanceof URL) {
+    console.log("[Auth] iOS safeFetch: coercing URL object to string:", input.toString());
+    return fetch(input.toString(), init);
+  }
+  return fetch(input, init);
+};
+
 export const authClient = createAuthClient({
   baseURL: API_URL,
   plugins: [
@@ -26,15 +36,17 @@ export const authClient = createAuthClient({
       storage,
     }),
   ],
-  ...(Platform.OS === "web" && {
-    fetchOptions: {
-      credentials: "include",
-      auth: {
-        type: "Bearer" as const,
-        token: () => localStorage.getItem(BEARER_TOKEN_KEY) || "",
+  fetchOptions: Platform.OS === "web"
+    ? {
+        credentials: "include",
+        auth: {
+          type: "Bearer" as const,
+          token: () => localStorage.getItem(BEARER_TOKEN_KEY) || "",
+        },
+      }
+    : {
+        customFetchImpl: safeFetch,
       },
-    },
-  }),
 });
 
 export async function setBearerToken(token: string) {

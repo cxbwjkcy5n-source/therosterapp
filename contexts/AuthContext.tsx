@@ -76,8 +76,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchUser();
 
     const subscription = Linking.addEventListener("url", (event) => {
-      console.log("Deep link received, refreshing user session");
-      fetchUser();
+      const url = event.url || "";
+      const isAuthCallback = url.includes("auth-callback") || url.includes("token=") || url.includes("code=");
+      if (isAuthCallback) {
+        console.log("[Auth] Auth callback deep link received, refreshing user session:", url);
+        fetchUser();
+      } else {
+        console.log("[Auth] Deep link received (non-auth), skipping session refresh:", url);
+      }
     });
 
     const intervalId = setInterval(() => {
