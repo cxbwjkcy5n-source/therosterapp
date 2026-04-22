@@ -4,9 +4,9 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-const API_URL = "https://yc4fa775cdfwsjk84352fx3r79cnejz4.app.specular.dev/";
+const API_URL = "https://yc4fa775cdfwsjk84352fx3r79cnejz4.app.specular.dev";
 
-export const BEARER_TOKEN_KEY = "Newly_bearer_token";
+export const BEARER_TOKEN_KEY = "rosterscout_bearer_token";
 
 // Platform-specific storage: localStorage for web, SecureStore for native
 const storage = Platform.OS === "web"
@@ -22,7 +22,7 @@ export const authClient = createAuthClient({
   plugins: [
     expoClient({
       scheme: "rosterscout",
-      storagePrefix: "Newly",
+      storagePrefix: "rosterscout",
       storage,
     }),
   ],

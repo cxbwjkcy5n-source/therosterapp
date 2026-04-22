@@ -1,14 +1,15 @@
 import 'react-native-reanimated';
 import React, { useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Redirect, Stack, useSegments, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SystemBars } from 'react-native-edge-to-edge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, DarkTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { COLORS } from '@/constants/Colors';
 
@@ -19,7 +20,7 @@ const DevErrorBoundary = __DEV__
 SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
-  initialRouteName: '(tabs)',
+  initialRouteName: 'auth-screen',
 };
 
 const NewlyDarkTheme = {
@@ -33,6 +34,32 @@ const NewlyDarkTheme = {
     primary: COLORS.primary,
   },
 };
+
+// Auth-exempt routes — these are accessible without being logged in
+const PUBLIC_ROUTES = ['auth-screen', 'auth-popup', 'auth-callback'];
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const segments = useSegments();
+
+  const currentRoute = segments[0] ?? '';
+  const isPublicRoute = PUBLIC_ROUTES.includes(currentRoute);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={COLORS.primary} size="large" />
+      </View>
+    );
+  }
+
+  if (!user && !isPublicRoute) {
+    console.log('[AuthGuard] No user on protected route, redirecting to auth-screen');
+    return <Redirect href="/auth-screen" />;
+  }
+
+  return <>{children}</>;
+}
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -54,87 +81,89 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <ThemeProvider value={NewlyDarkTheme}>
             <AuthProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="auth-screen" options={{ headerShown: false }} />
-                <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
-                <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-                <Stack.Screen
-                  name="person/[id]"
-                  options={{
-                    headerShown: true,
-                    headerStyle: { backgroundColor: COLORS.background },
-                    headerTintColor: COLORS.text,
-                    headerShadowVisible: false,
-                    title: '',
-                  }}
-                />
-                <Stack.Screen
-                  name="coach"
-                  options={{
-                    headerShown: true,
-                    headerStyle: { backgroundColor: COLORS.background },
-                    headerTintColor: COLORS.text,
-                    headerShadowVisible: false,
-                    title: 'Dating Coach',
-                  }}
-                />
-                <Stack.Screen
-                  name="analytics"
-                  options={{
-                    headerShown: true,
-                    headerStyle: { backgroundColor: COLORS.background },
-                    headerTintColor: COLORS.text,
-                    headerShadowVisible: false,
-                    title: 'Insights',
-                  }}
-                />
-                <Stack.Screen
-                  name="add-person"
-                  options={{
-                    presentation: 'formSheet',
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [1.0],
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="bench-reason"
-                  options={{
-                    presentation: 'formSheet',
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [0.5],
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="date-have"
-                  options={{
-                    presentation: 'formSheet',
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [1.0],
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="date-plan"
-                  options={{
-                    presentation: 'formSheet',
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [1.0],
-                    headerShown: false,
-                  }}
-                />
-                <Stack.Screen
-                  name="date-safety"
-                  options={{
-                    presentation: 'formSheet',
-                    sheetGrabberVisible: true,
-                    sheetAllowedDetents: [1.0],
-                    headerShown: false,
-                  }}
-                />
-              </Stack>
+              <AuthGuard>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="auth-screen" options={{ headerShown: false }} />
+                  <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
+                  <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen
+                    name="person/[id]"
+                    options={{
+                      headerShown: true,
+                      headerStyle: { backgroundColor: COLORS.background },
+                      headerTintColor: COLORS.text,
+                      headerShadowVisible: false,
+                      title: '',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="coach"
+                    options={{
+                      headerShown: true,
+                      headerStyle: { backgroundColor: COLORS.background },
+                      headerTintColor: COLORS.text,
+                      headerShadowVisible: false,
+                      title: 'Dating Coach',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="analytics"
+                    options={{
+                      headerShown: true,
+                      headerStyle: { backgroundColor: COLORS.background },
+                      headerTintColor: COLORS.text,
+                      headerShadowVisible: false,
+                      title: 'Insights',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="add-person"
+                    options={{
+                      presentation: 'formSheet',
+                      sheetGrabberVisible: true,
+                      sheetAllowedDetents: [1.0],
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="bench-reason"
+                    options={{
+                      presentation: 'formSheet',
+                      sheetGrabberVisible: true,
+                      sheetAllowedDetents: [0.5],
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="date-have"
+                    options={{
+                      presentation: 'formSheet',
+                      sheetGrabberVisible: true,
+                      sheetAllowedDetents: [1.0],
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="date-plan"
+                    options={{
+                      presentation: 'formSheet',
+                      sheetGrabberVisible: true,
+                      sheetAllowedDetents: [1.0],
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="date-safety"
+                    options={{
+                      presentation: 'formSheet',
+                      sheetGrabberVisible: true,
+                      sheetAllowedDetents: [1.0],
+                      headerShown: false,
+                    }}
+                  />
+                </Stack>
+              </AuthGuard>
               <SystemBars style="light" />
             </AuthProvider>
           </ThemeProvider>

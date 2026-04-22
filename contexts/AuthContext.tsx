@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { Platform } from "react-native";
 import * as Linking from "expo-linking";
 import { authClient, setBearerToken, clearAuthTokens } from "@/lib/auth";
+import { nativeAppleSignIn } from "@/lib/appleAuth";
 
 interface User {
   id: string;
@@ -121,7 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithEmail = async (email: string, password: string, name?: string) => {
     try {
-      await authClient.signUp.email({ email, password, name: name ?? '' });
+      await authClient.signUp.email({ email, password, name });
       await fetchUser();
     } catch (error) {
       console.error("Email sign up failed:", error);
@@ -148,7 +150,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = () => signInWithSocial("google");
 
-  const signInWithApple = () => signInWithSocial("apple");
+  const signInWithApple = async () => {
+    if (Platform.OS === "ios") {
+      // Native Apple Sign In on iOS — uses platform-split module to avoid web bundle issues
+      const identityToken = await nativeAppleSignIn();
+      const { error } = await authClient.signIn.social({
+        provider: "apple",
+        idToken: identityToken,
+      });
+      if (error) {
+        throw new Error(error.message || "Apple sign in failed");
+      }
+      await fetchUser();
+    } else {
+      // Web / Android: OAuth redirect flow
+      await signInWithSocial("apple");
+    }
+  };
 
   const signOut = async () => {
     try {
