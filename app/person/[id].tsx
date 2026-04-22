@@ -166,28 +166,61 @@ function SliderDisplay({ label, value, editing, onChange }: {
   label: string; value?: number; editing: boolean; onChange: (v: number) => void;
 }) {
   const val = value ?? 5;
-  const color = getInterestColor(val);
-  const steps = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   return (
-    <View style={{ marginBottom: 14 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{label}</Text>
-        <Text style={{ color, fontSize: 13, fontWeight: '700' }}>{val}/10</Text>
+    <View style={{ marginBottom: 20 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' }}>{label}</Text>
+        <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '700' }}>{val}/10</Text>
       </View>
-      <View style={{ flexDirection: 'row', gap: 3 }}>
-        {steps.map((step) => (
+      {/* Track */}
+      <View style={{ height: 4, backgroundColor: '#E0E0E0', borderRadius: 2, position: 'relative', marginHorizontal: 9 }}>
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: `${(val / 10) * 100}%`,
+            backgroundColor: '#E53935',
+            borderRadius: 2,
+          }}
+        />
+      </View>
+      {/* Tap targets */}
+      <View style={{ flexDirection: 'row', marginTop: -9 }}>
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
           <Pressable
             key={step}
-            onPress={() => editing && onChange(step)}
-            disabled={!editing}
-            style={{
-              flex: 1,
-              height: 24,
-              borderRadius: 5,
-              backgroundColor: step <= val ? color : COLORS.surfaceSecondary,
+            onPress={() => {
+              if (editing) {
+                console.log(`[PersonDetail] ${label} slider set to:`, step);
+                onChange(step);
+              }
             }}
-          />
+            disabled={!editing}
+            style={{ flex: 1, alignItems: 'center', paddingVertical: 9 }}
+          >
+            <View
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 9,
+                backgroundColor: step === val ? '#fff' : 'transparent',
+                borderWidth: step === val ? 2 : 0,
+                borderColor: '#E53935',
+                shadowColor: step === val ? '#E53935' : 'transparent',
+                shadowOpacity: step === val ? 0.4 : 0,
+                shadowRadius: 4,
+                elevation: step === val ? 3 : 0,
+              }}
+            />
+          </Pressable>
         ))}
+      </View>
+      {/* Min/max labels */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
+        <Text style={{ color: COLORS.textTertiary, fontSize: 11 }}>0</Text>
+        <Text style={{ color: COLORS.textTertiary, fontSize: 11 }}>10</Text>
       </View>
     </View>
   );

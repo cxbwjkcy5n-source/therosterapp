@@ -1,6 +1,6 @@
 import 'react-native-reanimated';
-import React, { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Image, StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Redirect, Stack, useSegments, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -61,10 +61,49 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function CustomSplash({ onDone }: { onDone: () => void }) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const screenFade = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Fade in logo + text
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
+    }).start(() => {
+      // Hold for ~1.4s then fade out the whole splash
+      setTimeout(() => {
+        Animated.timing(screenFade, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }).start(() => {
+          onDone();
+        });
+      }, 1400);
+    });
+  }, [fadeAnim, screenFade, onDone]);
+
+  return (
+    <Animated.View style={[styles.splashContainer, { opacity: screenFade }]}>
+      <Animated.View style={{ alignItems: 'center', opacity: fadeAnim }}>
+        <Image
+          source={require('../assets/images/6bd1ee8a-f98e-411c-802c-4efd62120bd2.jpeg')}
+          style={styles.splashLogo}
+          resizeMode="contain"
+        />
+        <Text style={styles.splashTitle}>Roster Scout</Text>
+      </Animated.View>
+    </Animated.View>
+  );
+}
+
 export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     if (loaded) {
@@ -130,10 +169,13 @@ export default function RootLayout() {
                   <Stack.Screen
                     name="add-person"
                     options={{
-                      presentation: 'formSheet',
-                      sheetGrabberVisible: true,
-                      sheetAllowedDetents: [1.0],
-                      headerShown: false,
+                      headerShown: true,
+                      headerStyle: { backgroundColor: COLORS.background },
+                      headerTintColor: COLORS.primary,
+                      headerShadowVisible: false,
+                      title: 'Add Person',
+                      headerBackTitle: 'Back',
+                      presentation: 'modal',
                     }}
                   />
                   <Stack.Screen
@@ -179,6 +221,31 @@ export default function RootLayout() {
           </ThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
+
+      {showSplash && (
+        <CustomSplash onDone={() => setShowSplash(false)} />
+      )}
     </DevErrorBoundary>
   );
 }
+
+const styles = StyleSheet.create({
+  splashContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+  },
+  splashLogo: {
+    width: 220,
+    height: 220,
+  },
+  splashTitle: {
+    marginTop: 20,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#E53935',
+    letterSpacing: -0.5,
+  },
+});

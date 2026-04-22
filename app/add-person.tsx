@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,9 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { X, Camera, Plus, Flag, ChevronDown } from 'lucide-react-native';
+import { Camera, Plus, X } from 'lucide-react-native';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
@@ -76,32 +75,59 @@ function getInterestColor(val: number) {
 }
 
 function SliderInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  const color = getInterestColor(value);
-  const steps = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const labelText = `${label}: ${value}/10`;
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: 20 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500' }}>{label}</Text>
-        <Text style={{ color, fontSize: 13, fontWeight: '700' }}>{value}/10</Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' }}>{label}</Text>
+        <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '700' }}>{value}/10</Text>
       </View>
-      <View style={{ flexDirection: 'row', gap: 4 }}>
-        {steps.map((step) => (
+      {/* Track */}
+      <View style={{ height: 4, backgroundColor: '#E0E0E0', borderRadius: 2, position: 'relative', marginHorizontal: 9 }}>
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: `${(value / 10) * 100}%`,
+            backgroundColor: '#E53935',
+            borderRadius: 2,
+          }}
+        />
+      </View>
+      {/* Tap targets */}
+      <View style={{ flexDirection: 'row', marginTop: -9 }}>
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
           <Pressable
             key={step}
             onPress={() => {
               console.log(`[AddPerson] ${label} slider set to:`, step);
               onChange(step);
             }}
-            style={{
-              flex: 1,
-              height: 28,
-              borderRadius: 6,
-              backgroundColor: step <= value ? color : COLORS.surfaceSecondary,
-              borderWidth: 1,
-              borderColor: step <= value ? color : COLORS.border,
-            }}
-          />
+            style={{ flex: 1, alignItems: 'center', paddingVertical: 9 }}
+          >
+            <View
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 9,
+                backgroundColor: step === value ? '#fff' : 'transparent',
+                borderWidth: step === value ? 2 : 0,
+                borderColor: '#E53935',
+                shadowColor: step === value ? '#E53935' : 'transparent',
+                shadowOpacity: step === value ? 0.4 : 0,
+                shadowRadius: 4,
+                elevation: step === value ? 3 : 0,
+              }}
+            />
+          </Pressable>
         ))}
+      </View>
+      {/* Min/max labels */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 }}>
+        <Text style={{ color: COLORS.textTertiary, fontSize: 11 }}>0</Text>
+        <Text style={{ color: COLORS.textTertiary, fontSize: 11 }}>10</Text>
       </View>
     </View>
   );
@@ -298,56 +324,6 @@ export default function AddPersonScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 16,
-          paddingTop: 16,
-          paddingBottom: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.border,
-        }}
-      >
-        <AnimatedPressable
-          onPress={() => {
-            console.log('[AddPerson] Close pressed');
-            router.back();
-          }}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: COLORS.surface,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <X size={18} color={COLORS.textSecondary} />
-        </AnimatedPressable>
-        <Text style={{ color: COLORS.text, fontSize: 17, fontWeight: '700' }}>Add Person</Text>
-        <AnimatedPressable
-          onPress={handleSave}
-          disabled={!canSave || saving}
-          style={{
-            backgroundColor: canSave ? COLORS.primary : COLORS.surfaceSecondary,
-            borderRadius: 10,
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-          }}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={{ color: canSave ? '#fff' : COLORS.textTertiary, fontWeight: '600', fontSize: 14 }}>
-              Save
-            </Text>
-          )}
-        </AnimatedPressable>
-      </View>
-
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 4 }}
         showsVerticalScrollIndicator={false}
@@ -473,23 +449,6 @@ export default function AddPersonScreen() {
               }}
             />
           )}
-        </View>
-
-        {/* Sliders */}
-        <View
-          style={{
-            backgroundColor: COLORS.surface,
-            borderRadius: 16,
-            padding: 16,
-            borderWidth: 1,
-            borderColor: COLORS.border,
-            marginBottom: 16,
-          }}
-        >
-          <SliderInput label="Interest Level" value={interestLevel} onChange={setInterestLevel} />
-          <SliderInput label="Attractiveness" value={attractiveness} onChange={setAttractiveness} />
-          <SliderInput label="Sexual Chemistry" value={sexualChemistry} onChange={setSexualChemistry} />
-          <SliderInput label="Communication" value={communication} onChange={setCommunication} />
         </View>
 
         {/* Optional fields */}
@@ -682,6 +641,24 @@ export default function AddPersonScreen() {
             onRemove={(t) => setRedFlags(redFlags.filter((f) => f !== t))}
             color={COLORS.danger}
           />
+        </View>
+
+        {/* Sliders */}
+        <View
+          style={{
+            backgroundColor: COLORS.surface,
+            borderRadius: 16,
+            padding: 16,
+            borderWidth: 1,
+            borderColor: COLORS.border,
+            marginBottom: 16,
+          }}
+        >
+          <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '600', marginBottom: 16 }}>Ratings</Text>
+          <SliderInput label="Interest Level" value={interestLevel} onChange={setInterestLevel} />
+          <SliderInput label="Attractiveness" value={attractiveness} onChange={setAttractiveness} />
+          <SliderInput label="Sexual Chemistry" value={sexualChemistry} onChange={setSexualChemistry} />
+          <SliderInput label="Communication" value={communication} onChange={setCommunication} />
         </View>
 
         {/* Save button */}

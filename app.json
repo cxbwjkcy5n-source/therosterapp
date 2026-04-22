@@ -7,9 +7,9 @@
     "icon": "./assets/images/app-icon-qye.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/app-icon-qye.png",
+      "image": "./assets/images/6bd1ee8a-f98e-411c-802c-4efd62120bd2.jpeg",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": true,
