@@ -11,6 +11,7 @@ import { registerStorageRoutes } from './routes/storage.js';
 import { registerInteractionsRoutes } from './routes/interactions.js';
 import { registerProfilesRoutes } from './routes/profiles.js';
 import { registerPlacesRoutes } from './routes/places.js';
+import { registerNotesRemindersRoutes } from './routes/notes-reminders.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -36,6 +37,7 @@ registerStorageRoutes(app);
 registerInteractionsRoutes(app);
 registerProfilesRoutes(app);
 registerPlacesRoutes(app);
+registerNotesRemindersRoutes(app);
 
 await app.run();
 app.logger.info('Application running');

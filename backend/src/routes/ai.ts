@@ -35,7 +35,7 @@ export function registerAIRoutes(app: App) {
         tags: ['ai'],
         body: {
           type: 'object',
-          required: ['person_id', 'location', 'budget'],
+          required: ['person_id', 'budget'],
           properties: {
             person_id: { type: 'string', format: 'uuid' },
             location: { type: 'string' },
@@ -69,7 +69,7 @@ export function registerAIRoutes(app: App) {
     },
     async (
       request: FastifyRequest<{
-        Body: { person_id: string; location: string; budget: number; date_time?: string };
+        Body: { person_id: string; location?: string; budget: number; date_time?: string };
       }>,
       reply: FastifyReply
     ) => {
@@ -98,34 +98,36 @@ export function registerAIRoutes(app: App) {
 
       // If API key is not configured, return mock suggestions for testing
       if (!hasOpenAIKey()) {
+        const locationStr = location || 'a great place';
         const mockSuggestions = [
           {
             title: 'Coffee & Conversation',
             description: 'Meet at a cozy café for coffee and getting to know each other.',
             category: 'casual',
             estimated_cost: '$10-20',
-            search_url: `https://www.google.com/search?q=${encodeURIComponent('coffee shops ' + location)}`,
+            search_url: `https://www.google.com/search?q=${encodeURIComponent('coffee shops ' + locationStr)}`,
           },
           {
             title: 'Food Tasting Tour',
             description: `Explore different restaurants and try various cuisines they love.`,
             category: 'foodie',
             estimated_cost: '$30-60',
-            search_url: `https://www.google.com/search?q=${encodeURIComponent('restaurants ' + location)}`,
+            search_url: `https://www.google.com/search?q=${encodeURIComponent('restaurants ' + locationStr)}`,
           },
           {
             title: 'Outdoor Activity',
             description: 'Go hiking, biking, or enjoy a park day together.',
             category: 'active',
             estimated_cost: '$0-20',
-            search_url: `https://www.google.com/search?q=${encodeURIComponent('parks trails ' + location)}`,
+            search_url: `https://www.google.com/search?q=${encodeURIComponent('parks trails ' + locationStr)}`,
           },
         ];
         app.logger.info({ userId: session.user.id, personId: person_id }, 'Returning mock date ideas (OPENAI_API_KEY not configured)');
         return { suggestions: mockSuggestions };
       }
 
-      const prompt = `Generate 5 creative date ideas for someone in ${location} with a budget of $${budget}. The person's hobbies are: ${hobbiesStr}. Their favorite foods are: ${foodsStr}. Return a JSON array of 5 objects with fields: title, description, category, estimated_cost (string like '$20-$40'), search_query (a short Google search query for this date idea).`;
+      const locationStr = location ? `in ${location}` : 'that you can do anywhere';
+      const prompt = `Generate 5 creative date ideas ${locationStr} with a budget of $${budget}. The person's hobbies are: ${hobbiesStr}. Their favorite foods are: ${foodsStr}. Return a JSON array of 5 objects with fields: title, description, category, estimated_cost (string like '$20-$40'), search_query (a short Google search query for this date idea).`;
 
       try {
         const message = await getOpenAI().chat.completions.create({
@@ -155,7 +157,7 @@ export function registerAIRoutes(app: App) {
           description: suggestion.description,
           category: suggestion.category,
           estimated_cost: suggestion.estimated_cost,
-          search_url: `https://www.google.com/search?q=${encodeURIComponent(suggestion.search_query + ' ' + location)}`,
+          search_url: `https://www.google.com/search?q=${encodeURIComponent(suggestion.search_query + (location ? ' ' + location : ''))}`,
         }));
 
         app.logger.info({ userId: session.user.id, personId: person_id, count: enrichedSuggestions.length }, 'Date ideas generated');
@@ -297,7 +299,7 @@ export function registerAIRoutes(app: App) {
     }
   );
 
-  // POST /api/chat - Send a chat message
+  // POST /api/chat - Send a message to the dating coach AI
   app.fastify.post(
     '/api/chat',
     {
@@ -309,107 +311,90 @@ export function registerAIRoutes(app: App) {
           required: ['message'],
           properties: {
             message: { type: 'string' },
+            history: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  role: { type: 'string', enum: ['user', 'assistant'] },
+                  content: { type: 'string' },
+                },
+              },
+            },
           },
         },
         response: {
-          201: {
+          200: {
             type: 'object',
             properties: {
-              userMessage: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string', format: 'uuid' },
-                  userId: { type: 'string' },
-                  role: { type: 'string' },
-                  content: { type: 'string' },
-                  createdAt: { type: 'string', format: 'date-time' },
-                },
-              },
-              assistantMessage: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string', format: 'uuid' },
-                  userId: { type: 'string' },
-                  role: { type: 'string' },
-                  content: { type: 'string' },
-                  createdAt: { type: 'string', format: 'date-time' },
-                },
-              },
+              reply: { type: 'string' },
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
-    async (request: FastifyRequest<{ Body: { message: string } }>, reply: FastifyReply) => {
+    async (
+      request: FastifyRequest<{
+        Body: {
+          message: string;
+          history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+        };
+      }>,
+      reply: FastifyReply
+    ) => {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
-      const { message } = request.body;
-      app.logger.info({ userId: session.user.id, message }, 'Sending chat message');
+      const { message, history } = request.body;
+      app.logger.info({ userId: session.user.id, message }, 'Getting AI chat response');
 
-      // Save user message
-      const [userMessage] = await app.db
-        .insert(schema.chatMessages)
-        .values({
-          userId: session.user.id,
-          role: 'user',
-          content: message,
-        })
-        .returning();
+      const systemMessage = {
+        role: 'system' as const,
+        content:
+          'You are Nova, an empathetic and insightful dating coach. You help users navigate modern dating with confidence, self-awareness, and emotional intelligence. Give specific, actionable advice tailored to what the user shares. Be warm, direct, and encouraging.',
+      };
 
-      // Fetch last 20 messages for context
-      const recentMessages = await app.db
-        .select()
-        .from(schema.chatMessages)
-        .where(eq(schema.chatMessages.userId, session.user.id))
-        .orderBy(schema.chatMessages.createdAt);
+      // Build messages array: system message + history + new message
+      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [systemMessage];
 
-      const contextMessages = recentMessages.slice(-20).map((msg) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-      }));
+      if (history && Array.isArray(history)) {
+        messages.push(
+          ...history.map((msg) => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+          }))
+        );
+      }
 
-      let assistantContent: string;
+      messages.push({
+        role: 'user',
+        content: message,
+      });
+
+      let reply_text: string;
 
       if (!hasOpenAIKey()) {
         // Provide mock response when API key is not configured
-        assistantContent = `I'm Nova, your dating coach. That's a great insight! Here's my perspective: Be authentic and listen actively. Remember that confidence comes from knowing your worth. Take care of yourself first.`;
+        reply_text = `I'm Nova, your dating coach. That's a great insight! Here's my perspective: Be authentic and listen actively. Remember that confidence comes from knowing your worth. Take care of yourself first.`;
         app.logger.info({ userId: session.user.id }, 'Returning mock chat response (OPENAI_API_KEY not configured)');
       } else {
         try {
-          const systemMessage = {
-            role: 'system' as const,
-            content:
-              'You are Nova, a friendly and empathetic dating coach. Give personalized, actionable advice about dating, relationships, and self-improvement. Keep responses concise (2-4 sentences). Be warm, encouraging, and direct.',
-          };
-
           const response = await getOpenAI().chat.completions.create({
             model: 'gpt-4o-mini',
             max_tokens: 1024,
-            messages: [systemMessage, ...contextMessages] as any,
+            messages: messages as any,
           });
 
-          assistantContent = response.choices[0].message.content || '';
+          reply_text = response.choices[0].message.content || '';
         } catch (error) {
           app.logger.error({ err: error, userId: session.user.id }, 'Failed to get AI response');
           throw error;
         }
       }
 
-      // Save assistant message
-      const [assistantMessage] = await app.db
-        .insert(schema.chatMessages)
-        .values({
-          userId: session.user.id,
-          role: 'assistant',
-          content: assistantContent,
-        })
-        .returning();
-
-      app.logger.info({ userId: session.user.id }, 'Chat message processed');
-      reply.status(201);
-      return { userMessage, assistantMessage };
+      app.logger.info({ userId: session.user.id }, 'AI chat response generated');
+      return { reply: reply_text };
     }
   );
 

@@ -29,6 +29,13 @@
       "when": 1776878389487,
       "tag": "20260422171949_giant_random",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776896741664,
+      "tag": "20260422222541_mighty_jack_power",
+      "breakpoints": true
     }
   ]
 }

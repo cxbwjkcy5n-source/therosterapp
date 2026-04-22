@@ -9,6 +9,8 @@ describe("API Integration Tests", () => {
   let dateId: string;
   let reviewDateId: string;
   let interactionId: string;
+  let noteId: string;
+  let reminderId: string;
 
   // ========== Auth Setup ==========
   test("Sign up test user", async () => {
@@ -619,15 +621,10 @@ describe("API Integration Tests", () => {
         message: "How do I start a conversation?",
       }),
     });
-    await expectStatus(res, 201);
+    await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.userMessage).toBeDefined();
-    expect(data.userMessage.id).toBeDefined();
-    expect(data.userMessage.content).toBeDefined();
-    expect(data.userMessage.role).toBeDefined();
-    expect(data.assistantMessage).toBeDefined();
-    expect(data.assistantMessage.id).toBeDefined();
-    expect(data.assistantMessage.content).toBeDefined();
+    expect(data.reply).toBeDefined();
+    expect(typeof data.reply).toBe("string");
   });
 
   test("Send another message", async () => {
@@ -638,17 +635,17 @@ describe("API Integration Tests", () => {
         message: "Any tips for first dates?",
       }),
     });
-    await expectStatus(res, 201);
+    await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.userMessage).toBeDefined();
-    expect(data.assistantMessage).toBeDefined();
+    expect(data.reply).toBeDefined();
   });
 
   test("Get updated chat messages", async () => {
     const res = await authenticatedApi("/api/chat", authToken);
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.messages.length).toBeGreaterThanOrEqual(2);
+    expect(data.messages).toBeDefined();
+    expect(Array.isArray(data.messages)).toBe(true);
   });
 
   test("Get chat message history", async () => {
@@ -861,6 +858,213 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 404);
   });
 
+  // ========== Notes Tests ==========
+  test("Create a note for a person", async () => {
+    const res = await authenticatedApi("/api/notes", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        content: "She loves hiking and coffee",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    noteId = data.id;
+    expect(data.id).toBeDefined();
+    expect(data.personId).toBe(personId);
+    expect(data.content).toBe("She loves hiking and coffee");
+    expect(data.createdAt).toBeDefined();
+  });
+
+  test("Create a note with custom created_at", async () => {
+    const res = await authenticatedApi("/api/notes", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        content: "Follow up next week",
+        created_at: "2026-04-15T10:00:00Z",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.id).toBeDefined();
+    expect(data.content).toBe("Follow up next week");
+  });
+
+  test("Create note fails without required person_id", async () => {
+    const res = await authenticatedApi("/api/notes", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        content: "Missing person_id",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Create note fails without required content", async () => {
+    const res = await authenticatedApi("/api/notes", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("List notes for a person", async () => {
+    const res = await authenticatedApi(`/api/notes?person_id=${personId}`, authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+    // Should contain notes we created
+    if (data.length > 0) {
+      const note = data[0];
+      expect(note.id).toBeDefined();
+      expect(note.personId).toBeDefined();
+      expect(note.content).toBeDefined();
+      expect(note.createdAt).toBeDefined();
+    }
+  });
+
+  test("Get notes without person_id returns 400", async () => {
+    const res = await authenticatedApi("/api/notes", authToken);
+    await expectStatus(res, 400);
+  });
+
+  test("Delete a note", async () => {
+    const res = await authenticatedApi(`/api/notes/${noteId}`, authToken, {
+      method: "DELETE",
+    });
+    await expectStatus(res, 204);
+  });
+
+  test("Delete nonexistent note returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/notes/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  // ========== Reminders Tests ==========
+  test("Create a reminder for a person", async () => {
+    const res = await authenticatedApi("/api/reminders", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        text: "Call Alice next week",
+        remind_at: "2026-04-29T10:00:00Z",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    reminderId = data.id;
+    expect(data.id).toBeDefined();
+    expect(data.personId).toBe(personId);
+    expect(data.text).toBe("Call Alice next week");
+    expect(data.remindAt).toBeDefined();
+    expect(data.createdAt).toBeDefined();
+  });
+
+  test("Create another reminder", async () => {
+    const res = await authenticatedApi("/api/reminders", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        text: "Check in on weekend plans",
+        remind_at: "2026-04-25T18:00:00Z",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.id).toBeDefined();
+    expect(data.text).toBe("Check in on weekend plans");
+  });
+
+  test("Create reminder fails without required person_id", async () => {
+    const res = await authenticatedApi("/api/reminders", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: "Missing person_id",
+        remind_at: "2026-04-25T10:00:00Z",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Create reminder fails without required text", async () => {
+    const res = await authenticatedApi("/api/reminders", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        remind_at: "2026-04-25T10:00:00Z",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Create reminder fails without required remind_at", async () => {
+    const res = await authenticatedApi("/api/reminders", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        text: "Missing remind_at",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("List reminders for a person", async () => {
+    const res = await authenticatedApi(`/api/reminders?person_id=${personId}`, authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+    // Should contain reminders we created
+    if (data.length > 0) {
+      const reminder = data[0];
+      expect(reminder.id).toBeDefined();
+      expect(reminder.personId).toBeDefined();
+      expect(reminder.text).toBeDefined();
+      expect(reminder.remindAt).toBeDefined();
+      expect(reminder.createdAt).toBeDefined();
+    }
+  });
+
+  test("Get reminders without person_id returns 400", async () => {
+    const res = await authenticatedApi("/api/reminders", authToken);
+    await expectStatus(res, 400);
+  });
+
+  test("Delete a reminder", async () => {
+    const res = await authenticatedApi(`/api/reminders/${reminderId}`, authToken, {
+      method: "DELETE",
+    });
+    await expectStatus(res, 204);
+  });
+
+  test("Delete nonexistent reminder returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/reminders/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
   // ========== Places Autocomplete Tests ==========
   test("Get place autocomplete suggestions with input", async () => {
     const res = await authenticatedApi("/api/places/autocomplete?input=New%20York", authToken);
@@ -1021,6 +1225,61 @@ describe("API Integration Tests", () => {
   test("Unauthenticated DELETE /api/interactions/{id} returns 401", async () => {
     const res = await api(
       "/api/interactions/00000000-0000-0000-0000-000000000000",
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/notes returns 401", async () => {
+    const res = await api(`/api/notes?person_id=${personId}`);
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/notes returns 401", async () => {
+    const res = await api("/api/notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        content: "Test note",
+      }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated DELETE /api/notes/{id} returns 401", async () => {
+    const res = await api(
+      "/api/notes/00000000-0000-0000-0000-000000000000",
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/reminders returns 401", async () => {
+    const res = await api(`/api/reminders?person_id=${personId}`);
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/reminders returns 401", async () => {
+    const res = await api("/api/reminders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        text: "Test reminder",
+        remind_at: "2026-04-25T10:00:00Z",
+      }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated DELETE /api/reminders/{id} returns 401", async () => {
+    const res = await api(
+      "/api/reminders/00000000-0000-0000-0000-000000000000",
       {
         method: "DELETE",
       }
