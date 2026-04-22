@@ -51,21 +51,22 @@ export default function TabLayout() {
             >
               <View
                 style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 26,
-                  backgroundColor: COLORS.primary,
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: '#E53935',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginBottom: 16,
-                  shadowColor: COLORS.primary,
+                  marginTop: -12,
+                  shadowColor: '#E53935',
                   shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.35,
-                  shadowRadius: 8,
-                  elevation: 6,
+                  shadowOpacity: 0.45,
+                  shadowRadius: 10,
+                  elevation: 8,
+                  zIndex: 10,
                 }}
               >
-                <Plus size={26} color="#fff" />
+                <Plus size={28} color="#fff" strokeWidth={2.5} />
               </View>
             </Pressable>
           ),
@@ -81,7 +82,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="(profile)"
         options={{
-          title: 'Settings',
+          title: 'Profile',
           tabBarIcon: ({ color }) => <User size={22} color={color} />,
         }}
       />

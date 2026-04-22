@@ -75,7 +75,7 @@ export default function DatePlanScreen() {
     setIdeas([]);
     startSparkleAnimation();
     try {
-      const result = await apiPost<{ ideas: DateIdea[] }>('/api/date-plan', {
+      const result = await apiPost<{ ideas: DateIdea[] }>('/api/date-plan/ideas', {
         person_id: selectedPersonId,
         location: location.trim() || undefined,
         budget,

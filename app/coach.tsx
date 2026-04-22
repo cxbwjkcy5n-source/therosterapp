@@ -59,22 +59,29 @@ export default function CoachScreen() {
       content: trimmed,
       created_at: new Date().toISOString(),
     };
+
     setMessages((prev) => [...prev, tempUserMsg]);
     setLoading(true);
 
     try {
-      console.log('[Coach] POST /api/chat with message');
-      const result = await apiPost<{
-        userMessage: ChatMessage;
-        assistantMessage: ChatMessage;
-      }>('/api/chat', { message: trimmed });
-      console.log('[Coach] Got reply from AI');
+      console.log('[Coach] POST /api/chat with message and history');
+      const history = messages.map((m) => ({ role: m.role, content: m.content }));
+      const result = await apiPost<{ reply: string }>('/api/chat', {
+        message: trimmed,
+        history,
+      });
+      console.log('[Coach] Got reply from AI:', result?.reply?.slice(0, 60));
+
+      const assistantMsg: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: result?.reply || '',
+        created_at: new Date().toISOString(),
+      };
+
       setMessages((prev) => {
         const filtered = prev.filter((m) => m.id !== tempUserMsg.id);
-        const newMsgs: ChatMessage[] = [];
-        if (result?.userMessage) newMsgs.push(result.userMessage);
-        if (result?.assistantMessage) newMsgs.push(result.assistantMessage);
-        return [...filtered, ...newMsgs];
+        return [...filtered, tempUserMsg, assistantMsg];
       });
     } catch (e: any) {
       console.error('[Coach] Failed to send message:', e);

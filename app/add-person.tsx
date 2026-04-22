@@ -51,10 +51,15 @@ const ZODIAC_SIGNS = [
   { value: 'pisces', label: '♓ Pisces' },
 ];
 
-function getZodiacFromBirthday(dateStr: string): string {
-  const date = new Date(dateStr);
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
+// mmdd format: "MM-DD"
+function getZodiacFromBirthday(mmdd: string): string {
+  const parts = mmdd.split('-');
+  if (parts.length < 2) return '';
+  const month = parseInt(parts[0], 10);
+  const day = parseInt(parts[1], 10);
+  if (isNaN(month) || isNaN(day)) return '';
+  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return 'aquarius';
+  if ((month === 2 && day >= 19) || (month === 3 && day <= 20)) return 'pisces';
   if ((month === 3 && day >= 21) || (month === 4 && day <= 19)) return 'aries';
   if ((month === 4 && day >= 20) || (month === 5 && day <= 20)) return 'taurus';
   if ((month === 5 && day >= 21) || (month === 6 && day <= 20)) return 'gemini';
@@ -64,9 +69,7 @@ function getZodiacFromBirthday(dateStr: string): string {
   if ((month === 9 && day >= 23) || (month === 10 && day <= 22)) return 'libra';
   if ((month === 10 && day >= 23) || (month === 11 && day <= 21)) return 'scorpio';
   if ((month === 11 && day >= 22) || (month === 12 && day <= 21)) return 'sagittarius';
-  if ((month === 12 && day >= 22) || (month === 1 && day <= 19)) return 'capricorn';
-  if ((month === 1 && day >= 20) || (month === 2 && day <= 18)) return 'aquarius';
-  return 'pisces';
+  return 'capricorn'; // 12-22 to 01-19
 }
 
 function getInterestColor(val: number) {
@@ -490,6 +493,11 @@ export default function AddPersonScreen() {
               onChange={(v) => {
                 console.log('[AddPerson] Birthday selected:', v, formatBirthdayDisplay(v));
                 setBirthday(v);
+                const computed = getZodiacFromBirthday(v);
+                if (computed) {
+                  console.log('[AddPerson] Auto-setting zodiac from birthday:', computed);
+                  setZodiac(computed);
+                }
               }}
             />
           </View>
