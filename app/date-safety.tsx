@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 interface Person {
   id: string;
   name: string;
+  photo_url?: string;
 }
 
 export default function DateSafetyScreen() {
@@ -60,8 +61,9 @@ export default function DateSafetyScreen() {
       });
       console.log('[DateSafety] Safety check-in created');
 
+      const photoLine = selectedPerson?.photo_url ? `\n📸 ${selectedPerson.photo_url}` : '';
       const message = result?.share_message ||
-        `I'm on a date with ${selectedPerson?.name || 'someone'} at ${location}. ${appearance ? `They are: ${appearance}. ` : ''}Please check on me if you don't hear from me.`;
+        `🛡️ Safety Check-In\nI'm on a date with ${selectedPerson?.name || 'someone'} at ${location}. ${appearance ? `They are: ${appearance}. ` : ''}Please check on me if you don't hear from me.${photoLine}`;
 
       const phoneNumbers = filledContacts.join(',');
       const smsUrl = `sms:${phoneNumbers}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;

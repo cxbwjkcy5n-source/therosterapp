@@ -40,22 +40,7 @@ export default function TabLayout() {
         name="(add)"
         options={{
           title: '',
-          tabBarIcon: () => (
-            <View
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 26,
-                backgroundColor: COLORS.primary,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-                boxShadow: '0 4px 16px rgba(232,25,44,0.35)',
-              }}
-            >
-              <Plus size={26} color="#fff" />
-            </View>
-          ),
+          tabBarShowLabel: false,
           tabBarButton: () => (
             <Pressable
               onPress={() => {
@@ -63,7 +48,26 @@ export default function TabLayout() {
                 router.push('/add-person');
               }}
               style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-            />
+            >
+              <View
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: COLORS.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                  shadowColor: COLORS.primary,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.35,
+                  shadowRadius: 8,
+                  elevation: 6,
+                }}
+              >
+                <Plus size={26} color="#fff" />
+              </View>
+            </Pressable>
           ),
         }}
       />
