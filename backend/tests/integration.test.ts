@@ -871,6 +871,31 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 404);
   });
 
+  // ========== Places Autocomplete Tests ==========
+  test("Get place autocomplete suggestions with input", async () => {
+    const res = await authenticatedApi("/api/places/autocomplete?input=New%20York", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.predictions).toBeDefined();
+    expect(Array.isArray(data.predictions)).toBe(true);
+  });
+
+  test("Get place autocomplete with input and sessiontoken", async () => {
+    const res = await authenticatedApi(
+      "/api/places/autocomplete?input=San%20Francisco&sessiontoken=test-session-123",
+      authToken
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.predictions).toBeDefined();
+    expect(Array.isArray(data.predictions)).toBe(true);
+  });
+
+  test("Get place autocomplete without input returns 400", async () => {
+    const res = await authenticatedApi("/api/places/autocomplete", authToken);
+    await expectStatus(res, 400);
+  });
+
   // ========== Profile Tests ==========
   test("Get authenticated user profile", async () => {
     const res = await authenticatedApi("/api/profile", authToken);
@@ -1010,6 +1035,11 @@ describe("API Integration Tests", () => {
         method: "DELETE",
       }
     );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/places/autocomplete returns 401", async () => {
+    const res = await api("/api/places/autocomplete?input=test");
     await expectStatus(res, 401);
   });
 
