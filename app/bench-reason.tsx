@@ -31,8 +31,8 @@ export default function BenchReasonScreen() {
     setSaving(true);
     try {
       await apiPost(`/api/persons/${personId}/bench`, { reason: finalReason });
-      console.log('[BenchReason] Successfully benched:', personId);
-      router.back();
+      console.log('[BenchReason] Successfully benched:', personId, '— navigating to bench tab');
+      router.replace('/(tabs)/(bench)');
     } catch (e: any) {
       console.error('[BenchReason] Failed to bench:', e);
       Alert.alert('Error', 'Could not bench this person. Try again.');

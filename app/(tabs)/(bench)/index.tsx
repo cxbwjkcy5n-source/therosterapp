@@ -16,7 +16,7 @@ import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiGet, apiPost } from '@/utils/api';
+import { apiGet, apiPut } from '@/utils/api';
 import type { ImageSourcePropType } from 'react-native';
 
 interface Person {
@@ -166,7 +166,8 @@ export default function BenchScreen() {
           text: 'Bring Back',
           onPress: async () => {
             try {
-              await apiPost(`/api/persons/${person.id}/unbenched`, {});
+              console.log('[Bench] PUT /api/persons/:id is_benched=false for:', person.id);
+              await apiPut(`/api/persons/${person.id}`, { is_benched: false });
               console.log('[Bench] Successfully unbenched:', person.id);
               loadPersons();
             } catch (e) {
@@ -325,6 +326,24 @@ export default function BenchScreen() {
                   {item.location}
                 </Text>
               ) : null}
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  console.log('[Bench] Unbenched button pressed for:', item.id, item.name);
+                  handleUnbench(item);
+                }}
+                style={{
+                  marginTop: 6,
+                  backgroundColor: 'rgba(255,255,255,0.18)',
+                  borderRadius: 8,
+                  paddingVertical: 5,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.35)',
+                }}
+              >
+                <Text style={{ color: COLORS.text, fontSize: 11, fontWeight: '700' }}>Unbenched</Text>
+              </Pressable>
             </LinearGradient>
           </View>
         </AnimatedPressable>
