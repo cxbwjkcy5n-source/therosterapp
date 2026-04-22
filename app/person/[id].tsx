@@ -713,7 +713,8 @@ type TabName = 'Overview' | 'Dates' | 'Notes' | 'Reminders';
 const TABS: TabName[] = ['Overview', 'Dates', 'Notes', 'Reminders'];
 
 export default function PersonDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const insets = useSafeAreaInsets();
 
   // core data
@@ -773,12 +774,19 @@ export default function PersonDetailScreen() {
 
   const loadPerson = useCallback(async () => {
     if (!id) return;
-    console.log('[PersonDetail] Loading person:', id);
+    const personId = Array.isArray(id) ? id[0] : id;
+    console.log('[PersonDetail] Loading person id:', personId);
     try {
-      const data = await apiGet<{ person: Person }>(`/api/persons/${id}`);
-      console.log('[PersonDetail] Person loaded:', data.person?.name);
-      setPerson(data.person);
-      setEditData(data.person);
+      const data = await apiGet<any>(`/api/persons/${personId}`);
+      console.log('[PersonDetail] Raw API response keys:', Object.keys(data || {}));
+      // Handle both { person: {...} } and direct person object shapes
+      const resolved: Person = data?.person ?? data;
+      console.log('[PersonDetail] Person loaded:', resolved?.name, 'id:', resolved?.id);
+      if (!resolved?.id) {
+        console.error('[PersonDetail] Person not found in response:', data);
+      }
+      setPerson(resolved ?? null);
+      setEditData(resolved ?? {});
     } catch (e) {
       console.error('[PersonDetail] Failed to load person:', e);
     } finally {
@@ -864,9 +872,10 @@ export default function PersonDetailScreen() {
           console.error('[PersonDetail] Photo upload failed:', photoErr);
         }
       }
-      const updated = await apiGet<{ person: Person }>(`/api/persons/${id}`);
-      setPerson(updated.person);
-      setEditData(updated.person);
+      const updatedRaw = await apiGet<any>(`/api/persons/${id}`);
+      const updated: Person = updatedRaw?.person ?? updatedRaw;
+      setPerson(updated);
+      setEditData(updated);
       setEditing(false);
       setNewPhotoUri(null);
       console.log('[PersonDetail] Person saved successfully');
