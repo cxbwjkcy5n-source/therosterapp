@@ -474,16 +474,6 @@ describe("API Integration Tests", () => {
     expect(data.success).toBe(true);
   });
 
-  test("Verify deleted date is gone", async () => {
-    const res = await authenticatedApi(
-      `/api/dates/${dateId}`,
-      authToken
-    );
-    // Should return 404 since we deleted it (if there's a GET endpoint)
-    // If not, we'll just verify the delete worked via the previous test
-    expect(res).toBeDefined();
-  });
-
   test("Delete nonexistent date returns 404", async () => {
     const res = await authenticatedApi(
       "/api/dates/00000000-0000-0000-0000-000000000000",
