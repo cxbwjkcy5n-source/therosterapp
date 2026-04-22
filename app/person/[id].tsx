@@ -8,8 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Linking,
-  TouchableOpacity,
-  Animated,
+  Modal,
   Platform,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -19,7 +18,6 @@ import {
   X as XIcon,
   Trash2,
   Users,
-  Check,
   Phone,
   MessageSquare,
   Plus,
@@ -29,6 +27,7 @@ import {
   ChevronUp,
   Heart,
   Star,
+  Send,
 } from 'lucide-react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,7 +56,14 @@ function getInitials(name: string) {
 
 function formatShortDate(dateStr: string): string {
   const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+}
+
+function formatDateTimeLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  const date = d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return `${date}  ${time}`;
 }
 
 function formatFullDate(dateStr: string): string {
@@ -79,7 +85,7 @@ function formatTimestamp(dateStr: string): string {
 function getConnectionLabel(type?: string, custom?: string) {
   const map: Record<string, string> = {
     friend: 'Friend', casual: 'Casual', booty_call: 'Booty Call',
-    foodie_call: 'Foodie Call', figuring_it_out: 'Figuring It Out',
+    foodie_call: 'Foodie buddy', figuring_it_out: 'Figuring It Out',
     serious: 'Serious', other: custom || 'Other',
   };
   return type ? (map[type] || type) : '';
@@ -195,6 +201,15 @@ const CARD_SHADOW = {
   elevation: 3,
 };
 
+const QUICK_MESSAGES = [
+  'Good morning 🌅',
+  'Thinking about you 💭',
+  'Miss you',
+  'Are you free this weekend? 🍽️',
+  'Wanna grab dinner? 🍽️',
+  'Had a great time last night!',
+];
+
 // ─── sub-components ──────────────────────────────────────────────────────────
 
 function SectionHeader({ label }: { label: string }) {
@@ -212,15 +227,15 @@ function SectionHeader({ label }: { label: string }) {
   );
 }
 
-function PillTag({ label, color = '#444444', bg = '#F5F5F5' }: { label: string; color?: string; bg?: string }) {
+function PillTag({ label, color = '#555555', bg = '#F5F5F5' }: { label: string; color?: string; bg?: string }) {
   return (
     <View style={{
       backgroundColor: bg,
-      borderRadius: 20,
+      borderRadius: 8,
       paddingHorizontal: 10,
       paddingVertical: 5,
     }}>
-      <Text style={{ color, fontSize: 12, fontWeight: '500' }}>{label}</Text>
+      <Text style={{ color, fontSize: 11, fontWeight: '500' }}>{label}</Text>
     </View>
   );
 }
@@ -288,6 +303,389 @@ function EditableSlider({ label, value, onChange }: { label: string; value?: num
   );
 }
 
+// Circular score ring using SVG-like approach with border
+function ScoreRing({ score, color, size = 48 }: { score: number; color: string; size?: number }) {
+  const displayScore = String(score ?? 0);
+  return (
+    <View style={{
+      width: size, height: size, borderRadius: size / 2,
+      borderWidth: 3, borderColor: color,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: '#FFFFFF',
+    }}>
+      <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '700' }}>{displayScore}</Text>
+    </View>
+  );
+}
+
+// Compatibility ring for profile card
+function CompatibilityRing({ score }: { score: number }) {
+  const displayScore = String(score);
+  return (
+    <View style={{
+      width: 48, height: 48, borderRadius: 24,
+      borderWidth: 3, borderColor: RED,
+      alignItems: 'center', justifyContent: 'center',
+      backgroundColor: '#FFFFFF',
+    }}>
+      <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '700' }}>{displayScore}</Text>
+    </View>
+  );
+}
+
+// ─── Call Modal ───────────────────────────────────────────────────────────────
+
+function CallModal({ visible, name, phone, onClose }: { visible: boolean; name: string; phone: string; onClose: () => void }) {
+  const handleStartCall = () => {
+    console.log('[PersonDetail] Start Call pressed for:', name, phone);
+    Linking.openURL(`tel:${phone.replace(/\s/g, '')}`).catch((e) =>
+      console.error('[PersonDetail] Failed to open tel link:', e)
+    );
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+        <View style={{
+          backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          padding: 28, paddingBottom: 40,
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}>
+              {'Call '}
+              <Text>{name}</Text>
+            </Text>
+            <Pressable onPress={onClose} style={{
+              width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F5F5',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <XIcon size={16} color="#666666" />
+            </Pressable>
+          </View>
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <View style={{
+              width: 72, height: 72, borderRadius: 36,
+              backgroundColor: 'rgba(229,57,53,0.08)',
+              alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+            }}>
+              <Phone size={32} color={RED} />
+            </View>
+            <Text style={{ color: '#999999', fontSize: 14, marginBottom: 6 }}>Calling</Text>
+            <Text style={{ color: '#1A1A1A', fontSize: 20, fontWeight: '700' }}>{phone}</Text>
+          </View>
+          <Pressable
+            onPress={handleStartCall}
+            style={{
+              backgroundColor: RED, borderRadius: 14, height: 52,
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+            }}
+          >
+            <Phone size={20} color="#FFFFFF" />
+            <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>Start Call</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Text Modal ───────────────────────────────────────────────────────────────
+
+function TextModal({ visible, name, phone, onClose }: { visible: boolean; name: string; phone: string; onClose: () => void }) {
+  const [customMessage, setCustomMessage] = useState('');
+  const firstName = name.split(' ')[0];
+
+  const sendMessage = (msg: string) => {
+    console.log('[PersonDetail] Sending message to:', name, 'message:', msg);
+    const encoded = encodeURIComponent(msg);
+    const cleanPhone = phone.replace(/\s/g, '');
+    Linking.openURL(`sms:${cleanPhone}?body=${encoded}`).catch((e) =>
+      console.error('[PersonDetail] Failed to open sms link:', e)
+    );
+    onClose();
+  };
+
+  const handleSendCustom = () => {
+    if (!customMessage.trim()) return;
+    sendMessage(customMessage.trim());
+    setCustomMessage('');
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+        <View style={{
+          backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          padding: 24, paddingBottom: 40,
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}>
+              {'Text '}
+              <Text>{name}</Text>
+            </Text>
+            <Pressable onPress={onClose} style={{
+              width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F5F5',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <XIcon size={16} color="#666666" />
+            </Pressable>
+          </View>
+
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 }}>Quick Messages</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {QUICK_MESSAGES.map((msg) => (
+                <Pressable
+                  key={msg}
+                  onPress={() => {
+                    console.log('[PersonDetail] Quick message tapped:', msg);
+                    sendMessage(msg);
+                  }}
+                  style={{
+                    backgroundColor: '#F5F5F5', borderRadius: 20,
+                    paddingHorizontal: 14, paddingVertical: 9,
+                  }}
+                >
+                  <Text style={{ color: '#1A1A1A', fontSize: 13 }}>{msg}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </ScrollView>
+
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#1A1A1A', marginBottom: 10 }}>Custom Message</Text>
+          <View style={{
+            flexDirection: 'row', alignItems: 'flex-end',
+            backgroundColor: '#F5F5F5', borderRadius: 14,
+            borderWidth: 1, borderColor: '#E0E0E0',
+            paddingHorizontal: 14, paddingVertical: 10, gap: 10,
+          }}>
+            <TextInput
+              value={customMessage}
+              onChangeText={setCustomMessage}
+              placeholder={`Message ${firstName}...`}
+              placeholderTextColor="#BBBBBB"
+              multiline
+              style={{ flex: 1, color: '#1A1A1A', fontSize: 14, maxHeight: 100 }}
+            />
+            <Pressable
+              onPress={handleSendCustom}
+              style={{
+                width: 36, height: 36, borderRadius: 18,
+                backgroundColor: customMessage.trim() ? RED : '#DDDDDD',
+                alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <Send size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ─── Log Date Modal ───────────────────────────────────────────────────────────
+
+function LogDateModal({
+  visible, onClose, onSave,
+  dateType, setDateType,
+  dateWhen, setDateWhen,
+  showDatePicker, setShowDatePicker,
+  showTimePicker, setShowTimePicker,
+  dateLocation, setDateLocation,
+  dateOverall, setDateOverall,
+  dateConversation, setDateConversation,
+  dateAttraction, setDateAttraction,
+  dateEffort, setDateEffort,
+  dateWouldGoAgain, setDateWouldGoAgain,
+  dateNotes, setDateNotes,
+  savingDate,
+}: {
+  visible: boolean; onClose: () => void; onSave: () => void;
+  dateType: string; setDateType: (v: string) => void;
+  dateWhen: Date; setDateWhen: (v: Date) => void;
+  showDatePicker: boolean; setShowDatePicker: (v: boolean) => void;
+  showTimePicker: boolean; setShowTimePicker: (v: boolean) => void;
+  dateLocation: string; setDateLocation: (v: string) => void;
+  dateOverall: number; setDateOverall: (v: number) => void;
+  dateConversation: number; setDateConversation: (v: number) => void;
+  dateAttraction: number; setDateAttraction: (v: number) => void;
+  dateEffort: number; setDateEffort: (v: number) => void;
+  dateWouldGoAgain: string; setDateWouldGoAgain: (v: string) => void;
+  dateNotes: string; setDateNotes: (v: string) => void;
+  savingDate: boolean;
+}) {
+  const dateWhenLabel = dateWhen.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const dateTimeLabel = dateWhen.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+        <View style={{
+          backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          maxHeight: '92%',
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingBottom: 0 }}>
+            <Text style={{ color: '#1A1A1A', fontSize: 18, fontWeight: '700' }}>Log a Date</Text>
+            <Pressable onPress={onClose} style={{
+              width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F5F5',
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <XIcon size={16} color="#666666" />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 16 }} keyboardShouldPersistTaps="handled">
+            {/* Type */}
+            <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Type</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
+              {DATE_TYPES.map((t) => {
+                const isSelected = dateType === t;
+                return (
+                  <Pressable
+                    key={t}
+                    onPress={() => {
+                      console.log('[PersonDetail] Date type selected:', t);
+                      setDateType(t);
+                    }}
+                    style={{
+                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                      backgroundColor: isSelected ? RED : '#F5F5F5',
+                      borderWidth: 1, borderColor: isSelected ? RED : '#E0E0E0',
+                    }}
+                  >
+                    <Text style={{ color: isSelected ? '#fff' : '#666666', fontSize: 13, fontWeight: '500' }}>{t}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* When */}
+            <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>When</Text>
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+              <Pressable
+                onPress={() => {
+                  console.log('[PersonDetail] Date picker opened');
+                  setShowDatePicker(true);
+                }}
+                style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E0E0E0', flexDirection: 'row', alignItems: 'center', gap: 8 }}
+              >
+                <Calendar size={16} color={RED} />
+                <Text style={{ color: '#1A1A1A', fontSize: 14 }}>{dateWhenLabel}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  console.log('[PersonDetail] Time picker opened');
+                  setShowTimePicker(true);
+                }}
+                style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E0E0E0', alignItems: 'center' }}
+              >
+                <Text style={{ color: '#1A1A1A', fontSize: 14 }}>{dateTimeLabel}</Text>
+              </Pressable>
+            </View>
+            {showDatePicker && (
+              <DateTimePicker
+                value={dateWhen}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(_, d) => {
+                  setShowDatePicker(false);
+                  if (d) { console.log('[PersonDetail] Date selected:', d); setDateWhen(d); }
+                }}
+              />
+            )}
+            {showTimePicker && (
+              <DateTimePicker
+                value={dateWhen}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(_, d) => {
+                  setShowTimePicker(false);
+                  if (d) { console.log('[PersonDetail] Time selected:', d); setDateWhen(d); }
+                }}
+              />
+            )}
+
+            {/* Location */}
+            <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Location</Text>
+            <TextInput
+              value={dateLocation}
+              onChangeText={setDateLocation}
+              placeholder="e.g. Blue Bottle Cafe"
+              placeholderTextColor="#BBBBBB"
+              style={{
+                backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
+                color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 20,
+              }}
+            />
+
+            {/* Rate the Date */}
+            <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 12 }}>Rate the Date</Text>
+            <EditableSlider label="Overall" value={dateOverall} onChange={(v) => { console.log('[PersonDetail] Date overall rating:', v); setDateOverall(v); }} />
+            <EditableSlider label="Conversation" value={dateConversation} onChange={(v) => { console.log('[PersonDetail] Date conversation rating:', v); setDateConversation(v); }} />
+            <EditableSlider label="Attraction IRL" value={dateAttraction} onChange={(v) => { console.log('[PersonDetail] Date attraction rating:', v); setDateAttraction(v); }} />
+            <EditableSlider label="Effort & Intent" value={dateEffort} onChange={(v) => { console.log('[PersonDetail] Date effort rating:', v); setDateEffort(v); }} />
+
+            {/* Would go again */}
+            <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Would go again?</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+              {WOULD_GO_AGAIN_OPTIONS.map((opt) => {
+                const isSelected = dateWouldGoAgain === opt;
+                return (
+                  <Pressable
+                    key={opt}
+                    onPress={() => {
+                      console.log('[PersonDetail] Would go again selected:', opt);
+                      setDateWouldGoAgain(opt);
+                    }}
+                    style={{
+                      paddingHorizontal: 20, paddingVertical: 9, borderRadius: 20,
+                      backgroundColor: isSelected ? RED : '#F5F5F5',
+                      borderWidth: 1, borderColor: isSelected ? RED : '#E0E0E0',
+                    }}
+                  >
+                    <Text style={{ color: isSelected ? '#fff' : '#666666', fontSize: 14, fontWeight: '500' }}>{opt}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Notes */}
+            <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Notes</Text>
+            <TextInput
+              value={dateNotes}
+              onChangeText={setDateNotes}
+              placeholder="How did it go?"
+              placeholderTextColor="#BBBBBB"
+              multiline
+              style={{
+                backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
+                color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0',
+                minHeight: 80, textAlignVertical: 'top', marginBottom: 20,
+              }}
+            />
+
+            <Pressable
+              onPress={onSave}
+              disabled={savingDate}
+              style={{
+                backgroundColor: RED, borderRadius: 14, height: 52,
+                alignItems: 'center', justifyContent: 'center', opacity: savingDate ? 0.7 : 1,
+              }}
+            >
+              {savingDate ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Save Date</Text>
+              )}
+            </Pressable>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── main screen ─────────────────────────────────────────────────────────────
 
 type TabName = 'Overview' | 'Dates' | 'Notes' | 'Reminders';
@@ -312,6 +710,7 @@ export default function PersonDetailScreen() {
   const [dates, setDates] = useState<DateEntry[]>([]);
   const [loadingDates, setLoadingDates] = useState(true);
   const [expandedDateId, setExpandedDateId] = useState<string | null>(null);
+  const [showLogDateModal, setShowLogDateModal] = useState(false);
   // log date form
   const [dateType, setDateType] = useState('Coffee');
   const [dateWhen, setDateWhen] = useState(new Date());
@@ -341,6 +740,13 @@ export default function PersonDetailScreen() {
   const [reminderDate, setReminderDate] = useState(new Date());
   const [showReminderDatePicker, setShowReminderDatePicker] = useState(false);
   const [savingReminder, setSavingReminder] = useState(false);
+
+  // modals
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [showTextModal, setShowTextModal] = useState(false);
+
+  // edit date
+  const [editingDateId, setEditingDateId] = useState<string | null>(null);
 
   // ── loaders ──────────────────────────────────────────────────────────────
 
@@ -524,6 +930,7 @@ export default function PersonDetailScreen() {
       setDateEffort(5);
       setDateWouldGoAgain('Maybe');
       setDateNotes('');
+      setShowLogDateModal(false);
       await loadDates();
     } catch (e: any) {
       console.error('[PersonDetail] Failed to save date:', e);
@@ -531,6 +938,26 @@ export default function PersonDetailScreen() {
     } finally {
       setSavingDate(false);
     }
+  };
+
+  const handleDeleteDate = (dateId: string) => {
+    console.log('[PersonDetail] Delete date pressed:', dateId);
+    Alert.alert('Delete date?', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete', style: 'destructive',
+        onPress: async () => {
+          try {
+            await apiDelete(`/api/dates/${dateId}`);
+            console.log('[PersonDetail] Date deleted:', dateId);
+            setDates((prev) => prev.filter((d) => d.id !== dateId));
+            setExpandedDateId(null);
+          } catch (e) {
+            console.error('[PersonDetail] Failed to delete date:', e);
+          }
+        },
+      },
+    ]);
   };
 
   const handleSaveNote = async () => {
@@ -638,7 +1065,9 @@ export default function PersonDetailScreen() {
   const initials = getInitials(displayData.name || '');
   const connectionLabel = getConnectionLabel(displayData.connection_type, displayData.connection_type_custom);
   const hasPhone = !!(displayData.phone_number);
-  const personFirstName = (person.name || '').split(' ')[0];
+  const personName = person.name || '';
+  const personFirstName = personName.split(' ')[0];
+  const phoneNumber = displayData.phone_number || '';
 
   const ratingFields = [
     { label: 'Sexual chemistry', key: 'sexual_chemistry' as keyof Person },
@@ -653,64 +1082,10 @@ export default function PersonDetailScreen() {
   const ratingValues = ratingFields.map((f) => (displayData[f.key] as number) ?? 5);
   const avgCompatibility = Math.round(ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length);
 
-  const dateWhenLabel = dateWhen.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const dateTimeLabel = dateWhen.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  const reminderDateLabel = reminderDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const reminderDateLabel = reminderDate.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 
-  // ── social buttons config ─────────────────────────────────────────────────
-
-  const socialButtons = [
-    {
-      key: 'call',
-      label: 'Call',
-      icon: <Ionicons name="call" size={20} color={hasPhone ? '#1A1A1A' : '#CCCCCC'} />,
-      enabled: hasPhone,
-      onPress: () => {
-        console.log('[PersonDetail] Call button pressed');
-        Linking.openURL(`tel:${(displayData.phone_number || '').replace(/\s/g, '')}`);
-      },
-    },
-    {
-      key: 'text',
-      label: 'Text',
-      icon: <Ionicons name="chatbubble" size={20} color={hasPhone ? '#1A1A1A' : '#CCCCCC'} />,
-      enabled: hasPhone,
-      onPress: () => {
-        console.log('[PersonDetail] Text button pressed');
-        Linking.openURL(`sms:${(displayData.phone_number || '').replace(/\s/g, '')}`);
-      },
-    },
-    {
-      key: 'instagram',
-      label: 'Insta',
-      icon: <FontAwesome name="instagram" size={20} color={displayData.instagram ? '#E1306C' : '#CCCCCC'} />,
-      enabled: !!displayData.instagram,
-      onPress: () => {
-        console.log('[PersonDetail] Instagram button pressed:', displayData.instagram);
-        openLink(`https://instagram.com/${displayData.instagram}`);
-      },
-    },
-    {
-      key: 'tiktok',
-      label: 'TikTok',
-      icon: <FontAwesome name="music" size={18} color={displayData.tiktok ? '#010101' : '#CCCCCC'} />,
-      enabled: !!displayData.tiktok,
-      onPress: () => {
-        console.log('[PersonDetail] TikTok button pressed:', displayData.tiktok);
-        openLink(`https://tiktok.com/@${displayData.tiktok}`);
-      },
-    },
-    {
-      key: 'facebook',
-      label: 'Facebook',
-      icon: <FontAwesome name="facebook" size={20} color={displayData.facebook ? '#1877F2' : '#CCCCCC'} />,
-      enabled: !!displayData.facebook,
-      onPress: () => {
-        console.log('[PersonDetail] Facebook button pressed:', displayData.facebook);
-        openLink(`https://facebook.com/${displayData.facebook}`);
-      },
-    },
-  ];
+  const chemistryScore = displayData.interest_level ?? displayData.overall_chemistry ?? 0;
+  const chemistryStr = String(chemistryScore);
 
   // ── render tabs ───────────────────────────────────────────────────────────
 
@@ -1095,248 +1470,188 @@ export default function PersonDetailScreen() {
     });
 
     return (
-      <View style={{ gap: 16 }}>
-        {/* Log a Date form */}
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-          <Text style={{ color: '#1A1A1A', fontSize: 17, fontWeight: '700', marginBottom: 20 }}>Log a Date</Text>
-
-          {/* Type */}
-          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Type</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-            {DATE_TYPES.map((t) => {
-              const isSelected = dateType === t;
-              return (
-                <AnimatedPressable
-                  key={t}
-                  onPress={() => {
-                    console.log('[PersonDetail] Date type selected:', t);
-                    setDateType(t);
-                  }}
-                >
-                  <View style={{
-                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-                    backgroundColor: isSelected ? RED : '#F5F5F5',
-                    borderWidth: 1, borderColor: isSelected ? RED : '#E0E0E0',
-                  }}>
-                    <Text style={{ color: isSelected ? '#fff' : '#666666', fontSize: 13, fontWeight: '500' }}>{t}</Text>
-                  </View>
-                </AnimatedPressable>
-              );
-            })}
-          </View>
-
-          {/* When */}
-          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>When</Text>
-          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-            <AnimatedPressable
-              onPress={() => {
-                console.log('[PersonDetail] Date picker opened');
-                setShowDatePicker(true);
-              }}
-              style={{ flex: 1 }}
-            >
-              <View style={{
-                backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
-                borderWidth: 1, borderColor: '#E0E0E0', flexDirection: 'row', alignItems: 'center', gap: 8,
-              }}>
-                <Calendar size={16} color={RED} />
-                <Text style={{ color: '#1A1A1A', fontSize: 14 }}>{dateWhenLabel}</Text>
-              </View>
-            </AnimatedPressable>
-            <AnimatedPressable
-              onPress={() => {
-                console.log('[PersonDetail] Time picker opened');
-                setShowTimePicker(true);
-              }}
-              style={{ flex: 1 }}
-            >
-              <View style={{
-                backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
-                borderWidth: 1, borderColor: '#E0E0E0', alignItems: 'center',
-              }}>
-                <Text style={{ color: '#1A1A1A', fontSize: 14 }}>{dateTimeLabel}</Text>
-              </View>
-            </AnimatedPressable>
-          </View>
-          {showDatePicker && (
-            <DateTimePicker
-              value={dateWhen}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={(_, d) => {
-                setShowDatePicker(false);
-                if (d) {
-                  console.log('[PersonDetail] Date selected:', d);
-                  setDateWhen(d);
-                }
-              }}
-            />
-          )}
-          {showTimePicker && (
-            <DateTimePicker
-              value={dateWhen}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={(_, d) => {
-                setShowTimePicker(false);
-                if (d) {
-                  console.log('[PersonDetail] Time selected:', d);
-                  setDateWhen(d);
-                }
-              }}
-            />
-          )}
-
-          {/* Location */}
-          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Location</Text>
-          <TextInput
-            value={dateLocation}
-            onChangeText={setDateLocation}
-            placeholder="e.g. Blue Bottle Cafe"
-            placeholderTextColor="#BBBBBB"
-            style={{
-              backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
-              color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 20,
-            }}
-          />
-
-          {/* Rate the Date */}
-          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 12 }}>Rate the Date</Text>
-          <EditableSlider label="Overall" value={dateOverall} onChange={(v) => { console.log('[PersonDetail] Date overall rating:', v); setDateOverall(v); }} />
-          <EditableSlider label="Conversation" value={dateConversation} onChange={(v) => { console.log('[PersonDetail] Date conversation rating:', v); setDateConversation(v); }} />
-          <EditableSlider label="Attraction IRL" value={dateAttraction} onChange={(v) => { console.log('[PersonDetail] Date attraction rating:', v); setDateAttraction(v); }} />
-          <EditableSlider label="Effort & Intent" value={dateEffort} onChange={(v) => { console.log('[PersonDetail] Date effort rating:', v); setDateEffort(v); }} />
-
-          {/* Would go again */}
-          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Would go again?</Text>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-            {WOULD_GO_AGAIN_OPTIONS.map((opt) => {
-              const isSelected = dateWouldGoAgain === opt;
-              return (
-                <AnimatedPressable
-                  key={opt}
-                  onPress={() => {
-                    console.log('[PersonDetail] Would go again selected:', opt);
-                    setDateWouldGoAgain(opt);
-                  }}
-                >
-                  <View style={{
-                    paddingHorizontal: 20, paddingVertical: 9, borderRadius: 20,
-                    backgroundColor: isSelected ? RED : '#F5F5F5',
-                    borderWidth: 1, borderColor: isSelected ? RED : '#E0E0E0',
-                  }}>
-                    <Text style={{ color: isSelected ? '#fff' : '#666666', fontSize: 14, fontWeight: '500' }}>{opt}</Text>
-                  </View>
-                </AnimatedPressable>
-              );
-            })}
-          </View>
-
-          {/* Notes */}
-          <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Notes</Text>
-          <TextInput
-            value={dateNotes}
-            onChangeText={setDateNotes}
-            placeholder="How did it go?"
-            placeholderTextColor="#BBBBBB"
-            multiline
-            style={{
-              backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
-              color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0',
-              minHeight: 80, textAlignVertical: 'top', marginBottom: 20,
-            }}
-          />
-
-          {/* Save Date */}
-          <AnimatedPressable onPress={handleSaveDate} disabled={savingDate}>
-            <View style={{
-              backgroundColor: RED, borderRadius: 14, paddingVertical: 16,
-              alignItems: 'center', opacity: savingDate ? 0.7 : 1,
-            }}>
-              {savingDate ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Save Date</Text>
-              )}
+      <View style={{ gap: 12, paddingBottom: 80 }}>
+        {loadingDates ? (
+          <ActivityIndicator color={RED} style={{ marginVertical: 20 }} />
+        ) : sortedDates.length === 0 ? (
+          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+              <Heart size={24} color={RED} />
             </View>
-          </AnimatedPressable>
-        </View>
+            <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '600', marginBottom: 6 }}>No dates yet</Text>
+            <Text style={{ color: '#999999', fontSize: 14, textAlign: 'center' }}>Log your first date below</Text>
+          </View>
+        ) : (
+          sortedDates.map((d, index) => {
+            const isExpanded = expandedDateId === d.id;
+            const typeLabel = d.type ? (d.type.charAt(0).toUpperCase() + d.type.slice(1)) : 'Date';
+            const dateTimeStr = formatDateTimeLabel(d.date_time || d.created_at);
+            const overallVal = d.overall_rating ?? 0;
+            const overallStr = String(overallVal);
+            const convoVal = d.conversation_rating ?? 0;
+            const attractVal = d.attraction_rating ?? 0;
+            const effortVal = d.effort_rating ?? 0;
+            const wouldGoRaw = d.would_go_again || '';
+            const wouldGoLabel = wouldGoRaw ? (wouldGoRaw.charAt(0).toUpperCase() + wouldGoRaw.slice(1)) : null;
+            const badgeNum = String(index + 1);
 
-        {/* Past dates */}
-        {sortedDates.length > 0 && (
-          <View style={{ gap: 10 }}>
-            <Text style={{ color: '#999999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase' }}>
-              Past Dates
-            </Text>
-            {sortedDates.map((d) => {
-              const isExpanded = expandedDateId === d.id;
-              const typeLabel = d.type ? (d.type.charAt(0).toUpperCase() + d.type.slice(1)) : 'Date';
-              const dateLabel = formatFullDate(d.date_time || d.created_at);
-              const ratingVal = d.overall_rating ?? 0;
-              const ratingStr = ratingVal > 0 ? `${ratingVal}/10` : '—';
-              const wouldGoLabel = d.would_go_again
-                ? (d.would_go_again.charAt(0).toUpperCase() + d.would_go_again.slice(1))
-                : null;
-              return (
-                <AnimatedPressable
-                  key={d.id}
-                  onPress={() => {
-                    console.log('[PersonDetail] Date card toggled:', d.id);
-                    setExpandedDateId(isExpanded ? null : d.id);
-                  }}
-                >
-                  <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                        <View style={{ backgroundColor: 'rgba(229,57,53,0.1)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}>
-                          <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>{typeLabel}</Text>
+            const wouldGoBg = wouldGoLabel === 'Yes' ? '#4CAF50' : wouldGoLabel === 'Maybe' ? RED : '#999999';
+
+            return (
+              <Pressable
+                key={d.id}
+                onPress={() => {
+                  console.log('[PersonDetail] Date card toggled:', d.id, 'expanded:', !isExpanded);
+                  setExpandedDateId(isExpanded ? null : d.id);
+                }}
+              >
+                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, overflow: 'hidden', ...CARD_SHADOW }}>
+                  {/* Header row */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}>
+                    {/* Number badge */}
+                    <View style={{
+                      width: 28, height: 28, borderRadius: 14,
+                      backgroundColor: RED, alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>
+                        {'#'}
+                        <Text>{badgeNum}</Text>
+                      </Text>
+                    </View>
+
+                    {/* Center info */}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: '#1A1A1A', fontSize: 15, fontWeight: '700', marginBottom: 3 }}>{typeLabel}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                          <Calendar size={11} color="#999999" />
+                          <Text style={{ color: '#999999', fontSize: 12 }}>{dateTimeStr}</Text>
                         </View>
-                        <Text style={{ color: '#666666', fontSize: 13 }} numberOfLines={1}>{dateLabel}</Text>
-                      </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ color: RED, fontSize: 13, fontWeight: '700' }}>{ratingStr}</Text>
-                        {isExpanded ? <ChevronUp size={16} color="#999999" /> : <ChevronDown size={16} color="#999999" />}
+                        {d.location ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                            <Text style={{ color: '#CCCCCC', fontSize: 12 }}>•</Text>
+                            <MapPin size={11} color="#999999" />
+                            <Text style={{ color: '#999999', fontSize: 12 }} numberOfLines={1}>{d.location}</Text>
+                          </View>
+                        ) : null}
                       </View>
                     </View>
-                    {isExpanded && (
-                      <View style={{ marginTop: 14, gap: 8 }}>
-                        {d.location ? (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <MapPin size={13} color="#999999" />
-                            <Text style={{ color: '#444444', fontSize: 13 }}>{d.location}</Text>
-                          </View>
-                        ) : null}
-                        {wouldGoLabel ? (
+
+                    {/* Right: star + score + chevron */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={{ fontSize: 14 }}>⭐</Text>
+                      <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '700' }}>{overallStr}</Text>
+                      {isExpanded ? <ChevronUp size={16} color="#999999" /> : <ChevronDown size={16} color="#999999" />}
+                    </View>
+                  </View>
+
+                  {/* Expanded content */}
+                  {isExpanded && (
+                    <View style={{ paddingHorizontal: 14, paddingBottom: 0 }}>
+                      <View style={{ height: 1, backgroundColor: '#F0F0F0', marginBottom: 14 }} />
+
+                      {/* 2x2 score grid */}
+                      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                        <View style={{ flex: 1, gap: 10 }}>
+                          {/* Overall */}
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ color: '#999999', fontSize: 13 }}>Would go again:</Text>
-                            <View style={{
-                              backgroundColor: wouldGoLabel === 'Yes' ? 'rgba(46,125,50,0.1)' : wouldGoLabel === 'No' ? 'rgba(229,57,53,0.1)' : '#F5F5F5',
-                              borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
-                            }}>
-                              <Text style={{
-                                color: wouldGoLabel === 'Yes' ? '#2E7D32' : wouldGoLabel === 'No' ? RED : '#666666',
-                                fontSize: 12, fontWeight: '600',
-                              }}>{wouldGoLabel}</Text>
-                            </View>
+                            <Text style={{ fontSize: 16 }}>⭐</Text>
+                            <Text style={{ color: '#1A1A1A', fontSize: 13, flex: 1 }}>Overall</Text>
+                            <ScoreRing score={overallVal} color="#F5A623" size={36} />
                           </View>
-                        ) : null}
-                        {d.notes ? (
-                          <Text style={{ color: '#444444', fontSize: 13, lineHeight: 19 }}>{d.notes}</Text>
-                        ) : null}
-                        <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 4 }} />
-                        <View style={{ gap: 6 }}>
-                          {d.conversation_rating != null && <ReadOnlySlider label="Conversation" value={d.conversation_rating} />}
-                          {d.attraction_rating != null && <ReadOnlySlider label="Attraction IRL" value={d.attraction_rating} />}
-                          {d.effort_rating != null && <ReadOnlySlider label="Effort & Intent" value={d.effort_rating} />}
+                          {/* Attraction IRL */}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 16 }}>💙</Text>
+                            <Text style={{ color: '#1A1A1A', fontSize: 13, flex: 1 }}>Attraction IRL</Text>
+                            <ScoreRing score={attractVal} color="#1565C0" size={36} />
+                          </View>
+                        </View>
+                        <View style={{ flex: 1, gap: 10 }}>
+                          {/* Convo */}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 16 }}>💬</Text>
+                            <Text style={{ color: '#1A1A1A', fontSize: 13, flex: 1 }}>Convo</Text>
+                            <ScoreRing score={convoVal} color="#00897B" size={36} />
+                          </View>
+                          {/* Effort */}
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ fontSize: 16 }}>🔥</Text>
+                            <Text style={{ color: '#1A1A1A', fontSize: 13, flex: 1 }}>Effort</Text>
+                            <ScoreRing score={effortVal} color="#E65100" size={36} />
+                          </View>
                         </View>
                       </View>
-                    )}
-                  </View>
-                </AnimatedPressable>
-              );
-            })}
-          </View>
+
+                      {/* Would go again */}
+                      {wouldGoLabel ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                          <Text style={{ color: '#1A1A1A', fontSize: 14 }}>Would go again?</Text>
+                          <View style={{ backgroundColor: wouldGoBg, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5 }}>
+                            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>{wouldGoLabel}</Text>
+                          </View>
+                        </View>
+                      ) : null}
+
+                      {/* Notes */}
+                      {d.notes ? (
+                        <Text style={{ color: '#555555', fontSize: 13, fontStyle: 'italic', lineHeight: 19, marginBottom: 14 }}>
+                          {d.notes}
+                        </Text>
+                      ) : null}
+
+                      {/* Edit / Delete buttons */}
+                      <View style={{ flexDirection: 'row', gap: 0, marginHorizontal: -14, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
+                        <Pressable
+                          onPress={() => {
+                            console.log('[PersonDetail] Edit date pressed:', d.id);
+                            setEditingDateId(d.id);
+                          }}
+                          style={{
+                            flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            borderRightWidth: 1, borderRightColor: '#F0F0F0',
+                          }}
+                        >
+                          <Pencil size={15} color="#1A1A1A" />
+                          <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '600' }}>Edit</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => {
+                            console.log('[PersonDetail] Delete date pressed:', d.id);
+                            handleDeleteDate(d.id);
+                          }}
+                          style={{
+                            flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            backgroundColor: RED, borderBottomRightRadius: 16,
+                          }}
+                        >
+                          <Trash2 size={15} color="#FFFFFF" />
+                          <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>Delete</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </Pressable>
+            );
+          })
         )}
+
+        {/* Log New Date sticky button */}
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+          <Pressable
+            onPress={() => {
+              console.log('[PersonDetail] Log New Date button pressed');
+              setShowLogDateModal(true);
+            }}
+            style={{
+              backgroundColor: RED, borderRadius: 14, height: 52,
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '400', lineHeight: 22 }}>⊕</Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>Log New Date</Text>
+          </Pressable>
+        </View>
       </View>
     );
   };
@@ -1407,7 +1722,7 @@ export default function PersonDetailScreen() {
           setAddingNote(true);
         }}>
           <View style={{
-            backgroundColor: RED, borderRadius: 14, paddingVertical: 16,
+            backgroundColor: RED, borderRadius: 14, height: 52,
             alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8,
           }}>
             <Plus size={18} color="#fff" />
@@ -1516,7 +1831,7 @@ export default function PersonDetailScreen() {
           setAddingReminder(true);
         }}>
           <View style={{
-            backgroundColor: RED, borderRadius: 14, paddingVertical: 16,
+            backgroundColor: RED, borderRadius: 14, height: 52,
             alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8,
           }}>
             <Plus size={18} color="#fff" />
@@ -1530,11 +1845,15 @@ export default function PersonDetailScreen() {
   // ── main render ───────────────────────────────────────────────────────────
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#F5F5F5' }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <Stack.Screen
         options={{
           title: 'Roster Details',
           headerBackTitle: 'Back',
+          headerStyle: { backgroundColor: '#FFFFFF' },
+          headerTintColor: '#1A1A1A',
+          headerTitleStyle: { fontWeight: '600', fontSize: 17 },
+          headerShadowVisible: false,
         }}
       />
 
@@ -1543,20 +1862,21 @@ export default function PersonDetailScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ── Profile Header Card ─────────────────────────────────────────── */}
+        {/* ── Profile Card ─────────────────────────────────────────────────── */}
         <View style={{
-          backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 16,
-          borderRadius: 20, padding: 24, alignItems: 'center', ...CARD_SHADOW,
+          backgroundColor: '#FFFFFF',
+          marginHorizontal: 16, marginTop: 16,
+          borderRadius: 16, padding: 20,
+          ...CARD_SHADOW,
         }}>
           {/* Avatar */}
-          <AnimatedPressable onPress={editing ? pickPhoto : undefined}>
+          <AnimatedPressable onPress={editing ? pickPhoto : undefined} style={{ alignSelf: 'center', marginBottom: 12 }}>
             <View style={{
               width: 80, height: 80, borderRadius: 40,
               borderWidth: 3, borderColor: RED,
               overflow: 'hidden',
               backgroundColor: RED,
               alignItems: 'center', justifyContent: 'center',
-              marginBottom: 14,
             }}>
               {hasPhoto ? (
                 <Image
@@ -1570,7 +1890,7 @@ export default function PersonDetailScreen() {
             </View>
           </AnimatedPressable>
           {editing && (
-            <Pressable onPress={pickPhoto} style={{ marginTop: -8, marginBottom: 8 }}>
+            <Pressable onPress={pickPhoto} style={{ alignSelf: 'center', marginBottom: 8 }}>
               <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>Change photo</Text>
             </Pressable>
           )}
@@ -1581,100 +1901,190 @@ export default function PersonDetailScreen() {
               value={editData.name || ''}
               onChangeText={(v) => update('name', v)}
               style={{
-                color: '#1A1A1A', fontSize: 22, fontWeight: '700', textAlign: 'center',
+                color: '#1A1A1A', fontSize: 20, fontWeight: '700', textAlign: 'center',
                 backgroundColor: '#F5F5F5', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
-                borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 10, minWidth: 200,
+                borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 10, alignSelf: 'center', minWidth: 200,
               }}
             />
           ) : (
-            <Text style={{ color: '#1A1A1A', fontSize: 22, fontWeight: '700', marginBottom: 10, textAlign: 'center' }}>
+            <Text style={{ color: '#1A1A1A', fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 10 }}>
               {displayData.name}
             </Text>
           )}
 
-          {/* Tags row */}
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 18 }}>
-            {displayData.nickname && <PillTag label={displayData.nickname} />}
+          {/* Pill tags row */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 16 }}>
             {connectionLabel ? <PillTag label={connectionLabel} /> : null}
-            {displayData.interest_level != null && (
-              <PillTag label={`${displayData.interest_level} Chemistry`} />
-            )}
-            {displayData.location ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#F5F5F5', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 }}>
-                <MapPin size={11} color="#999999" />
-                <Text style={{ color: '#666666', fontSize: 12 }}>{displayData.location}</Text>
-              </View>
+            {chemistryScore > 0 ? (
+              <PillTag label={`${chemistryStr} ⚡ Chemistry`} />
             ) : null}
           </View>
 
-          {/* Social buttons */}
-          <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center' }}>
-            {socialButtons.map((btn) => (
-              <AnimatedPressable
-                key={btn.key}
-                onPress={() => {
-                  if (btn.enabled) btn.onPress();
-                }}
-                disabled={!btn.enabled}
-              >
-                <View style={{ alignItems: 'center', gap: 4, opacity: btn.enabled ? 1 : 0.4 }}>
-                  <View style={{
-                    width: 44, height: 44, borderRadius: 22,
-                    backgroundColor: '#FFFFFF',
-                    borderWidth: 1, borderColor: '#EEEEEE',
-                    alignItems: 'center', justifyContent: 'center',
-                    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
-                  }}>
-                    {btn.icon}
-                  </View>
-                  <Text style={{ color: '#999999', fontSize: 10, fontWeight: '500' }}>{btn.label}</Text>
-                </View>
-              </AnimatedPressable>
-            ))}
+          {/* Compatibility sub-card */}
+          <View style={{
+            borderWidth: 1, borderColor: '#EEEEEE', borderRadius: 12,
+            padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 14,
+          }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '700', marginBottom: 3 }}>Compatibility Score</Text>
+              <Text style={{ color: '#999999', fontSize: 11 }}>Based on your ratings</Text>
+            </View>
+            <CompatibilityRing score={avgCompatibility} />
+          </View>
+
+          {/* Social buttons row */}
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {/* Call */}
+            <Pressable
+              onPress={() => {
+                console.log('[PersonDetail] Call button pressed');
+                if (hasPhone) setShowCallModal(true);
+              }}
+              style={{
+                flex: 1, height: 36, borderRadius: 20,
+                borderWidth: 1, borderColor: '#EEEEEE',
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+                opacity: hasPhone ? 1 : 0.4,
+              }}
+            >
+              <Ionicons name="call-outline" size={14} color="#1A1A1A" />
+              <Text style={{ color: '#1A1A1A', fontSize: 12, fontWeight: '500' }}>Call</Text>
+            </Pressable>
+
+            {/* Text */}
+            <Pressable
+              onPress={() => {
+                console.log('[PersonDetail] Text button pressed');
+                if (hasPhone) setShowTextModal(true);
+              }}
+              style={{
+                flex: 1, height: 36, borderRadius: 20,
+                borderWidth: 1, borderColor: '#EEEEEE',
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+                opacity: hasPhone ? 1 : 0.4,
+              }}
+            >
+              <Ionicons name="chatbubble-outline" size={14} color="#1A1A1A" />
+              <Text style={{ color: '#1A1A1A', fontSize: 12, fontWeight: '500' }}>Text</Text>
+            </Pressable>
+
+            {/* Insta */}
+            <Pressable
+              onPress={() => {
+                console.log('[PersonDetail] Instagram button pressed:', displayData.instagram);
+                if (displayData.instagram) openLink(`https://instagram.com/${displayData.instagram}`);
+              }}
+              style={{
+                flex: 1, height: 36, borderRadius: 20,
+                borderWidth: 1, borderColor: '#EEEEEE',
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+                opacity: displayData.instagram ? 1 : 0.4,
+              }}
+            >
+              <FontAwesome name="instagram" size={14} color="#1A1A1A" />
+              <Text style={{ color: '#1A1A1A', fontSize: 12, fontWeight: '500' }}>Insta</Text>
+            </Pressable>
+
+            {/* TikTok */}
+            <Pressable
+              onPress={() => {
+                console.log('[PersonDetail] TikTok button pressed:', displayData.tiktok);
+                if (displayData.tiktok) openLink(`https://tiktok.com/@${displayData.tiktok}`);
+              }}
+              style={{
+                flex: 1, height: 36, borderRadius: 20,
+                borderWidth: 1, borderColor: '#EEEEEE',
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+                opacity: displayData.tiktok ? 1 : 0.4,
+              }}
+            >
+              <FontAwesome name="music" size={13} color="#1A1A1A" />
+              <Text style={{ color: '#1A1A1A', fontSize: 12, fontWeight: '500' }}>TikTok</Text>
+            </Pressable>
           </View>
         </View>
 
         {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 14, gap: 8 }}
-        >
+        <View style={{
+          backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 14,
+          borderRadius: 16, padding: 6, flexDirection: 'row', ...CARD_SHADOW,
+        }}>
           {TABS.map((tab) => {
             const isActive = activeTab === tab;
             return (
-              <AnimatedPressable
+              <Pressable
                 key={tab}
                 onPress={() => {
                   console.log('[PersonDetail] Tab selected:', tab);
                   setActiveTab(tab);
                 }}
-              >
-                <View style={{
-                  paddingHorizontal: 20, paddingVertical: 9, borderRadius: 20,
+                style={{
+                  flex: 1, height: 44, borderRadius: 20,
                   backgroundColor: isActive ? RED : 'transparent',
-                  borderWidth: 1, borderColor: isActive ? RED : '#DDDDDD',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Text style={{
+                  color: isActive ? '#FFFFFF' : '#888888',
+                  fontSize: 14, fontWeight: isActive ? '600' : '400',
                 }}>
-                  <Text style={{
-                    color: isActive ? '#fff' : '#999999',
-                    fontSize: 14, fontWeight: isActive ? '600' : '500',
-                  }}>
-                    {tab}
-                  </Text>
-                </View>
-              </AnimatedPressable>
+                  {tab}
+                </Text>
+              </Pressable>
             );
           })}
-        </ScrollView>
+        </View>
 
         {/* ── Tab Content ─────────────────────────────────────────────────── */}
-        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 }}>
           {activeTab === 'Overview' && renderOverviewTab()}
           {activeTab === 'Dates' && renderDatesTab()}
           {activeTab === 'Notes' && renderNotesTab()}
           {activeTab === 'Reminders' && renderRemindersTab()}
         </View>
       </ScrollView>
+
+      {/* ── Modals ──────────────────────────────────────────────────────────── */}
+      <CallModal
+        visible={showCallModal}
+        name={personName}
+        phone={phoneNumber}
+        onClose={() => setShowCallModal(false)}
+      />
+      <TextModal
+        visible={showTextModal}
+        name={personName}
+        phone={phoneNumber}
+        onClose={() => setShowTextModal(false)}
+      />
+      <LogDateModal
+        visible={showLogDateModal}
+        onClose={() => setShowLogDateModal(false)}
+        onSave={handleSaveDate}
+        dateType={dateType}
+        setDateType={setDateType}
+        dateWhen={dateWhen}
+        setDateWhen={setDateWhen}
+        showDatePicker={showDatePicker}
+        setShowDatePicker={setShowDatePicker}
+        showTimePicker={showTimePicker}
+        setShowTimePicker={setShowTimePicker}
+        dateLocation={dateLocation}
+        setDateLocation={setDateLocation}
+        dateOverall={dateOverall}
+        setDateOverall={setDateOverall}
+        dateConversation={dateConversation}
+        setDateConversation={setDateConversation}
+        dateAttraction={dateAttraction}
+        setDateAttraction={setDateAttraction}
+        dateEffort={dateEffort}
+        setDateEffort={setDateEffort}
+        dateWouldGoAgain={dateWouldGoAgain}
+        setDateWouldGoAgain={setDateWouldGoAgain}
+        dateNotes={dateNotes}
+        setDateNotes={setDateNotes}
+        savingDate={savingDate}
+      />
     </View>
   );
 }
