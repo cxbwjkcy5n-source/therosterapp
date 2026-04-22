@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "Roster Scout",
+    "slug": "roster-scout",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/app-icon-qye.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/app-icon-qye.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.placeholder.app",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/app-icon-qye.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.placeholder.app"
+    },
+    "web": {
+      "favicon": "./assets/images/final_quest_240x240.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      "expo-web-browser",
+      "expo-secure-store"
+    ],
+    "scheme": "rosterscout",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "backendUrl": "https://yc4fa775cdfwsjk84352fx3r79cnejz4.app.specular.dev"
+    }
+  }
+}
