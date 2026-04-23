@@ -261,65 +261,105 @@ function PillTag({ label, color = '#555555', bg = '#F5F5F5' }: { label: string; 
   );
 }
 
-function ReadOnlySlider({ label, value }: { label: string; value?: number }) {
+function ReadOnlySlider({ label, value, excluded, onToggleExclude }: {
+  label: string; value?: number; excluded?: boolean; onToggleExclude?: () => void
+}) {
   const val = value ?? 0;
   const fillPct = `${(val / 10) * 100}%` as any;
   const valueStr = String(val);
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: 16, opacity: excluded ? 0.4 : 1 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <Text style={{ color: '#444444', fontSize: 14, fontWeight: '500' }}>{label}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-          <Text style={{ color: RED, fontSize: 14, fontWeight: '700' }}>{valueStr}</Text>
-          <Text style={{ color: '#AAAAAA', fontSize: 12, fontWeight: '500' }}>/10</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+          <Pressable
+            onPress={onToggleExclude}
+            style={{
+              width: 18, height: 18, borderRadius: 4,
+              borderWidth: 1.5,
+              borderColor: excluded ? '#CCCCCC' : RED,
+              backgroundColor: excluded ? 'transparent' : RED,
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            {!excluded && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', lineHeight: 13 }}>✓</Text>}
+          </Pressable>
+          <Text style={{ color: '#444444', fontSize: 14, fontWeight: '500' }}>{label}</Text>
         </View>
+        {!excluded && (
+          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+            <Text style={{ color: RED, fontSize: 14, fontWeight: '700' }}>{valueStr}</Text>
+            <Text style={{ color: '#AAAAAA', fontSize: 12, fontWeight: '500' }}>/10</Text>
+          </View>
+        )}
       </View>
-      <View style={{ height: 4, backgroundColor: '#E8E8E8', borderRadius: 2, overflow: 'hidden' }}>
-        <View style={{ height: 4, width: fillPct, backgroundColor: RED, borderRadius: 2 }} />
-      </View>
+      {!excluded && (
+        <View style={{ height: 4, backgroundColor: '#E8E8E8', borderRadius: 2, overflow: 'hidden' }}>
+          <View style={{ height: 4, width: fillPct, backgroundColor: RED, borderRadius: 2 }} />
+        </View>
+      )}
     </View>
   );
 }
 
-function EditableSlider({ label, value, onChange }: { label: string; value?: number; onChange: (v: number) => void }) {
+function EditableSlider({ label, value, onChange, excluded, onToggleExclude }: {
+  label: string; value?: number; onChange: (v: number) => void; excluded?: boolean; onToggleExclude?: () => void
+}) {
   const val = value ?? 5;
   const fillPct = `${(val / 10) * 100}%` as any;
   const valueStr = String(val);
   return (
-    <View style={{ marginBottom: 16 }}>
+    <View style={{ marginBottom: 16, opacity: excluded ? 0.4 : 1 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <Text style={{ color: '#444444', fontSize: 14, fontWeight: '500' }}>{label}</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-          <Text style={{ color: RED, fontSize: 14, fontWeight: '700' }}>{valueStr}</Text>
-          <Text style={{ color: '#AAAAAA', fontSize: 12, fontWeight: '500' }}>/10</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+          <Pressable
+            onPress={onToggleExclude}
+            style={{
+              width: 18, height: 18, borderRadius: 4,
+              borderWidth: 1.5,
+              borderColor: excluded ? '#CCCCCC' : RED,
+              backgroundColor: excluded ? 'transparent' : RED,
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            {!excluded && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', lineHeight: 13 }}>✓</Text>}
+          </Pressable>
+          <Text style={{ color: '#444444', fontSize: 14, fontWeight: '500' }}>{label}</Text>
         </View>
+        {!excluded && (
+          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+            <Text style={{ color: RED, fontSize: 14, fontWeight: '700' }}>{valueStr}</Text>
+            <Text style={{ color: '#AAAAAA', fontSize: 12, fontWeight: '500' }}>/10</Text>
+          </View>
+        )}
       </View>
-      <View style={{ position: 'relative', height: 20, justifyContent: 'center' }}>
-        <View style={{ height: 4, backgroundColor: '#E8E8E8', borderRadius: 2, overflow: 'hidden' }}>
-          <View style={{ height: 4, width: fillPct, backgroundColor: RED, borderRadius: 2 }} />
+      {!excluded && (
+        <View style={{ position: 'relative', height: 20, justifyContent: 'center' }}>
+          <View style={{ height: 4, backgroundColor: '#E8E8E8', borderRadius: 2, overflow: 'hidden' }}>
+            <View style={{ height: 4, width: fillPct, backgroundColor: RED, borderRadius: 2 }} />
+          </View>
+          <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, flexDirection: 'row' }}>
+            {[1,2,3,4,5,6,7,8,9,10].map((step) => (
+              <Pressable
+                key={step}
+                onPress={() => {
+                  console.log(`[PersonDetail] Slider "${label}" set to:`, step);
+                  onChange(step);
+                }}
+                style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+              >
+                {step === val ? (
+                  <View style={{
+                    width: 18, height: 18, borderRadius: 9,
+                    backgroundColor: RED,
+                    shadowColor: RED, shadowOpacity: 0.4, shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 1 }, elevation: 3,
+                  }} />
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
         </View>
-        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, flexDirection: 'row' }}>
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
-            <Pressable
-              key={step}
-              onPress={() => {
-                console.log(`[PersonDetail] Slider "${label}" set to:`, step);
-                onChange(step);
-              }}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-            >
-              {step === val ? (
-                <View style={{
-                  width: 18, height: 18, borderRadius: 9,
-                  backgroundColor: RED,
-                  shadowColor: RED, shadowOpacity: 0.4, shadowRadius: 4,
-                  shadowOffset: { width: 0, height: 1 }, elevation: 3,
-                }} />
-              ) : null}
-            </Pressable>
-          ))}
-        </View>
-      </View>
+      )}
     </View>
   );
 }
@@ -724,6 +764,7 @@ export default function PersonDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState<Partial<Person>>({});
   const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
+  const [excludedRatings, setExcludedRatings] = useState<Set<string>>(new Set());
 
   // tab
   const [activeTab, setActiveTab] = useState<TabName>('Overview');
@@ -1109,8 +1150,11 @@ export default function PersonDetailScreen() {
     { label: 'Alignment', key: 'alignment' as keyof Person },
   ];
 
-  const ratingValues = ratingFields.map((f) => (displayData[f.key] as number) ?? 5);
-  const avgCompatibility = Math.round(ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length);
+  const includedRatingFields = ratingFields.filter((f) => !excludedRatings.has(f.key));
+  const ratingValues = includedRatingFields.map((f) => (displayData[f.key] as number) ?? 5);
+  const avgCompatibility = ratingValues.length > 0
+    ? Math.round(ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length)
+    : 0;
 
   const reminderDateLabel = reminderDate.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 
@@ -1319,9 +1363,25 @@ export default function PersonDetailScreen() {
                 label={f.label}
                 value={editData[f.key] as number}
                 onChange={(v) => update(f.key, v)}
+                excluded={excludedRatings.has(f.key)}
+                onToggleExclude={() => setExcludedRatings((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
+                  return next;
+                })}
               />
             ) : (
-              <ReadOnlySlider key={f.key} label={f.label} value={person[f.key] as number} />
+              <ReadOnlySlider
+                key={f.key}
+                label={f.label}
+                value={person[f.key] as number}
+                excluded={excludedRatings.has(f.key)}
+                onToggleExclude={() => setExcludedRatings((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
+                  return next;
+                })}
+              />
             )
           )}
           <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 16 }} />

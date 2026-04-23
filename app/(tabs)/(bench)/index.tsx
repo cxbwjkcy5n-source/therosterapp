@@ -107,14 +107,18 @@ function BenchCard({ item, onUnbench }: { item: Person; onUnbench: (p: Person) =
 
       {/* Info */}
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A' }} numberOfLines={1}>
-          {item.name}
-        </Text>
-        {item.bench_reason ? (
-          <Text style={{ fontSize: 12, color: '#999', fontStyle: 'italic', marginTop: 2 }} numberOfLines={2}>
-            {item.bench_reason}
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 2 }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A' }} numberOfLines={1}>
+            {item.name}
           </Text>
-        ) : null}
+          {item.bench_reason ? (
+            <View style={{ backgroundColor: '#F0F0F0', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+              <Text style={{ fontSize: 11, color: '#888', fontWeight: '500' }} numberOfLines={1}>
+                {item.bench_reason}
+              </Text>
+            </View>
+          ) : null}
+        </View>
         {benchedOnText ? (
           <Text style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>
             {benchedOnText}
@@ -218,6 +222,7 @@ export default function BenchScreen() {
               console.log('[Bench] PUT /api/persons/:id { is_benched: false } for:', person.id);
               await apiPut(`/api/persons/${person.id}`, { is_benched: false });
               console.log('[Bench] Successfully moved back to roster:', person.id);
+              setPersons((prev) => prev.filter((p) => p.id !== person.id));
               loadPersons();
             } catch (e) {
               console.error('[Bench] Failed to unbench:', e);
