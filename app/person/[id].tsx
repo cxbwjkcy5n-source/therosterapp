@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import * as FileSystem from 'expo-file-system';
 import {
   View,
   Text,
@@ -765,6 +764,7 @@ export default function PersonDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState<Partial<Person>>({});
   const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
+  const [newPhotoBase64, setNewPhotoBase64] = useState<string | null>(null);
   const [excludedRatings, setExcludedRatings] = useState<Set<string>>(new Set());
 
   // tab
@@ -910,10 +910,9 @@ export default function PersonDetailScreen() {
         payload[key] = val;
       }
       await apiPut(`/api/persons/${id}`, payload);
-      if (newPhotoUri) {
+      if (newPhotoUri && newPhotoBase64) {
         try {
-          const base64 = await FileSystem.readAsStringAsync(newPhotoUri, { encoding: 'base64' });
-          const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64, person_id: id });
+          const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64: newPhotoBase64, person_id: id });
           if (uploadResult?.photo_url) {
             await apiPut(`/api/persons/${id}`, { photo_url: uploadResult.photo_url });
           }
@@ -927,6 +926,7 @@ export default function PersonDetailScreen() {
       setEditData(updated);
       setEditing(false);
       setNewPhotoUri(null);
+      setNewPhotoBase64(null);
       console.log('[PersonDetail] Person saved successfully');
     } catch (e: any) {
       console.error('[PersonDetail] Save failed:', e);
@@ -983,10 +983,12 @@ export default function PersonDetailScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
       console.log('[PersonDetail] New photo selected');
       setNewPhotoUri(result.assets[0].uri);
+      setNewPhotoBase64(result.assets[0].base64 ?? null);
     }
   };
 

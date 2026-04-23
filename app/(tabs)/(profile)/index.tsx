@@ -1,5 +1,4 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import * as FileSystem from 'expo-file-system';
 import {
   View,
   Text,
@@ -233,6 +232,7 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
+  const [newPhotoBase64, setNewPhotoBase64] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useFocusEffect(
@@ -273,10 +273,9 @@ export default function ProfileScreen() {
       let dataToSave = { ...editData };
 
       // Upload photo if a new one was selected
-      if (newPhotoUri) {
+      if (newPhotoUri && newPhotoBase64) {
         try {
-          const base64 = await FileSystem.readAsStringAsync(newPhotoUri, { encoding: 'base64' });
-          const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64 });
+          const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64: newPhotoBase64 });
           if (uploadResult?.photo_url) {
             dataToSave.photo_url = uploadResult.photo_url;
           }
@@ -294,6 +293,7 @@ export default function ProfileScreen() {
       setEditData(saved);
       setEditing(false);
       setNewPhotoUri(null);
+      setNewPhotoBase64(null);
     } catch (e: any) {
       console.error('[Profile] Save failed:', e);
       Alert.alert('Could not save', e?.message || 'Please try again.');
@@ -307,6 +307,7 @@ export default function ProfileScreen() {
     setEditData({ ...profile });
     setEditing(false);
     setNewPhotoUri(null);
+    setNewPhotoBase64(null);
   };
 
   const pickPhoto = async () => {
@@ -316,10 +317,12 @@ export default function ProfileScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
       console.log('[Profile] New photo selected');
       setNewPhotoUri(result.assets[0].uri);
+      setNewPhotoBase64(result.assets[0].base64 ?? null);
       setEditData((prev) => ({ ...prev, photo_url: result.assets[0].uri }));
     }
   };

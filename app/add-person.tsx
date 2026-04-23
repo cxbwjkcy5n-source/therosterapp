@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import * as FileSystem from 'expo-file-system';
 import {
   View,
   Text,
@@ -229,6 +228,7 @@ export default function AddPersonScreen() {
   const insets = useSafeAreaInsets();
   const [saving, setSaving] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
   const [age, setAge] = useState('');
@@ -274,6 +274,7 @@ export default function AddPersonScreen() {
     if (!result.canceled && result.assets[0]) {
       console.log('[AddPerson] Photo selected');
       setPhotoUri(result.assets[0].uri);
+      setPhotoBase64(result.assets[0].base64 ?? null);
     }
   };
 
@@ -313,12 +314,11 @@ export default function AddPersonScreen() {
       const created = await apiPost<{ person: { id: string } }>('/api/persons', payload);
       const personId = created?.person?.id;
 
-      if (photoUri && personId) {
+      if (photoUri && personId && photoBase64) {
         try {
           console.log('[AddPerson] Uploading photo for person:', personId);
-          const base64 = await FileSystem.readAsStringAsync(photoUri, { encoding: 'base64' });
           const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', {
-            base64,
+            base64: photoBase64,
             person_id: personId,
           });
           if (uploadResult?.photo_url) {

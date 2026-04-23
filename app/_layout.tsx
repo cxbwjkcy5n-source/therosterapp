@@ -100,7 +100,10 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
             toValue: 0,
             duration: 600,
             useNativeDriver: true,
-          }).start(() => onDone());
+          }).start(() => {
+            SplashScreen.hideAsync();
+            onDone();
+          });
         }, 600);
       });
     });
@@ -144,12 +147,6 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
   const [showSplash, setShowSplash] = useState(true);
-
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
 
   if (!loaded) return null;
 
