@@ -101,7 +101,8 @@ export function registerPersonsRoutes(app: App) {
       if (!session) return;
 
       const { benched } = request.query;
-      const isBenchedFilter = benched === 'true' ? true : false;
+      // Parse query parameter: 'true' string becomes true, everything else becomes false
+      const isBenchedFilter = benched === 'true';
 
       app.logger.info({ userId: session.user.id, benched: isBenchedFilter }, 'Listing persons');
 
@@ -422,9 +423,16 @@ export function registerPersonsRoutes(app: App) {
       if (request.body.redFlags !== undefined) updateData.redFlags = request.body.redFlags;
       if (request.body.greenFlags !== undefined) updateData.greenFlags = request.body.greenFlags;
       if (request.body.isBenched !== undefined) {
-        updateData.isBenched = request.body.isBenched;
+        // Parse isBenched explicitly: handle both boolean and string 'false'/'true'
+        let parsedIsBenched: boolean;
+        if (typeof request.body.isBenched === 'string') {
+          parsedIsBenched = request.body.isBenched === 'true';
+        } else {
+          parsedIsBenched = Boolean(request.body.isBenched);
+        }
+        updateData.isBenched = parsedIsBenched;
         // When unbending (is_benched = false), clear the bench reason
-        if (request.body.isBenched === false) {
+        if (parsedIsBenched === false) {
           updateData.benchReason = null;
         }
       }
