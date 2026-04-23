@@ -404,31 +404,33 @@ export function registerPersonsRoutes(app: App) {
         updatedAt: new Date(),
       };
 
-      if (request.body.name !== undefined) updateData.name = request.body.name;
-      if (request.body.location !== undefined) updateData.location = request.body.location;
-      if (request.body.photoUrl !== undefined) updateData.photoUrl = request.body.photoUrl;
-      if (request.body.age !== undefined) updateData.age = request.body.age;
-      if (request.body.birthday !== undefined) updateData.birthday = request.body.birthday;
-      if (request.body.zodiac !== undefined) updateData.zodiac = request.body.zodiac as any;
-      if (request.body.instagram !== undefined) updateData.instagram = request.body.instagram;
-      if (request.body.tiktok !== undefined) updateData.tiktok = request.body.tiktok;
-      if (request.body.twitterX !== undefined) updateData.twitterX = request.body.twitterX;
-      if (request.body.interestLevel !== undefined) updateData.interestLevel = request.body.interestLevel;
-      if (request.body.attractiveness !== undefined) updateData.attractiveness = request.body.attractiveness;
-      if (request.body.sexualChemistry !== undefined) updateData.sexualChemistry = request.body.sexualChemistry;
-      if (request.body.communication !== undefined) updateData.communication = request.body.communication;
-      if (request.body.overallChemistry !== undefined) updateData.overallChemistry = request.body.overallChemistry;
-      if (request.body.consistency !== undefined) updateData.consistency = request.body.consistency;
-      if (request.body.emotionalAvailability !== undefined) updateData.emotionalAvailability = request.body.emotionalAvailability;
-      if (request.body.datePlanning !== undefined) updateData.datePlanning = request.body.datePlanning;
-      if (request.body.alignment !== undefined) updateData.alignment = request.body.alignment;
-      if (request.body.connectionType !== undefined) updateData.connectionType = request.body.connectionType as any;
-      if (request.body.connectionTypeCustom !== undefined) updateData.connectionTypeCustom = request.body.connectionTypeCustom;
-      if (request.body.favoriteFoods !== undefined) updateData.favoriteFoods = request.body.favoriteFoods;
-      if (request.body.hobbies !== undefined) updateData.hobbies = request.body.hobbies;
-      if (request.body.redFlags !== undefined) updateData.redFlags = request.body.redFlags;
-      if (request.body.greenFlags !== undefined) updateData.greenFlags = request.body.greenFlags;
-      if (request.body.isBenched !== undefined) {
+      const bodyKeys = Object.keys(request.body);
+
+      if (bodyKeys.includes('name')) updateData.name = request.body.name;
+      if (bodyKeys.includes('location')) updateData.location = request.body.location;
+      if (bodyKeys.includes('photoUrl')) updateData.photoUrl = request.body.photoUrl;
+      if (bodyKeys.includes('age')) updateData.age = request.body.age;
+      if (bodyKeys.includes('birthday')) updateData.birthday = request.body.birthday;
+      if (bodyKeys.includes('zodiac')) updateData.zodiac = request.body.zodiac as any;
+      if (bodyKeys.includes('instagram')) updateData.instagram = request.body.instagram;
+      if (bodyKeys.includes('tiktok')) updateData.tiktok = request.body.tiktok;
+      if (bodyKeys.includes('twitterX')) updateData.twitterX = request.body.twitterX;
+      if (bodyKeys.includes('interestLevel')) updateData.interestLevel = request.body.interestLevel;
+      if (bodyKeys.includes('attractiveness')) updateData.attractiveness = request.body.attractiveness;
+      if (bodyKeys.includes('sexualChemistry')) updateData.sexualChemistry = request.body.sexualChemistry;
+      if (bodyKeys.includes('communication')) updateData.communication = request.body.communication;
+      if (bodyKeys.includes('overallChemistry')) updateData.overallChemistry = request.body.overallChemistry;
+      if (bodyKeys.includes('consistency')) updateData.consistency = request.body.consistency;
+      if (bodyKeys.includes('emotionalAvailability')) updateData.emotionalAvailability = request.body.emotionalAvailability;
+      if (bodyKeys.includes('datePlanning')) updateData.datePlanning = request.body.datePlanning;
+      if (bodyKeys.includes('alignment')) updateData.alignment = request.body.alignment;
+      if (bodyKeys.includes('connectionType')) updateData.connectionType = request.body.connectionType as any;
+      if (bodyKeys.includes('connectionTypeCustom')) updateData.connectionTypeCustom = request.body.connectionTypeCustom;
+      if (bodyKeys.includes('favoriteFoods')) updateData.favoriteFoods = request.body.favoriteFoods;
+      if (bodyKeys.includes('hobbies')) updateData.hobbies = request.body.hobbies;
+      if (bodyKeys.includes('redFlags')) updateData.redFlags = request.body.redFlags;
+      if (bodyKeys.includes('greenFlags')) updateData.greenFlags = request.body.greenFlags;
+      if (bodyKeys.includes('isBenched')) {
         const val = request.body.isBenched as any;
         // Explicitly handle true cases (both boolean true and string 'true')
         if (val === true || val === 'true') {
@@ -440,7 +442,7 @@ export function registerPersonsRoutes(app: App) {
           updateData.benchReason = null;
         }
       }
-      if (request.body.benchReason !== undefined) updateData.benchReason = request.body.benchReason;
+      if (bodyKeys.includes('benchReason')) updateData.benchReason = request.body.benchReason;
 
       const [updated] = await app.db
         .update(schema.persons)
