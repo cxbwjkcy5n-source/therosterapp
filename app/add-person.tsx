@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Camera, Plus, X } from 'lucide-react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
 import * as ImagePicker from 'expo-image-picker';
@@ -78,27 +79,45 @@ function getInterestColor(val: number) {
   return COLORS.interestHigh;
 }
 
-function SliderInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+function SliderInput({ label, value, onChange, excluded, onToggleExclude }: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  excluded: boolean;
+  onToggleExclude: () => void;
+}) {
   const fillPct = `${(value / 10) * 100}%`;
-  const valueLabel = `${value}/10`;
+  const valueLabel = excluded ? 'N/A' : `${value}/10`;
   return (
-    <View style={{ marginBottom: 20 }}>
-      {/* Label row */}
+    <View style={{ marginBottom: 20, opacity: excluded ? 0.4 : 1 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '500' }}>{label}</Text>
+        <Pressable
+          onPress={() => {
+            console.log(`[AddPerson] ${label} exclude toggled, excluded:`, !excluded);
+            onToggleExclude();
+          }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+        >
+          <View style={{
+            width: 22, height: 22, borderRadius: 6,
+            backgroundColor: excluded ? '#E8E8E8' : '#E53935',
+            borderWidth: excluded ? 1.5 : 0,
+            borderColor: '#CCCCCC',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            {!excluded && <Ionicons name="checkmark" size={14} color="#fff" />}
+          </View>
+          <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '500' }}>{label}</Text>
+        </Pressable>
         <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '700' }}>{valueLabel}</Text>
       </View>
-      {/* Track + thumb tap area */}
       <View style={{ position: 'relative', height: 20, justifyContent: 'center' }}>
-        {/* Background track */}
         <View style={{ height: 4, backgroundColor: '#E8E8E8', borderRadius: 2, overflow: 'hidden' }}>
-          <View style={{ height: 4, width: fillPct, backgroundColor: '#E53935', borderRadius: 2 }} />
+          {!excluded && <View style={{ height: 4, width: fillPct, backgroundColor: '#E53935', borderRadius: 2 }} />}
         </View>
-        {/* Tap targets row (invisible, full height) */}
-        <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, flexDirection: 'row' }}>
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => {
-            const isActive = step === value;
-            return (
+        {!excluded && (
+          <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, flexDirection: 'row' }}>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((step) => (
               <Pressable
                 key={step}
                 onPress={() => {
@@ -107,25 +126,18 @@ function SliderInput({ label, value, onChange }: { label: string; value: number;
                 }}
                 style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
               >
-                {isActive ? (
-                  <View
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      backgroundColor: '#E53935',
-                      shadowColor: '#E53935',
-                      shadowOpacity: 0.35,
-                      shadowRadius: 6,
-                      shadowOffset: { width: 0, height: 2 },
-                      elevation: 4,
-                    }}
-                  />
+                {step === value ? (
+                  <View style={{
+                    width: 20, height: 20, borderRadius: 10,
+                    backgroundColor: '#E53935',
+                    shadowColor: '#E53935', shadowOpacity: 0.35, shadowRadius: 6,
+                    shadowOffset: { width: 0, height: 2 }, elevation: 4,
+                  }} />
                 ) : null}
               </Pressable>
-            );
-          })}
-        </View>
+            ))}
+          </View>
+        )}
       </View>
     </View>
   );
@@ -231,6 +243,12 @@ export default function AddPersonScreen() {
   const [attractiveness, setAttractiveness] = useState(5);
   const [sexualChemistry, setSexualChemistry] = useState(5);
   const [communication, setCommunication] = useState(5);
+  const [excludedRatings, setExcludedRatings] = useState<Set<string>>(new Set());
+  const toggleExclude = (key: string) => setExcludedRatings(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
   const [favoriteFoods, setFavoriteFoods] = useState<string[]>([]);
   const [hobbies, setHobbies] = useState<string[]>([]);
   const [greenFlags, setGreenFlags] = useState<string[]>([]);
@@ -656,10 +674,10 @@ export default function AddPersonScreen() {
           >
             Ratings
           </Text>
-          <SliderInput label="Interest Level" value={interestLevel} onChange={setInterestLevel} />
-          <SliderInput label="Attractiveness" value={attractiveness} onChange={setAttractiveness} />
-          <SliderInput label="Sexual Chemistry" value={sexualChemistry} onChange={setSexualChemistry} />
-          <SliderInput label="Communication" value={communication} onChange={setCommunication} />
+          <SliderInput label="Interest Level" value={interestLevel} onChange={setInterestLevel} excluded={excludedRatings.has('interest_level')} onToggleExclude={() => toggleExclude('interest_level')} />
+          <SliderInput label="Attractiveness" value={attractiveness} onChange={setAttractiveness} excluded={excludedRatings.has('attractiveness')} onToggleExclude={() => toggleExclude('attractiveness')} />
+          <SliderInput label="Sexual Chemistry" value={sexualChemistry} onChange={setSexualChemistry} excluded={excludedRatings.has('sexual_chemistry')} onToggleExclude={() => toggleExclude('sexual_chemistry')} />
+          <SliderInput label="Communication" value={communication} onChange={setCommunication} excluded={excludedRatings.has('communication')} onToggleExclude={() => toggleExclude('communication')} />
 
           {/* Compatibility Score */}
           <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 20 }} />
@@ -675,28 +693,26 @@ export default function AddPersonScreen() {
           >
             Overall Compatibility
           </Text>
-          <Text
-            style={{
-              color: '#E53935',
-              fontSize: 32,
-              fontWeight: '800',
-              letterSpacing: -1,
-              marginBottom: 10,
-            }}
-          >
-            {Math.round((interestLevel + attractiveness + sexualChemistry + communication) / 4)}
-            <Text style={{ fontSize: 18, fontWeight: '600', color: '#E53935' }}>/10</Text>
-          </Text>
-          <View style={{ height: 6, backgroundColor: '#E8E8E8', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
-            <View
-              style={{
-                height: 6,
-                width: `${((interestLevel + attractiveness + sexualChemistry + communication) / 4 / 10) * 100}%`,
-                backgroundColor: '#E53935',
-                borderRadius: 3,
-              }}
-            />
-          </View>
+          {(() => {
+            const active = [
+              !excludedRatings.has('interest_level') ? interestLevel : null,
+              !excludedRatings.has('attractiveness') ? attractiveness : null,
+              !excludedRatings.has('sexual_chemistry') ? sexualChemistry : null,
+              !excludedRatings.has('communication') ? communication : null,
+            ].filter((v): v is number => v !== null);
+            const score = active.length > 0 ? Math.round(active.reduce((a, b) => a + b, 0) / active.length) : 0;
+            const pct = active.length > 0 ? (score / 10) * 100 : 0;
+            return (
+              <>
+                <Text style={{ color: '#E53935', fontSize: 32, fontWeight: '800', letterSpacing: -1, marginBottom: 10 }}>
+                  {score}<Text style={{ fontSize: 18, fontWeight: '600', color: '#E53935' }}>/10</Text>
+                </Text>
+                <View style={{ height: 6, backgroundColor: '#E8E8E8', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
+                  <View style={{ height: 6, width: `${pct}%`, backgroundColor: '#E53935', borderRadius: 3 }} />
+                </View>
+              </>
+            );
+          })()}
           <Text style={{ color: '#AAAAAA', fontSize: 12 }}>Based on your ratings</Text>
         </View>
 

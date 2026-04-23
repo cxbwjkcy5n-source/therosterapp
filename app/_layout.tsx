@@ -1,8 +1,8 @@
 import 'react-native-reanimated';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
-import { Redirect, Stack, useSegments, useRouter } from 'expo-router';
+import { Redirect, Stack, router, useSegments, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SystemBars } from 'react-native-edge-to-edge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -121,7 +121,7 @@ export default function RootLayout() {
           <ThemeProvider value={AppLightTheme}>
             <AuthProvider>
               <AuthGuard>
-                <Stack screenOptions={{ headerShown: false }}>
+                <Stack screenOptions={{ headerShown: false, headerBackTitle: '' }}>
                   <Stack.Screen name="auth-screen" options={{ headerShown: false }} />
                   <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
                   <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
@@ -180,6 +180,11 @@ export default function RootLayout() {
                       title: 'Add Person',
                       headerBackTitle: '',
                       presentation: 'modal',
+                      headerLeft: () => (
+                        <Pressable onPress={() => router.back()} style={{ paddingRight: 8 }}>
+                          <Text style={{ color: COLORS.primary, fontSize: 16 }}>Cancel</Text>
+                        </Pressable>
+                      ),
                     }}
                   />
                   <Stack.Screen
