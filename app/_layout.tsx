@@ -1,6 +1,6 @@
 import 'react-native-reanimated';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Redirect, Stack, router, useSegments, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -62,39 +62,48 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function CustomSplash({ onDone }: { onDone: () => void }) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const screenFade = useRef(new Animated.Value(1)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const textScale = useRef(new Animated.Value(0.4)).current;
+  const screenOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Fade in logo + text
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start(() => {
-      // Hold for ~1.4s then fade out the whole splash
+    // Phase 1: text fades in and grows
+    Animated.parallel([
+      Animated.timing(textOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(textScale, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Hold 800ms then fade out entire screen
       setTimeout(() => {
-        Animated.timing(screenFade, {
+        Animated.timing(screenOpacity, {
           toValue: 0,
-          duration: 500,
+          duration: 600,
           useNativeDriver: true,
-        }).start(() => {
-          onDone();
-        });
-      }, 1400);
+        }).start(() => onDone());
+      }, 800);
     });
-  }, [fadeAnim, screenFade, onDone]);
+  }, [textOpacity, textScale, screenOpacity, onDone]);
 
   return (
-    <Animated.View style={[styles.splashContainer, { opacity: screenFade }]}>
-      <Animated.View style={{ alignItems: 'center', opacity: fadeAnim }}>
-        <Image
-          source={require('../assets/images/6bd1ee8a-f98e-411c-802c-4efd62120bd2.jpeg')}
-          style={styles.splashLogo}
-          resizeMode="contain"
-        />
-        <Text style={styles.splashTitle}>Roster</Text>
-      </Animated.View>
+    <Animated.View style={[styles.splashContainer, { opacity: screenOpacity }]}>
+      <Animated.Text
+        style={[
+          styles.splashTitle,
+          {
+            opacity: textOpacity,
+            transform: [{ scale: textScale }],
+          },
+        ]}
+      >
+        The Roster
+      </Animated.Text>
     </Animated.View>
   );
 }
@@ -274,20 +283,15 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   splashContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E53935',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 999,
   },
-  splashLogo: {
-    width: 220,
-    height: 220,
-  },
   splashTitle: {
-    marginTop: 20,
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#E53935',
-    letterSpacing: -0.5,
+    fontSize: 48,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -1,
   },
 });

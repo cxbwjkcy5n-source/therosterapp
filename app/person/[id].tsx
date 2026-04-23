@@ -1027,11 +1027,11 @@ export default function PersonDetailScreen() {
 
   const handleSaveNote = async () => {
     if (!newNoteText.trim()) return;
-    console.log('[PersonDetail] Saving note for person:', id);
+    console.log('[PersonDetail] handleSaveNote called, text:', newNoteText.trim(), 'person id:', id);
     setSavingNote(true);
     try {
-      await apiPost('/api/notes', { person_id: id, content: newNoteText.trim() });
-      console.log('[PersonDetail] Note saved');
+      const result = await apiPost('/api/notes', { person_id: id, content: newNoteText.trim() });
+      console.log('[PersonDetail] Note save result:', result);
       setNewNoteText('');
       setAddingNote(false);
       await loadNotes();
@@ -1135,12 +1135,14 @@ export default function PersonDetailScreen() {
   const phoneNumber = displayData.phone_number || '';
 
   const ratingFields = [
-    { label: 'Sexual chemistry', key: 'sexual_chemistry' as keyof Person },
-    { label: 'Overall chemistry', key: 'overall_chemistry' as keyof Person },
+    { label: 'Interest Level', key: 'interest_level' as keyof Person },
+    { label: 'Attractiveness', key: 'attractiveness' as keyof Person },
+    { label: 'Sexual Chemistry', key: 'sexual_chemistry' as keyof Person },
+    { label: 'Overall Chemistry', key: 'overall_chemistry' as keyof Person },
     { label: 'Communication', key: 'communication' as keyof Person },
     { label: 'Consistency', key: 'consistency' as keyof Person },
-    { label: 'Emotional availability', key: 'emotional_availability' as keyof Person },
-    { label: 'Date planning', key: 'date_planning' as keyof Person },
+    { label: 'Emotional Availability', key: 'emotional_availability' as keyof Person },
+    { label: 'Date Planning', key: 'date_planning' as keyof Person },
     { label: 'Alignment', key: 'alignment' as keyof Person },
   ];
 

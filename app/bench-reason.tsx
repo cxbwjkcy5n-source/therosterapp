@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
@@ -42,99 +42,107 @@ export default function BenchReasonScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background, padding: 24, paddingBottom: insets.bottom + 24 }}>
-      <Text style={{ color: COLORS.text, fontSize: 22, fontWeight: '800', marginBottom: 6 }}>
-        Moving to Bench
-      </Text>
-      <Text style={{ color: COLORS.textSecondary, fontSize: 15, marginBottom: 28 }}>
-        Why are you benching{personName ? ` ${personName}` : ''}?
-      </Text>
+    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 24, paddingBottom: 16 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={{ color: COLORS.text, fontSize: 22, fontWeight: '800', marginBottom: 6 }}>
+          Moving to Bench
+        </Text>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 15, marginBottom: 28 }}>
+          Why are you benching{personName ? ` ${personName}` : ''}?
+        </Text>
 
-      <View style={{ gap: 10, marginBottom: 20 }}>
-        {REASONS.map((reason) => (
-          <AnimatedPressable
-            key={reason}
-            onPress={() => {
-              console.log('[BenchReason] Reason selected:', reason);
-              setSelectedReason(reason);
-            }}
-          >
-            <View
-              style={{
-                backgroundColor: selectedReason === reason ? COLORS.primaryMuted : COLORS.surface,
-                borderRadius: 12,
-                padding: 14,
-                borderWidth: 1,
-                borderColor: selectedReason === reason ? COLORS.primary : COLORS.border,
-                flexDirection: 'row',
-                alignItems: 'center',
+        <View style={{ gap: 10, marginBottom: 20 }}>
+          {REASONS.map((reason) => (
+            <AnimatedPressable
+              key={reason}
+              onPress={() => {
+                console.log('[BenchReason] Reason selected:', reason);
+                setSelectedReason(reason);
               }}
             >
               <View
                 style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 10,
-                  borderWidth: 2,
-                  borderColor: selectedReason === reason ? COLORS.primary : COLORS.textTertiary,
-                  backgroundColor: selectedReason === reason ? COLORS.primary : 'transparent',
-                  marginRight: 12,
-                }}
-              />
-              <Text
-                style={{
-                  color: selectedReason === reason ? COLORS.text : COLORS.textSecondary,
-                  fontSize: 15,
-                  fontWeight: selectedReason === reason ? '600' : '400',
+                  backgroundColor: selectedReason === reason ? COLORS.primaryMuted : COLORS.surface,
+                  borderRadius: 12,
+                  padding: 14,
+                  borderWidth: 1,
+                  borderColor: selectedReason === reason ? COLORS.primary : COLORS.border,
+                  flexDirection: 'row',
+                  alignItems: 'center',
                 }}
               >
-                {reason}
-              </Text>
-            </View>
-          </AnimatedPressable>
-        ))}
-      </View>
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: selectedReason === reason ? COLORS.primary : COLORS.textTertiary,
+                    backgroundColor: selectedReason === reason ? COLORS.primary : 'transparent',
+                    marginRight: 12,
+                  }}
+                />
+                <Text
+                  style={{
+                    color: selectedReason === reason ? COLORS.text : COLORS.textSecondary,
+                    fontSize: 15,
+                    fontWeight: selectedReason === reason ? '600' : '400',
+                  }}
+                >
+                  {reason}
+                </Text>
+              </View>
+            </AnimatedPressable>
+          ))}
+        </View>
 
-      {selectedReason === 'Other' && (
-        <TextInput
-          value={customReason}
-          onChangeText={setCustomReason}
-          placeholder="Describe the reason..."
-          placeholderTextColor={COLORS.textTertiary}
-          multiline
-          style={{
-            backgroundColor: COLORS.surfaceSecondary,
-            borderRadius: 12,
-            padding: 14,
-            color: COLORS.text,
-            fontSize: 15,
-            borderWidth: 1,
-            borderColor: COLORS.border,
-            minHeight: 80,
-            marginBottom: 20,
-          }}
-        />
-      )}
-
-      <AnimatedPressable
-        onPress={handleBench}
-        disabled={!canSave || saving}
-        style={{
-          backgroundColor: canSave ? COLORS.primary : COLORS.surfaceSecondary,
-          borderRadius: 14,
-          paddingVertical: 16,
-          alignItems: 'center',
-          marginTop: 'auto',
-        }}
-      >
-        {saving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={{ color: canSave ? '#fff' : COLORS.textTertiary, fontSize: 16, fontWeight: '700' }}>
-            Move to Bench
-          </Text>
+        {selectedReason === 'Other' && (
+          <TextInput
+            value={customReason}
+            onChangeText={setCustomReason}
+            placeholder="Describe the reason..."
+            placeholderTextColor={COLORS.textTertiary}
+            multiline
+            style={{
+              backgroundColor: COLORS.surfaceSecondary,
+              borderRadius: 12,
+              padding: 14,
+              color: COLORS.text,
+              fontSize: 15,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              minHeight: 80,
+              marginBottom: 20,
+            }}
+          />
         )}
-      </AnimatedPressable>
+      </ScrollView>
+
+      {/* Button always pinned at bottom */}
+      <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 16, paddingTop: 8, backgroundColor: COLORS.background }}>
+        <AnimatedPressable
+          onPress={handleBench}
+          disabled={!canSave || saving}
+          style={{
+            backgroundColor: canSave ? COLORS.primary : COLORS.surfaceSecondary,
+            borderRadius: 14,
+            paddingVertical: 16,
+            alignItems: 'center',
+          }}
+        >
+          {saving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={{ color: canSave ? '#fff' : COLORS.textTertiary, fontSize: 16, fontWeight: '700' }}>
+              Move to Bench
+            </Text>
+          )}
+        </AnimatedPressable>
+      </View>
     </View>
   );
 }

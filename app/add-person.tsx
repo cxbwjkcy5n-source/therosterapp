@@ -244,6 +244,11 @@ export default function AddPersonScreen() {
   const [attractiveness, setAttractiveness] = useState(5);
   const [sexualChemistry, setSexualChemistry] = useState(5);
   const [communication, setCommunication] = useState(5);
+  const [overallChemistry, setOverallChemistry] = useState(5);
+  const [consistency, setConsistency] = useState(5);
+  const [emotionalAvailability, setEmotionalAvailability] = useState(5);
+  const [datePlanning, setDatePlanning] = useState(5);
+  const [alignment, setAlignment] = useState(5);
   const [excludedRatings, setExcludedRatings] = useState<Set<string>>(new Set());
   const toggleExclude = (key: string) => setExcludedRatings(prev => {
     const next = new Set(prev);
@@ -284,6 +289,11 @@ export default function AddPersonScreen() {
         attractiveness,
         sexual_chemistry: sexualChemistry,
         communication,
+        overall_chemistry: overallChemistry,
+        consistency,
+        emotional_availability: emotionalAvailability,
+        date_planning: datePlanning,
+        alignment,
         favorite_foods: favoriteFoods,
         hobbies,
         green_flags: greenFlags,
@@ -671,6 +681,11 @@ export default function AddPersonScreen() {
           <SliderInput label="Attractiveness" value={attractiveness} onChange={setAttractiveness} excluded={excludedRatings.has('attractiveness')} onToggleExclude={() => toggleExclude('attractiveness')} />
           <SliderInput label="Sexual Chemistry" value={sexualChemistry} onChange={setSexualChemistry} excluded={excludedRatings.has('sexual_chemistry')} onToggleExclude={() => toggleExclude('sexual_chemistry')} />
           <SliderInput label="Communication" value={communication} onChange={setCommunication} excluded={excludedRatings.has('communication')} onToggleExclude={() => toggleExclude('communication')} />
+          <SliderInput label="Overall Chemistry" value={overallChemistry} onChange={setOverallChemistry} excluded={excludedRatings.has('overall_chemistry')} onToggleExclude={() => toggleExclude('overall_chemistry')} />
+          <SliderInput label="Consistency" value={consistency} onChange={setConsistency} excluded={excludedRatings.has('consistency')} onToggleExclude={() => toggleExclude('consistency')} />
+          <SliderInput label="Emotional Availability" value={emotionalAvailability} onChange={setEmotionalAvailability} excluded={excludedRatings.has('emotional_availability')} onToggleExclude={() => toggleExclude('emotional_availability')} />
+          <SliderInput label="Date Planning" value={datePlanning} onChange={setDatePlanning} excluded={excludedRatings.has('date_planning')} onToggleExclude={() => toggleExclude('date_planning')} />
+          <SliderInput label="Alignment" value={alignment} onChange={setAlignment} excluded={excludedRatings.has('alignment')} onToggleExclude={() => toggleExclude('alignment')} />
 
           {/* Compatibility Score */}
           <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 20 }} />
@@ -687,21 +702,26 @@ export default function AddPersonScreen() {
             Overall Compatibility
           </Text>
           {(() => {
-            const active = [
+            const activeScores = [
               !excludedRatings.has('interest_level') ? interestLevel : null,
               !excludedRatings.has('attractiveness') ? attractiveness : null,
               !excludedRatings.has('sexual_chemistry') ? sexualChemistry : null,
               !excludedRatings.has('communication') ? communication : null,
+              !excludedRatings.has('overall_chemistry') ? overallChemistry : null,
+              !excludedRatings.has('consistency') ? consistency : null,
+              !excludedRatings.has('emotional_availability') ? emotionalAvailability : null,
+              !excludedRatings.has('date_planning') ? datePlanning : null,
+              !excludedRatings.has('alignment') ? alignment : null,
             ].filter((v): v is number => v !== null);
-            const score = active.length > 0 ? Math.round(active.reduce((a, b) => a + b, 0) / active.length) : 0;
-            const pct = active.length > 0 ? (score / 10) * 100 : 0;
+            const compatScore = activeScores.length > 0 ? Math.round(activeScores.reduce((a, b) => a + b, 0) / activeScores.length) : 0;
+            const compatPct = activeScores.length > 0 ? (compatScore / 10) * 100 : 0;
             return (
               <>
                 <Text style={{ color: '#E53935', fontSize: 32, fontWeight: '800', letterSpacing: -1, marginBottom: 10 }}>
-                  {score}<Text style={{ fontSize: 18, fontWeight: '600', color: '#E53935' }}>/10</Text>
+                  {compatScore}<Text style={{ fontSize: 18, fontWeight: '600', color: '#E53935' }}>/10</Text>
                 </Text>
                 <View style={{ height: 6, backgroundColor: '#E8E8E8', borderRadius: 3, overflow: 'hidden', marginBottom: 8 }}>
-                  <View style={{ height: 6, width: `${pct}%`, backgroundColor: '#E53935', borderRadius: 3 }} />
+                  <View style={{ height: 6, width: `${compatPct}%`, backgroundColor: '#E53935', borderRadius: 3 }} />
                 </View>
               </>
             );
