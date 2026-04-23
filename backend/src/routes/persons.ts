@@ -13,6 +13,7 @@ interface PersonInput {
   instagram?: string;
   tiktok?: string;
   twitterX?: string;
+  phoneNumber?: string;
   interestLevel?: number;
   attractiveness?: number;
   sexualChemistry?: number;
@@ -335,36 +336,41 @@ export function registerPersonsRoutes(app: App) {
           200: {
             type: 'object',
             properties: {
-              id: { type: 'string', format: 'uuid' },
-              userId: { type: 'string' },
-              name: { type: 'string' },
-              location: { type: 'string' },
-              photoUrl: { type: ['string', 'null'] },
-              age: { type: ['integer', 'null'] },
-              birthday: { type: ['string', 'null'] },
-              zodiac: { type: ['string', 'null'] },
-              instagram: { type: ['string', 'null'] },
-              tiktok: { type: ['string', 'null'] },
-              twitterX: { type: ['string', 'null'] },
-              interestLevel: { type: ['integer', 'null'] },
-              attractiveness: { type: ['integer', 'null'] },
-              sexualChemistry: { type: ['integer', 'null'] },
-              communication: { type: ['integer', 'null'] },
-              overallChemistry: { type: ['integer', 'null'] },
-              consistency: { type: ['integer', 'null'] },
-              emotionalAvailability: { type: ['integer', 'null'] },
-              datePlanning: { type: ['integer', 'null'] },
-              alignment: { type: ['integer', 'null'] },
-              connectionType: { type: ['string', 'null'] },
-              connectionTypeCustom: { type: ['string', 'null'] },
-              favoriteFoods: { type: ['array', 'null'], items: { type: 'string' } },
-              hobbies: { type: ['array', 'null'], items: { type: 'string' } },
-              redFlags: { type: ['array', 'null'], items: { type: 'string' } },
-              greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
-              isBenched: { type: 'boolean' },
-              benchReason: { type: ['string', 'null'] },
-              createdAt: { type: 'string', format: 'date-time' },
-              updatedAt: { type: 'string', format: 'date-time' },
+              person: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  userId: { type: 'string' },
+                  name: { type: 'string' },
+                  location: { type: 'string' },
+                  photoUrl: { type: ['string', 'null'] },
+                  age: { type: ['integer', 'null'] },
+                  birthday: { type: ['string', 'null'] },
+                  zodiac: { type: ['string', 'null'] },
+                  instagram: { type: ['string', 'null'] },
+                  tiktok: { type: ['string', 'null'] },
+                  twitterX: { type: ['string', 'null'] },
+                  interestLevel: { type: ['integer', 'null'] },
+                  attractiveness: { type: ['integer', 'null'] },
+                  sexualChemistry: { type: ['integer', 'null'] },
+                  communication: { type: ['integer', 'null'] },
+                  overallChemistry: { type: ['integer', 'null'] },
+                  consistency: { type: ['integer', 'null'] },
+                  emotionalAvailability: { type: ['integer', 'null'] },
+                  datePlanning: { type: ['integer', 'null'] },
+                  alignment: { type: ['integer', 'null'] },
+                  connectionType: { type: ['string', 'null'] },
+                  connectionTypeCustom: { type: ['string', 'null'] },
+                  favoriteFoods: { type: ['array', 'null'], items: { type: 'string' } },
+                  hobbies: { type: ['array', 'null'], items: { type: 'string' } },
+                  redFlags: { type: ['array', 'null'], items: { type: 'string' } },
+                  greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
+                  isBenched: { type: 'boolean' },
+                  benchReason: { type: ['string', 'null'] },
+                  createdAt: { type: 'string', format: 'date-time' },
+                  updatedAt: { type: 'string', format: 'date-time' },
+                },
+              },
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -445,7 +451,7 @@ export function registerPersonsRoutes(app: App) {
         .returning();
 
       app.logger.info({ userId: session.user.id, personId: id }, 'Person updated');
-      return updated;
+      return { person: updated };
     }
   );
 

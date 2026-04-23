@@ -140,7 +140,7 @@ describe("API Integration Tests", () => {
     });
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.id).toBe(personId);
+    expect(data.person.id).toBe(personId);
   });
 
   test("Update person with all fields", async () => {
@@ -902,11 +902,11 @@ describe("API Integration Tests", () => {
     });
     await expectStatus(res, 201);
     const data = await res.json();
-    noteId = data.id;
-    expect(data.id).toBeDefined();
-    expect(data.personId).toBe(personId);
-    expect(data.content).toBe("She loves hiking and coffee");
-    expect(data.createdAt).toBeDefined();
+    noteId = data.note.id;
+    expect(data.note.id).toBeDefined();
+    expect(data.note.personId).toBe(personId);
+    expect(data.note.content).toBe("She loves hiking and coffee");
+    expect(data.note.createdAt).toBeDefined();
   });
 
   test("Create a note with custom created_at", async () => {
@@ -921,8 +921,8 @@ describe("API Integration Tests", () => {
     });
     await expectStatus(res, 201);
     const data = await res.json();
-    expect(data.id).toBeDefined();
-    expect(data.content).toBe("Follow up next week");
+    expect(data.note.id).toBeDefined();
+    expect(data.note.content).toBe("Follow up next week");
   });
 
   test("Create note fails without required person_id", async () => {
@@ -951,10 +951,10 @@ describe("API Integration Tests", () => {
     const res = await authenticatedApi(`/api/notes?person_id=${personId}`, authToken);
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(Array.isArray(data)).toBe(true);
+    expect(Array.isArray(data.notes)).toBe(true);
     // Should contain notes we created
-    if (data.length > 0) {
-      const note = data[0];
+    if (data.notes.length > 0) {
+      const note = data.notes[0];
       expect(note.id).toBeDefined();
       expect(note.personId).toBeDefined();
       expect(note.content).toBeDefined();

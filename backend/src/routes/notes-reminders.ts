@@ -36,19 +36,24 @@ export function registerNotesRemindersRoutes(app: App) {
         },
         response: {
           200: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string', format: 'uuid' },
-                userId: { type: 'string' },
-                personId: { type: 'string', format: 'uuid' },
-                content: { type: 'string' },
-                createdAt: { type: 'string', format: 'date-time' },
+            type: 'object',
+            properties: {
+              notes: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    personId: { type: 'string', format: 'uuid' },
+                    content: { type: 'string' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                  },
+                },
               },
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
@@ -64,15 +69,29 @@ export function registerNotesRemindersRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id, personId: person_id }, 'Getting notes');
 
+      // Verify the person belongs to the authenticated user
+      const person = await app.db.query.persons.findFirst({
+        where: and(
+          eq(schema.persons.id, person_id),
+          eq(schema.persons.userId, session.user.id)
+        ),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: person_id }, 'Person not found or access denied');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
       const notes = await app.db.query.notes.findMany({
         where: and(
           eq(schema.notes.userId, session.user.id),
           eq(schema.notes.personId, person_id)
         ),
+        orderBy: (notes, { desc }) => [desc(notes.createdAt)],
       });
 
       app.logger.info({ userId: session.user.id, personId: person_id, count: notes.length }, 'Notes retrieved');
-      return notes;
+      return { notes };
     }
   );
 
@@ -96,14 +115,20 @@ export function registerNotesRemindersRoutes(app: App) {
           201: {
             type: 'object',
             properties: {
-              id: { type: 'string', format: 'uuid' },
-              userId: { type: 'string' },
-              personId: { type: 'string', format: 'uuid' },
-              content: { type: 'string' },
-              createdAt: { type: 'string', format: 'date-time' },
+              note: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  personId: { type: 'string', format: 'uuid' },
+                  content: { type: 'string' },
+                  createdAt: { type: 'string', format: 'date-time' },
+                },
+              },
             },
           },
+          400: { type: 'object', properties: { error: { type: 'string' } } },
           401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
@@ -111,7 +136,28 @@ export function registerNotesRemindersRoutes(app: App) {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
+      const { person_id, content } = request.body;
+
+      // Validate content is provided and non-empty
+      if (!content || content.trim() === '') {
+        app.logger.warn({ userId: session.user.id }, 'Content is required and cannot be empty');
+        return reply.status(400).send({ error: 'Content is required and cannot be empty' });
+      }
+
       app.logger.info({ userId: session.user.id, body: request.body }, 'Creating note');
+
+      // Verify person exists and belongs to authenticated user
+      const person = await app.db.query.persons.findFirst({
+        where: and(
+          eq(schema.persons.id, person_id),
+          eq(schema.persons.userId, session.user.id)
+        ),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: person_id }, 'Person not found or access denied');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
 
       const [note] = await app.db
         .insert(schema.notes)
@@ -125,7 +171,12 @@ export function registerNotesRemindersRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id, noteId: note.id }, 'Note created');
       reply.status(201);
-      return note;
+      return { note: {
+        id: note.id,
+        personId: note.personId,
+        content: note.content,
+        createdAt: note.createdAt,
+      }};
     }
   );
 
