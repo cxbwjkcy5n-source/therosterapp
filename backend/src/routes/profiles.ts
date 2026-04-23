@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema/schema.js';
 
 interface ProfileUpdateInput {
-  name?: string;
+  display_name?: string;
   photo_url?: string;
   age?: number;
   birthday?: string;
@@ -12,16 +12,18 @@ interface ProfileUpdateInput {
   location?: string;
   occupation?: string;
   bio?: string;
+  phone_number?: string;
+  instagram?: string;
+  tiktok?: string;
+  twitter_x?: string;
   favorite_foods?: string[];
   hobbies?: string[];
+  what_i_bring?: string[];
+  things_to_work_on?: string[];
   green_flags?: string[];
   red_flags?: string[];
   attractiveness_self?: number;
   communication_self?: number;
-  instagram?: string;
-  tiktok?: string;
-  twitter_x?: string;
-  phone_number?: string;
 }
 
 export function registerProfilesRoutes(app: App) {
@@ -38,34 +40,30 @@ export function registerProfilesRoutes(app: App) {
           200: {
             type: 'object',
             properties: {
-              profile: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  name: { type: 'string' },
-                  email: { type: 'string' },
-                  image: { type: ['string', 'null'] },
-                  photo_url: { type: ['string', 'null'] },
-                  age: { type: ['integer', 'null'] },
-                  birthday: { type: ['string', 'null'] },
-                  zodiac: { type: ['string', 'null'] },
-                  location: { type: ['string', 'null'] },
-                  occupation: { type: ['string', 'null'] },
-                  bio: { type: ['string', 'null'] },
-                  favorite_foods: { type: ['array', 'null'], items: { type: 'string' } },
-                  hobbies: { type: ['array', 'null'], items: { type: 'string' } },
-                  green_flags: { type: ['array', 'null'], items: { type: 'string' } },
-                  red_flags: { type: ['array', 'null'], items: { type: 'string' } },
-                  attractiveness_self: { type: ['integer', 'null'] },
-                  communication_self: { type: ['integer', 'null'] },
-                  instagram: { type: ['string', 'null'] },
-                  tiktok: { type: ['string', 'null'] },
-                  twitter_x: { type: ['string', 'null'] },
-                  phone_number: { type: ['string', 'null'] },
-                  created_at: { type: ['string', 'null'], format: 'date-time' },
-                  updated_at: { type: ['string', 'null'], format: 'date-time' },
-                },
-              },
+              id: { type: ['string', 'null'] },
+              userId: { type: ['string', 'null'] },
+              displayName: { type: ['string', 'null'] },
+              photoUrl: { type: ['string', 'null'] },
+              age: { type: ['integer', 'null'] },
+              birthday: { type: ['string', 'null'] },
+              zodiac: { type: ['string', 'null'] },
+              location: { type: ['string', 'null'] },
+              occupation: { type: ['string', 'null'] },
+              bio: { type: ['string', 'null'] },
+              phoneNumber: { type: ['string', 'null'] },
+              instagram: { type: ['string', 'null'] },
+              tiktok: { type: ['string', 'null'] },
+              twitterX: { type: ['string', 'null'] },
+              favoriteFoods: { type: ['array', 'null'], items: { type: 'string' } },
+              hobbies: { type: ['array', 'null'], items: { type: 'string' } },
+              whatIBring: { type: ['array', 'null'], items: { type: 'string' } },
+              thingsToWorkOn: { type: ['array', 'null'], items: { type: 'string' } },
+              greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
+              redFlags: { type: ['array', 'null'], items: { type: 'string' } },
+              attractivenessSelf: { type: ['integer', 'null'] },
+              communicationSelf: { type: ['integer', 'null'] },
+              createdAt: { type: ['string', 'null'], format: 'date-time' },
+              updatedAt: { type: ['string', 'null'], format: 'date-time' },
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -78,43 +76,43 @@ export function registerProfilesRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id }, 'Getting user profile');
 
-      // Get user data
-      const userData = session.user;
-
       // Get user profile data
       const userProfile = await app.db.query.userProfiles.findFirst({
         where: eq(schema.userProfiles.userId, session.user.id),
       });
 
-      // Merge user and profile data
+      // Merge display_name from user.name if not set
+      const displayName = userProfile?.displayName || session.user.name || null;
+
       const profile = {
-        id: userData.id,
-        name: userData.name,
-        email: userData.email,
-        image: userData.image || null,
-        photo_url: userProfile?.photoUrl || null,
+        id: userProfile?.id || null,
+        userId: userProfile?.userId || session.user.id,
+        displayName,
+        photoUrl: userProfile?.photoUrl || null,
         age: userProfile?.age || null,
         birthday: userProfile?.birthday || null,
         zodiac: userProfile?.zodiac || null,
         location: userProfile?.location || null,
         occupation: userProfile?.occupation || null,
         bio: userProfile?.bio || null,
-        favorite_foods: userProfile?.favoriteFoods || null,
-        hobbies: userProfile?.hobbies || null,
-        green_flags: userProfile?.greenFlags || null,
-        red_flags: userProfile?.redFlags || null,
-        attractiveness_self: userProfile?.attractivenessSelf || null,
-        communication_self: userProfile?.communicationSelf || null,
+        phoneNumber: userProfile?.phoneNumber || null,
         instagram: userProfile?.instagram || null,
         tiktok: userProfile?.tiktok || null,
-        twitter_x: userProfile?.twitterX || null,
-        phone_number: userProfile?.phoneNumber || null,
-        created_at: userProfile?.createdAt || null,
-        updated_at: userProfile?.updatedAt || null,
+        twitterX: userProfile?.twitterX || null,
+        favoriteFoods: userProfile?.favoriteFoods || null,
+        hobbies: userProfile?.hobbies || null,
+        whatIBring: userProfile?.whatIBring || null,
+        thingsToWorkOn: userProfile?.thingsToWorkOn || null,
+        greenFlags: userProfile?.greenFlags || null,
+        redFlags: userProfile?.redFlags || null,
+        attractivenessSelf: userProfile?.attractivenessSelf || null,
+        communicationSelf: userProfile?.communicationSelf || null,
+        createdAt: userProfile?.createdAt || null,
+        updatedAt: userProfile?.updatedAt || null,
       };
 
       app.logger.info({ userId: session.user.id }, 'Retrieved user profile');
-      return { profile };
+      return profile;
     }
   );
 
@@ -128,7 +126,7 @@ export function registerProfilesRoutes(app: App) {
         body: {
           type: 'object',
           properties: {
-            name: { type: 'string' },
+            display_name: { type: 'string' },
             photo_url: { type: 'string' },
             age: { type: 'integer' },
             birthday: { type: 'string' },
@@ -136,30 +134,28 @@ export function registerProfilesRoutes(app: App) {
             location: { type: 'string' },
             occupation: { type: 'string' },
             bio: { type: 'string' },
+            phone_number: { type: 'string' },
+            instagram: { type: 'string' },
+            tiktok: { type: 'string' },
+            twitter_x: { type: 'string' },
             favorite_foods: { type: 'array', items: { type: 'string' } },
             hobbies: { type: 'array', items: { type: 'string' } },
+            what_i_bring: { type: 'array', items: { type: 'string' } },
+            things_to_work_on: { type: 'array', items: { type: 'string' } },
             green_flags: { type: 'array', items: { type: 'string' } },
             red_flags: { type: 'array', items: { type: 'string' } },
             attractiveness_self: { type: 'integer' },
             communication_self: { type: 'integer' },
-            instagram: { type: 'string' },
-            tiktok: { type: 'string' },
-            twitter_x: { type: 'string' },
-            phone_number: { type: 'string' },
           },
         },
         response: {
           200: {
             type: 'object',
             properties: {
-              profile: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  name: { type: 'string' },
-                  email: { type: 'string' },
-                },
-              },
+              id: { type: ['string', 'null'] },
+              userId: { type: ['string', 'null'] },
+              displayName: { type: ['string', 'null'] },
+              photoUrl: { type: ['string', 'null'] },
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -173,11 +169,17 @@ export function registerProfilesRoutes(app: App) {
       const userId = session.user.id;
       app.logger.info({ userId, body: request.body }, 'Updating user profile');
 
-      // Update user name if provided
-      if (request.body.name !== undefined) {
-        // We would need to update the user table here, but that's part of Better Auth
-        // For now, we'll just log it and users would need to update name through auth endpoints
-        app.logger.info({ userId }, 'Name update requested but requires auth endpoint');
+      // If display_name is provided, also update user.name
+      if (request.body.display_name !== undefined) {
+        try {
+          await app.auth.api.updateUser({
+            body: { name: request.body.display_name },
+            headers: new Headers(),
+          });
+          app.logger.info({ userId }, 'Updated user name via auth API');
+        } catch (error) {
+          app.logger.warn({ userId, err: error }, 'Failed to update user name');
+        }
       }
 
       // Prepare profile update data
@@ -185,6 +187,7 @@ export function registerProfilesRoutes(app: App) {
         updatedAt: new Date(),
       };
 
+      if (request.body.display_name !== undefined) profileUpdateData.displayName = request.body.display_name;
       if (request.body.photo_url !== undefined) profileUpdateData.photoUrl = request.body.photo_url;
       if (request.body.age !== undefined) profileUpdateData.age = request.body.age;
       if (request.body.birthday !== undefined) profileUpdateData.birthday = request.body.birthday;
@@ -192,16 +195,18 @@ export function registerProfilesRoutes(app: App) {
       if (request.body.location !== undefined) profileUpdateData.location = request.body.location;
       if (request.body.occupation !== undefined) profileUpdateData.occupation = request.body.occupation;
       if (request.body.bio !== undefined) profileUpdateData.bio = request.body.bio;
+      if (request.body.phone_number !== undefined) profileUpdateData.phoneNumber = request.body.phone_number;
+      if (request.body.instagram !== undefined) profileUpdateData.instagram = request.body.instagram;
+      if (request.body.tiktok !== undefined) profileUpdateData.tiktok = request.body.tiktok;
+      if (request.body.twitter_x !== undefined) profileUpdateData.twitterX = request.body.twitter_x;
       if (request.body.favorite_foods !== undefined) profileUpdateData.favoriteFoods = request.body.favorite_foods;
       if (request.body.hobbies !== undefined) profileUpdateData.hobbies = request.body.hobbies;
+      if (request.body.what_i_bring !== undefined) profileUpdateData.whatIBring = request.body.what_i_bring;
+      if (request.body.things_to_work_on !== undefined) profileUpdateData.thingsToWorkOn = request.body.things_to_work_on;
       if (request.body.green_flags !== undefined) profileUpdateData.greenFlags = request.body.green_flags;
       if (request.body.red_flags !== undefined) profileUpdateData.redFlags = request.body.red_flags;
       if (request.body.attractiveness_self !== undefined) profileUpdateData.attractivenessSelf = request.body.attractiveness_self;
       if (request.body.communication_self !== undefined) profileUpdateData.communicationSelf = request.body.communication_self;
-      if (request.body.instagram !== undefined) profileUpdateData.instagram = request.body.instagram;
-      if (request.body.tiktok !== undefined) profileUpdateData.tiktok = request.body.tiktok;
-      if (request.body.twitter_x !== undefined) profileUpdateData.twitterX = request.body.twitter_x;
-      if (request.body.phone_number !== undefined) profileUpdateData.phoneNumber = request.body.phone_number;
 
       // Check if user profile exists
       const existingProfile = await app.db.query.userProfiles.findFirst({
@@ -228,34 +233,38 @@ export function registerProfilesRoutes(app: App) {
         where: eq(schema.userProfiles.userId, userId),
       });
 
+      // Merge display_name from user.name if not set
+      const displayName = userProfile?.displayName || session.user.name || null;
+
       const profile = {
-        id: session.user.id,
-        name: session.user.name,
-        email: session.user.email,
-        image: session.user.image || null,
-        photo_url: userProfile?.photoUrl || null,
+        id: userProfile?.id || null,
+        userId: userProfile?.userId || null,
+        displayName,
+        photoUrl: userProfile?.photoUrl || null,
         age: userProfile?.age || null,
         birthday: userProfile?.birthday || null,
         zodiac: userProfile?.zodiac || null,
         location: userProfile?.location || null,
         occupation: userProfile?.occupation || null,
         bio: userProfile?.bio || null,
-        favorite_foods: userProfile?.favoriteFoods || null,
-        hobbies: userProfile?.hobbies || null,
-        green_flags: userProfile?.greenFlags || null,
-        red_flags: userProfile?.redFlags || null,
-        attractiveness_self: userProfile?.attractivenessSelf || null,
-        communication_self: userProfile?.communicationSelf || null,
+        phoneNumber: userProfile?.phoneNumber || null,
         instagram: userProfile?.instagram || null,
         tiktok: userProfile?.tiktok || null,
-        twitter_x: userProfile?.twitterX || null,
-        phone_number: userProfile?.phoneNumber || null,
-        created_at: userProfile?.createdAt || null,
-        updated_at: userProfile?.updatedAt || null,
+        twitterX: userProfile?.twitterX || null,
+        favoriteFoods: userProfile?.favoriteFoods || null,
+        hobbies: userProfile?.hobbies || null,
+        whatIBring: userProfile?.whatIBring || null,
+        thingsToWorkOn: userProfile?.thingsToWorkOn || null,
+        greenFlags: userProfile?.greenFlags || null,
+        redFlags: userProfile?.redFlags || null,
+        attractivenessSelf: userProfile?.attractivenessSelf || null,
+        communicationSelf: userProfile?.communicationSelf || null,
+        createdAt: userProfile?.createdAt || null,
+        updatedAt: userProfile?.updatedAt || null,
       };
 
       app.logger.info({ userId }, 'User profile updated');
-      return { profile };
+      return profile;
     }
   );
 }

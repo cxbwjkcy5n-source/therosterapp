@@ -36,6 +36,13 @@
       "when": 1776896741664,
       "tag": "20260422222541_mighty_jack_power",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776903918518,
+      "tag": "20260423002518_dear_pride",
+      "breakpoints": true
     }
   ]
 }

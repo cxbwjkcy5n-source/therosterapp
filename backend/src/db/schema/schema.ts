@@ -126,6 +126,7 @@ export const interactions = pgTable('interactions', {
 export const userProfiles = pgTable('user_profiles', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: text('user_id').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
+  displayName: text('display_name'),
   photoUrl: text('photo_url'),
   age: integer('age'),
   birthday: text('birthday'),
@@ -135,6 +136,8 @@ export const userProfiles = pgTable('user_profiles', {
   bio: text('bio'),
   favoriteFoods: text('favorite_foods').array(),
   hobbies: text('hobbies').array(),
+  whatIBring: text('what_i_bring').array(),
+  thingsToWorkOn: text('things_to_work_on').array(),
   greenFlags: text('green_flags').array(),
   redFlags: text('red_flags').array(),
   attractivenessSelf: integer('attractiveness_self'),
