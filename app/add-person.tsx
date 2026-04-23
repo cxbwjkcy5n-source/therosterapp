@@ -252,7 +252,7 @@ export default function AddPersonScreen() {
   const [excludedRatings, setExcludedRatings] = useState<Set<string>>(new Set());
   const toggleExclude = (key: string) => setExcludedRatings(prev => {
     const next = new Set(prev);
-    next.has(key) ? next.delete(key) : next.add(key);
+    if (next.has(key)) { next.delete(key); } else { next.add(key); }
     return next;
   });
   const [favoriteFoods, setFavoriteFoods] = useState<string[]>([]);

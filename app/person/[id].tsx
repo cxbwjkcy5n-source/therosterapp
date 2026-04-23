@@ -895,7 +895,21 @@ export default function PersonDetailScreen() {
     console.log('[PersonDetail] Saving person:', id);
     setSaving(true);
     try {
-      await apiPut(`/api/persons/${id}`, editData);
+      const ALLOWED_FIELDS = [
+        'name', 'location', 'age', 'birthday', 'zodiac', 'phone_number',
+        'instagram', 'tiktok', 'twitter_x', 'facebook', 'connection_type',
+        'connection_type_custom', 'interest_level', 'attractiveness',
+        'sexual_chemistry', 'communication', 'overall_chemistry', 'consistency',
+        'emotional_availability', 'date_planning', 'alignment',
+        'favorite_foods', 'hobbies', 'green_flags', 'red_flags', 'photo_url',
+      ];
+      const payload: Record<string, any> = {};
+      for (const key of ALLOWED_FIELDS) {
+        const val = (editData as any)[key];
+        if (val === undefined || val === null || val === '') continue;
+        payload[key] = val;
+      }
+      await apiPut(`/api/persons/${id}`, payload);
       if (newPhotoUri) {
         try {
           const base64 = await FileSystem.readAsStringAsync(newPhotoUri, { encoding: 'base64' });

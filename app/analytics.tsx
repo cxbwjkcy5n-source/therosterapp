@@ -39,6 +39,11 @@ interface Person {
   attractiveness?: number;
   sexual_chemistry?: number;
   communication?: number;
+  overall_chemistry?: number;
+  consistency?: number;
+  emotional_availability?: number;
+  date_planning?: number;
+  alignment?: number;
   connection_type?: string;
   hobbies?: string[];
   red_flags?: string[];
@@ -77,6 +82,11 @@ interface PeopleStats {
   avgAttractiveness: number;
   avgChemistry: number;
   avgCommunication: number;
+  avgOverallChemistry: number;
+  avgConsistency: number;
+  avgEmotionalAvailability: number;
+  avgDatePlanning: number;
+  avgAlignment: number;
   connectionBreakdown: { type: string; count: number }[];
   mostCommonZodiac: string;
   topHobbies: { label: string; count: number }[];
@@ -146,9 +156,10 @@ function computePeopleStats(persons: Person[]): PeopleStats {
   let topRatedPhoto = '';
   let topRatedScore = 0;
   for (const p of persons) {
-    const scores = [p.interest_level, p.attractiveness, p.sexual_chemistry, p.communication].filter(
-      (v): v is number => v != null
-    );
+    const scores = [
+      p.interest_level, p.attractiveness, p.sexual_chemistry, p.communication,
+      p.overall_chemistry, p.consistency, p.emotional_availability, p.date_planning, p.alignment,
+    ].filter((v): v is number => v != null);
     if (scores.length > 0) {
       const score = scores.reduce((a, b) => a + b, 0) / scores.length;
       if (score > topRatedScore) {
@@ -189,6 +200,11 @@ function computePeopleStats(persons: Person[]): PeopleStats {
     avgAttractiveness: avg(persons.map((p) => p.attractiveness)),
     avgChemistry: avg(persons.map((p) => p.sexual_chemistry)),
     avgCommunication: avg(persons.map((p) => p.communication)),
+    avgOverallChemistry: avg(persons.map((p) => p.overall_chemistry)),
+    avgConsistency: avg(persons.map((p) => p.consistency)),
+    avgEmotionalAvailability: avg(persons.map((p) => p.emotional_availability)),
+    avgDatePlanning: avg(persons.map((p) => p.date_planning)),
+    avgAlignment: avg(persons.map((p) => p.alignment)),
     connectionBreakdown,
     mostCommonZodiac,
     topHobbies: topN(allHobbies, 3),
@@ -459,6 +475,11 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
     { label: 'Attractiveness', value: ps.avgAttractiveness, display: avgAttrDisplay },
     { label: 'Sexual Chemistry', value: ps.avgChemistry, display: avgChemDisplay },
     { label: 'Communication', value: ps.avgCommunication, display: avgCommDisplay },
+    { label: 'Overall Chemistry', value: ps.avgOverallChemistry, display: ps.avgOverallChemistry > 0 ? ps.avgOverallChemistry.toFixed(1) : '—' },
+    { label: 'Consistency', value: ps.avgConsistency, display: ps.avgConsistency > 0 ? ps.avgConsistency.toFixed(1) : '—' },
+    { label: 'Emotional Availability', value: ps.avgEmotionalAvailability, display: ps.avgEmotionalAvailability > 0 ? ps.avgEmotionalAvailability.toFixed(1) : '—' },
+    { label: 'Date Planning', value: ps.avgDatePlanning, display: ps.avgDatePlanning > 0 ? ps.avgDatePlanning.toFixed(1) : '—' },
+    { label: 'Alignment', value: ps.avgAlignment, display: ps.avgAlignment > 0 ? ps.avgAlignment.toFixed(1) : '—' },
   ];
 
   return (

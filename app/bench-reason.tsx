@@ -42,9 +42,13 @@ export default function BenchReasonScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      {/* Drag handle */}
+      <View style={{ alignItems: 'center', marginTop: 12, marginBottom: 4 }}>
+        <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CCCCCC' }} />
+      </View>
       <ScrollView
-        contentContainerStyle={{ padding: 24, paddingBottom: 16 }}
+        contentContainerStyle={{ padding: 24, paddingBottom: 8 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -123,7 +127,7 @@ export default function BenchReasonScreen() {
       </ScrollView>
 
       {/* Button always pinned at bottom */}
-      <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 16, paddingTop: 8, backgroundColor: COLORS.background }}>
+      <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 16, paddingTop: 8, backgroundColor: '#FFFFFF' }}>
         <AnimatedPressable
           onPress={handleBench}
           disabled={!canSave || saving}

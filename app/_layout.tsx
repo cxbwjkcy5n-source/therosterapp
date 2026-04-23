@@ -1,6 +1,6 @@
 import 'react-native-reanimated';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Redirect, Stack, router, useSegments, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -65,9 +65,10 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
   const textOpacity = useRef(new Animated.Value(0)).current;
   const textScale = useRef(new Animated.Value(0.4)).current;
   const screenOpacity = useRef(new Animated.Value(1)).current;
+  const imageOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Phase 1: text fades in and grows
+    // Phase 1 (0–600ms): text fades in and grows
     Animated.parallel([
       Animated.timing(textOpacity, {
         toValue: 1,
@@ -80,19 +81,38 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Hold 800ms then fade out entire screen
-      setTimeout(() => {
-        Animated.timing(screenOpacity, {
-          toValue: 0,
-          duration: 600,
+      // Phase 2 (600–1400ms): crossfade text out, image in
+      Animated.parallel([
+        Animated.timing(imageOpacity, {
+          toValue: 1,
+          duration: 400,
           useNativeDriver: true,
-        }).start(() => onDone());
-      }, 800);
+        }),
+        Animated.timing(textOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        // Phase 3 (1400–2200ms): hold then fade entire splash out
+        setTimeout(() => {
+          Animated.timing(screenOpacity, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: true,
+          }).start(() => onDone());
+        }, 600);
+      });
     });
-  }, [textOpacity, textScale, screenOpacity, onDone]);
+  }, [textOpacity, textScale, screenOpacity, imageOpacity, onDone]);
 
   return (
     <Animated.View style={[styles.splashContainer, { opacity: screenOpacity }]}>
+      <Animated.Image
+        source={require('../assets/images/63013054-0171-449a-99c7-6c7734be3ef4.jpeg')}
+        style={[StyleSheet.absoluteFillObject, { opacity: imageOpacity }]}
+        resizeMode="cover"
+      />
       <Animated.Text
         style={[
           styles.splashTitle,
@@ -134,7 +154,7 @@ export default function RootLayout() {
                   <Stack.Screen name="auth-screen" options={{ headerShown: false }} />
                   <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
                   <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false, headerBackTitle: '' }} />
                   <Stack.Screen
                     name="person/[id]"
                     options={{
