@@ -4,10 +4,10 @@
     "slug": "roster-scout",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/playstore.png",
+    "icon": "./assets/images/Transparent-icon-xxhdpi.png",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/playstore.png",
+      "image": "./assets/images/Transparent-icon-xxhdpi.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
@@ -20,7 +20,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/playstore.png",
+        "foregroundImage": "./assets/images/Transparent-icon-xxhdpi.png",
         "backgroundColor": "#000000"
       },
       "package": "com.placeholder.app"
