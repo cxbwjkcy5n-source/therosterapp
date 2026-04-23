@@ -415,6 +415,15 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 200);
   });
 
+  test("Update date with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(`/api/dates/invalid-uuid`, authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "planned" }),
+    });
+    await expectStatus(res, 400);
+  });
+
   test("Update nonexistent date returns 404", async () => {
     const res = await authenticatedApi(
       "/api/dates/00000000-0000-0000-0000-000000000000",
@@ -971,6 +980,11 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 400);
   });
 
+  test("List notes with invalid person_id format returns 400", async () => {
+    const res = await authenticatedApi(`/api/notes?person_id=invalid-uuid`, authToken);
+    await expectStatus(res, 400);
+  });
+
   test("Delete a note", async () => {
     const res = await authenticatedApi(`/api/notes/${noteId}`, authToken, {
       method: "DELETE",
@@ -1080,6 +1094,11 @@ describe("API Integration Tests", () => {
 
   test("Get reminders without person_id returns 400", async () => {
     const res = await authenticatedApi("/api/reminders", authToken);
+    await expectStatus(res, 400);
+  });
+
+  test("List reminders with invalid person_id format returns 400", async () => {
+    const res = await authenticatedApi(`/api/reminders?person_id=invalid-uuid`, authToken);
     await expectStatus(res, 400);
   });
 
