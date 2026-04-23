@@ -429,16 +429,14 @@ export function registerPersonsRoutes(app: App) {
       if (request.body.redFlags !== undefined) updateData.redFlags = request.body.redFlags;
       if (request.body.greenFlags !== undefined) updateData.greenFlags = request.body.greenFlags;
       if (request.body.isBenched !== undefined) {
-        // Parse isBenched explicitly: handle both boolean and string 'false'/'true'
-        let parsedIsBenched: boolean;
-        if (typeof request.body.isBenched === 'string') {
-          parsedIsBenched = request.body.isBenched === 'true';
-        } else {
-          parsedIsBenched = Boolean(request.body.isBenched);
+        const val = request.body.isBenched as any;
+        // Explicitly handle true cases (both boolean true and string 'true')
+        if (val === true || val === 'true') {
+          updateData.isBenched = true;
         }
-        updateData.isBenched = parsedIsBenched;
-        // When unbending (is_benched = false), clear the bench reason
-        if (parsedIsBenched === false) {
+        // Explicitly handle false cases (both boolean false and string 'false') - clear bench reason
+        else if (val === false || val === 'false') {
+          updateData.isBenched = false;
           updateData.benchReason = null;
         }
       }
