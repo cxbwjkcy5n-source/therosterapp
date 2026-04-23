@@ -42,7 +42,7 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    SplashScreen.hideAsync();
+    SplashScreen.hideAsync().catch(() => {});
     // Fade in over 500ms, hold 800ms, fade out over 500ms
     Animated.sequence([
       Animated.timing(opacity, {
@@ -168,7 +168,7 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
               options={{
                 presentation: 'formSheet',
                 sheetGrabberVisible: true,
-                sheetAllowedDetents: [0.5],
+                sheetAllowedDetents: [0.75],
                 headerShown: false,
               }}
             />
