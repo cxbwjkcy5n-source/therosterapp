@@ -154,21 +154,21 @@ export default function AuthScreen() {
               width: 88,
               height: 88,
               borderRadius: 22,
-              backgroundColor: '#000',
+              backgroundColor: '#FFFFFF',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 20,
               shadowColor: COLORS.primary,
-              shadowOpacity: 0.4,
+              shadowOpacity: 0.2,
               shadowRadius: 24,
               shadowOffset: { width: 0, height: 8 },
               borderWidth: 1,
-              borderColor: 'rgba(232,25,44,0.3)',
+              borderColor: 'rgba(232,25,44,0.15)',
             }}
           >
             <Image
               source={require('../assets/images/34921cf2-8b2e-4abd-bfd8-c61924bed58f.png')}
-              style={{ width: 68, height: 68 }}
+              style={{ width: 80, height: 80 }}
               resizeMode="contain"
             />
           </View>

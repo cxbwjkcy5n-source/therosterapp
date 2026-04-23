@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Roster Scout",
-    "slug": "roster-scout",
+    "name": "Roster",
+    "slug": "roster",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/Transparent-icon-xxhdpi.png",
@@ -35,7 +35,7 @@
       "expo-web-browser",
       "expo-secure-store"
     ],
-    "scheme": "rosterscout",
+    "scheme": "roster",
     "experiments": {
       "typedRoutes": true
     },
