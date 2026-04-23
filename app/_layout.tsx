@@ -1,6 +1,6 @@
 import 'react-native-reanimated';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Stack, router, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -12,7 +12,6 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { COLORS } from '@/constants/Colors';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const DevErrorBoundary = __DEV__
   ? ErrorBoundary
@@ -40,75 +39,36 @@ const AppLightTheme = {
 const PUBLIC_ROUTES = ['auth-screen', 'auth-popup', 'auth-callback'];
 
 function CustomSplash({ onDone }: { onDone: () => void }) {
-  const textOpacity = useRef(new Animated.Value(0)).current;
-  const textScale = useRef(new Animated.Value(0.4)).current;
-  const imageOpacity = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     SplashScreen.hideAsync();
-    // Phase 1 (0–600ms): text fades in and grows
-    Animated.parallel([
-      Animated.timing(textOpacity, {
+    // Fade in over 500ms, hold 800ms, fade out over 500ms
+    Animated.sequence([
+      Animated.timing(opacity, {
         toValue: 1,
-        duration: 600,
+        duration: 500,
         useNativeDriver: true,
       }),
-      Animated.timing(textScale, {
-        toValue: 1,
-        duration: 600,
+      Animated.delay(800),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 500,
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Phase 2 (600–1400ms): crossfade text out, image in
-      Animated.parallel([
-        Animated.timing(imageOpacity, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-        Animated.timing(textOpacity, {
-          toValue: 0,
-          duration: 400,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        // Phase 3: hold 600ms then done (no fade — red placeholder behind makes it seamless)
-        setTimeout(() => {
-          onDone();
-        }, 600);
-      });
+      onDone();
     });
-  }, [textOpacity, textScale, imageOpacity, onDone]);
+  }, [opacity, onDone]);
 
   return (
-    <Animated.View style={styles.splashContainer}>
-      {/* Phase 2 background image */}
+    <Animated.View style={[styles.splashContainer, { opacity }]}>
       <Animated.Image
-        source={require('../assets/images/63013054-0171-449a-99c7-6c7734be3ef4.jpeg')}
-        style={[StyleSheet.absoluteFillObject, { opacity: imageOpacity }]}
+        source={require('../assets/images/e3a34f91-42cb-494c-a1c0-3dffd2f0d0fe.jpeg')}
+        style={styles.splashLogo}
         resizeMode="cover"
       />
-      {/* Phase 1 logo + text */}
-      <Animated.View
-        style={{
-          alignItems: 'center',
-          gap: 20,
-          opacity: textOpacity,
-          transform: [{ scale: textScale }],
-        }}
-      >
-        <Animated.Image
-          source={require('../assets/images/e3a34f91-42cb-494c-a1c0-3dffd2f0d0fe.jpeg')}
-          style={{
-            width: 140,
-            height: 140,
-            borderRadius: 70,
-            overflow: 'hidden',
-          }}
-          resizeMode="contain"
-        />
-        <Text style={styles.splashTitle}>The Roster</Text>
-      </Animated.View>
+      <Text style={styles.splashTitle}>The Roster</Text>
     </Animated.View>
   );
 }
@@ -277,7 +237,7 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
       )}
 
       {showSplash && (
-        <CustomSplash onDone={() => requestAnimationFrame(onSplashDone)} />
+        <CustomSplash onDone={onSplashDone} />
       )}
     </>
   );
@@ -288,12 +248,6 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
   const [showSplash, setShowSplash] = useState(true);
-
-  useEffect(() => {
-    // Clear any persisted navigation state so stale screens don't flash on launch
-    AsyncStorage.removeItem('EXPO_ROUTER_STATE').catch(() => {});
-    AsyncStorage.removeItem('NAVIGATION_STATE').catch(() => {});
-  }, []);
 
   if (!loaded) return null;
 
@@ -320,12 +274,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#E53935',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 24,
     zIndex: 999,
+  },
+  splashLogo: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
   },
   splashTitle: {
     fontSize: 48,
-    fontWeight: '800',
+    fontWeight: 'bold',
     color: '#FFFFFF',
-    letterSpacing: -1,
   },
 });
