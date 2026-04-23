@@ -224,6 +224,28 @@ export default function RootLayout() {
                     }}
                   />
                   <Stack.Screen
+                    name="reminders"
+                    options={{
+                      headerShown: true,
+                      headerStyle: { backgroundColor: COLORS.background },
+                      headerTintColor: COLORS.text,
+                      headerShadowVisible: false,
+                      title: 'Reminders',
+                      headerBackTitle: '',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="privacy"
+                    options={{
+                      headerShown: true,
+                      headerStyle: { backgroundColor: '#FFFFFF' },
+                      headerTintColor: '#1A1A1A',
+                      headerShadowVisible: false,
+                      title: 'Privacy Policy',
+                      headerBackTitle: '',
+                    }}
+                  />
+                  <Stack.Screen
                     name="legal"
                     options={{
                       headerShown: true,

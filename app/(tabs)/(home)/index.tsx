@@ -414,8 +414,8 @@ export default function RosterScreen() {
           style={{
             backgroundColor: RED,
             paddingHorizontal: 16,
-            paddingTop: 8,
-            paddingBottom: 16,
+            paddingTop: 16,
+            paddingBottom: 24,
             flexDirection: 'row',
             alignItems: 'center',
           }}
@@ -423,31 +423,33 @@ export default function RosterScreen() {
           {/* Avatar + greeting */}
           <View
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
+              width: 56,
+              height: 56,
+              borderRadius: 28,
               backgroundColor: 'rgba(255,255,255,0.25)',
               overflow: 'hidden',
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: 12,
+              borderWidth: 2,
+              borderColor: 'rgba(255,255,255,0.6)',
             }}
           >
             {user?.image ? (
               <Image
                 source={resolveImageSource(user.image)}
-                style={{ width: 40, height: 40 }}
+                style={{ width: 56, height: 56 }}
                 contentFit="cover"
               />
             ) : (
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>
+              <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700' }}>
                 {firstName[0]?.toUpperCase() ?? '?'}
               </Text>
             )}
           </View>
 
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: '#fff' }}>
               Hey, {firstName}
             </Text>
             <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 1 }}>
@@ -457,8 +459,8 @@ export default function RosterScreen() {
 
           <Pressable
             onPress={() => {
-              console.log('[Roster] Notification bell pressed — navigating to analytics');
-              router.push('/analytics');
+              console.log('[Roster] Notification bell pressed — navigating to reminders');
+              router.push('/reminders');
             }}
             style={{ padding: 4 }}
           >

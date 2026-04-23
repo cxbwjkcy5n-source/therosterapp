@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Pressable } from 'react-native';
 import { NativeTabs, Icon, Label } from 'expo-router/unstable-native-tabs';
 import { router } from 'expo-router';
+import { Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
 
 export default function TabLayout() {
@@ -23,17 +24,22 @@ export default function TabLayout() {
             console.log('[Tab] Add person button pressed (iOS)');
             router.push('/add-person');
           }}
+          hitSlop={12}
           style={{
-            width: 52,
-            height: 52,
-            borderRadius: 26,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
             backgroundColor: COLORS.primary,
             alignItems: 'center',
             justifyContent: 'center',
+            shadowColor: COLORS.primary,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.45,
+            shadowRadius: 10,
+            elevation: 8,
           }}
         >
-          <View style={{ width: 24, height: 2, backgroundColor: '#fff', position: 'absolute' }} />
-          <View style={{ width: 2, height: 24, backgroundColor: '#fff', position: 'absolute' }} />
+          <Plus size={28} color="#fff" strokeWidth={2.5} />
         </Pressable>
         <Label>{''}</Label>
       </NativeTabs.Trigger>

@@ -315,9 +315,14 @@ export default function ProfileScreen() {
         text: 'Sign out',
         style: 'destructive',
         onPress: async () => {
-          console.log('[Profile] Confirming sign out');
-          await signOut();
-          router.replace('/auth-screen');
+          try {
+            console.log('[Profile] Confirming sign out');
+            await signOut();
+          } catch (e) {
+            console.error('[Profile] Sign out error:', e);
+          } finally {
+            router.replace('/auth-screen');
+          }
         },
       },
     ]);
@@ -787,7 +792,10 @@ export default function ProfileScreen() {
               </View>
             </AnimatedPressable>
 
-            <AnimatedPressable onPress={() => console.log('[Profile] Privacy Policy pressed')}>
+            <AnimatedPressable onPress={() => {
+                console.log('[Profile] Privacy Policy pressed');
+                router.push('/privacy');
+              }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.divider }}>
                 <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                   <Shield size={18} color={COLORS.primary} />
