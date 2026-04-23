@@ -963,6 +963,19 @@ export default function PersonDetailScreen() {
     router.push({ pathname: '/bench-reason', params: { personId: id, personName: person?.name } });
   };
 
+  const handleUnbench = async () => {
+    if (!id) return;
+    console.log('[PersonDetail] Unbenching person:', id);
+    try {
+      await apiPut(`/api/persons/${id}`, { is_benched: false, bench_reason: null });
+      console.log('[PersonDetail] Successfully unbenched:', id);
+      await loadPerson();
+    } catch (e: any) {
+      console.error('[PersonDetail] Failed to unbench:', e);
+      Alert.alert('Error', 'Could not move them back. Try again.');
+    }
+  };
+
   const pickPhoto = async () => {
     console.log('[PersonDetail] Photo picker opened');
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -1552,18 +1565,32 @@ export default function PersonDetailScreen() {
               <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Delete</Text>
             </AnimatedPressable>
           </View>
-          {!person.is_benched && !editing && (
-            <AnimatedPressable
-              onPress={handleBench}
-              style={{
-                height: 48, borderRadius: 14,
-                borderWidth: 1.5, borderColor: '#FF9800',
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
-              <Users size={16} color="#FF9800" />
-              <Text style={{ color: '#FF9800', fontSize: 15, fontWeight: '600' }}>Move to Bench</Text>
-            </AnimatedPressable>
+          {!editing && (
+            person.is_benched ? (
+              <AnimatedPressable
+                onPress={handleUnbench}
+                style={{
+                  height: 48, borderRadius: 14,
+                  borderWidth: 1.5, borderColor: '#4CAF50',
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                <Users size={16} color="#4CAF50" />
+                <Text style={{ color: '#4CAF50', fontSize: 15, fontWeight: '600' }}>Move Back to Roster</Text>
+              </AnimatedPressable>
+            ) : (
+              <AnimatedPressable
+                onPress={handleBench}
+                style={{
+                  height: 48, borderRadius: 14,
+                  borderWidth: 1.5, borderColor: '#FF9800',
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                <Users size={16} color="#FF9800" />
+                <Text style={{ color: '#FF9800', fontSize: 15, fontWeight: '600' }}>Move to Bench</Text>
+              </AnimatedPressable>
+            )
           )}
         </View>
       </View>

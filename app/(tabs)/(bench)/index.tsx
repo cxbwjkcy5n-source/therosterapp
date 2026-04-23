@@ -213,7 +213,7 @@ export default function BenchScreen() {
     // Optimistic remove
     setPersons((prev) => prev.filter((p) => p.id !== person.id));
     try {
-      await apiPut(`/api/persons/${person.id}`, { is_benched: false });
+      await apiPut(`/api/persons/${person.id}`, { is_benched: false, bench_reason: null });
       console.log('[Bench] Successfully moved back to roster:', person.id);
       loadPersons();
     } catch (e) {
