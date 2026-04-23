@@ -93,7 +93,7 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
           style={styles.splashLogo}
           resizeMode="contain"
         />
-        <Text style={styles.splashTitle}>Roster Scout</Text>
+        <Text style={styles.splashTitle}>Roster</Text>
       </Animated.View>
     </Animated.View>
   );

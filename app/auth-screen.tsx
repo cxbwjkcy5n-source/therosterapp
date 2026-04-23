@@ -181,7 +181,7 @@ export default function AuthScreen() {
               marginBottom: 6,
             }}
           >
-            Roster Scout
+            Roster
           </Text>
           <Text style={{ fontSize: 15, color: COLORS.textSecondary, letterSpacing: 0.2 }}>
             Your dating life, organized.
