@@ -17,12 +17,19 @@ interface PersonInput {
   attractiveness?: number;
   sexualChemistry?: number;
   communication?: number;
+  overallChemistry?: number;
+  consistency?: number;
+  emotionalAvailability?: number;
+  datePlanning?: number;
+  alignment?: number;
   connectionType?: string;
   connectionTypeCustom?: string;
   favoriteFoods?: string[];
   hobbies?: string[];
   redFlags?: string[];
   greenFlags?: string[];
+  isBenched?: boolean;
+  benchReason?: string;
 }
 
 export function registerPersonsRoutes(app: App) {
@@ -65,6 +72,11 @@ export function registerPersonsRoutes(app: App) {
                     attractiveness: { type: ['integer', 'null'] },
                     sexualChemistry: { type: ['integer', 'null'] },
                     communication: { type: ['integer', 'null'] },
+                    overallChemistry: { type: ['integer', 'null'] },
+                    consistency: { type: ['integer', 'null'] },
+                    emotionalAvailability: { type: ['integer', 'null'] },
+                    datePlanning: { type: ['integer', 'null'] },
+                    alignment: { type: ['integer', 'null'] },
                     connectionType: { type: ['string', 'null'] },
                     connectionTypeCustom: { type: ['string', 'null'] },
                     favoriteFoods: { type: ['array', 'null'], items: { type: 'string' } },
@@ -127,6 +139,11 @@ export function registerPersonsRoutes(app: App) {
             attractiveness: { type: 'integer' },
             sexualChemistry: { type: 'integer' },
             communication: { type: 'integer' },
+            overallChemistry: { type: 'integer' },
+            consistency: { type: 'integer' },
+            emotionalAvailability: { type: 'integer' },
+            datePlanning: { type: 'integer' },
+            alignment: { type: 'integer' },
             connectionType: { type: 'string', enum: ['friend', 'casual', 'booty_call', 'foodie_call', 'figuring_it_out', 'serious', 'other'] },
             connectionTypeCustom: { type: 'string' },
             favoriteFoods: { type: 'array', items: { type: 'string' } },
@@ -172,6 +189,11 @@ export function registerPersonsRoutes(app: App) {
           attractiveness: request.body.attractiveness,
           sexualChemistry: request.body.sexualChemistry,
           communication: request.body.communication,
+          overallChemistry: request.body.overallChemistry,
+          consistency: request.body.consistency,
+          emotionalAvailability: request.body.emotionalAvailability,
+          datePlanning: request.body.datePlanning,
+          alignment: request.body.alignment,
           connectionType: request.body.connectionType as any,
           connectionTypeCustom: request.body.connectionTypeCustom,
           favoriteFoods: request.body.favoriteFoods,
@@ -220,6 +242,11 @@ export function registerPersonsRoutes(app: App) {
               attractiveness: { type: ['integer', 'null'] },
               sexualChemistry: { type: ['integer', 'null'] },
               communication: { type: ['integer', 'null'] },
+              overallChemistry: { type: ['integer', 'null'] },
+              consistency: { type: ['integer', 'null'] },
+              emotionalAvailability: { type: ['integer', 'null'] },
+              datePlanning: { type: ['integer', 'null'] },
+              alignment: { type: ['integer', 'null'] },
               connectionType: { type: ['string', 'null'] },
               connectionTypeCustom: { type: ['string', 'null'] },
               favoriteFoods: { type: ['array', 'null'], items: { type: 'string' } },
@@ -288,12 +315,19 @@ export function registerPersonsRoutes(app: App) {
             attractiveness: { type: 'integer' },
             sexualChemistry: { type: 'integer' },
             communication: { type: 'integer' },
+            overallChemistry: { type: 'integer' },
+            consistency: { type: 'integer' },
+            emotionalAvailability: { type: 'integer' },
+            datePlanning: { type: 'integer' },
+            alignment: { type: 'integer' },
             connectionType: { type: 'string', enum: ['friend', 'casual', 'booty_call', 'foodie_call', 'figuring_it_out', 'serious', 'other'] },
             connectionTypeCustom: { type: 'string' },
             favoriteFoods: { type: 'array', items: { type: 'string' } },
             hobbies: { type: 'array', items: { type: 'string' } },
             redFlags: { type: 'array', items: { type: 'string' } },
             greenFlags: { type: 'array', items: { type: 'string' } },
+            isBenched: { type: 'boolean' },
+            benchReason: { type: 'string' },
           },
         },
         response: {
@@ -331,15 +365,35 @@ export function registerPersonsRoutes(app: App) {
       }
 
       const updateData: any = {
-        ...request.body,
         updatedAt: new Date(),
       };
-      if (request.body.zodiac !== undefined) {
-        updateData.zodiac = request.body.zodiac as any;
-      }
-      if (request.body.connectionType !== undefined) {
-        updateData.connectionType = request.body.connectionType as any;
-      }
+
+      if (request.body.name !== undefined) updateData.name = request.body.name;
+      if (request.body.location !== undefined) updateData.location = request.body.location;
+      if (request.body.photoUrl !== undefined) updateData.photoUrl = request.body.photoUrl;
+      if (request.body.age !== undefined) updateData.age = request.body.age;
+      if (request.body.birthday !== undefined) updateData.birthday = request.body.birthday;
+      if (request.body.zodiac !== undefined) updateData.zodiac = request.body.zodiac as any;
+      if (request.body.instagram !== undefined) updateData.instagram = request.body.instagram;
+      if (request.body.tiktok !== undefined) updateData.tiktok = request.body.tiktok;
+      if (request.body.twitterX !== undefined) updateData.twitterX = request.body.twitterX;
+      if (request.body.interestLevel !== undefined) updateData.interestLevel = request.body.interestLevel;
+      if (request.body.attractiveness !== undefined) updateData.attractiveness = request.body.attractiveness;
+      if (request.body.sexualChemistry !== undefined) updateData.sexualChemistry = request.body.sexualChemistry;
+      if (request.body.communication !== undefined) updateData.communication = request.body.communication;
+      if (request.body.overallChemistry !== undefined) updateData.overallChemistry = request.body.overallChemistry;
+      if (request.body.consistency !== undefined) updateData.consistency = request.body.consistency;
+      if (request.body.emotionalAvailability !== undefined) updateData.emotionalAvailability = request.body.emotionalAvailability;
+      if (request.body.datePlanning !== undefined) updateData.datePlanning = request.body.datePlanning;
+      if (request.body.alignment !== undefined) updateData.alignment = request.body.alignment;
+      if (request.body.connectionType !== undefined) updateData.connectionType = request.body.connectionType as any;
+      if (request.body.connectionTypeCustom !== undefined) updateData.connectionTypeCustom = request.body.connectionTypeCustom;
+      if (request.body.favoriteFoods !== undefined) updateData.favoriteFoods = request.body.favoriteFoods;
+      if (request.body.hobbies !== undefined) updateData.hobbies = request.body.hobbies;
+      if (request.body.redFlags !== undefined) updateData.redFlags = request.body.redFlags;
+      if (request.body.greenFlags !== undefined) updateData.greenFlags = request.body.greenFlags;
+      if (request.body.isBenched !== undefined) updateData.isBenched = request.body.isBenched;
+      if (request.body.benchReason !== undefined) updateData.benchReason = request.body.benchReason;
 
       const [updated] = await app.db
         .update(schema.persons)
