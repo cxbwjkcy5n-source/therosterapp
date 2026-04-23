@@ -82,6 +82,7 @@ export default function DateHaveScreen() {
     setSaving(true);
     try {
       await apiPost('/api/dates', {
+        title: selectedPerson ? `Date with ${selectedPerson.name}` : 'Date',
         person_id: selectedPersonId,
         location: location.trim(),
         date_time: dateTime.toISOString(),
@@ -135,8 +136,9 @@ export default function DateHaveScreen() {
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: 16,
-          paddingTop: 16,
+          paddingTop: 24,
           paddingBottom: 12,
+          marginTop: 4,
           borderBottomWidth: 1,
           borderBottomColor: COLORS.border,
         }}

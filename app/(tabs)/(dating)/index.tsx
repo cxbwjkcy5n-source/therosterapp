@@ -96,6 +96,8 @@ function ActionCard({ title, description, icon, accentColor, onPress, cardWidth 
           borderColor: COLORS.border,
           gap: 10,
           height: 130,
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
         <View
@@ -110,11 +112,11 @@ function ActionCard({ title, description, icon, accentColor, onPress, cardWidth 
         >
           {icon}
         </View>
-        <View>
-          <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 3 }}>
+        <View style={{ alignItems: 'center' }}>
+          <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 3, textAlign: 'center' }}>
             {title}
           </Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 12, lineHeight: 17 }}>
+          <Text style={{ color: COLORS.textSecondary, fontSize: 12, lineHeight: 17, textAlign: 'center' }}>
             {description}
           </Text>
         </View>
