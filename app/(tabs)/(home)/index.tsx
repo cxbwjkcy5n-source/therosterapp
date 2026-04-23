@@ -456,7 +456,10 @@ export default function RosterScreen() {
           </View>
 
           <Pressable
-            onPress={() => console.log('[Roster] Notification bell pressed')}
+            onPress={() => {
+              console.log('[Roster] Notification bell pressed — navigating to analytics');
+              router.push('/analytics');
+            }}
             style={{ padding: 4 }}
           >
             <Bell size={22} color="#fff" />

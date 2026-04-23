@@ -90,10 +90,6 @@ interface UserProfile {
   twitter_x?: string;
   favorite_foods?: string[];
   hobbies?: string[];
-  what_i_bring?: string[];
-  things_to_work_on?: string[];
-  attractiveness_self?: number;
-  communication_self?: number;
   photo_url?: string;
 }
 
@@ -108,41 +104,6 @@ function getInitials(name?: string) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
-function SelfSlider({ label, value, editing, onChange }: {
-  label: string; value?: number; editing: boolean; onChange: (v: number) => void;
-}) {
-  const val = value ?? 5;
-  const steps = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-  const color = val >= 8 ? COLORS.success : val >= 5 ? COLORS.accent : COLORS.primary;
-  return (
-    <View style={{ marginBottom: 14 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{label}</Text>
-        <Text style={{ color, fontSize: 13, fontWeight: '700' }}>{val}/10</Text>
-      </View>
-      <View style={{ flexDirection: 'row', gap: 3 }}>
-        {steps.map((step) => (
-          <Pressable
-            key={step}
-            onPress={() => {
-              if (editing) {
-                console.log(`[Profile] Self-rating ${label} set to:`, step);
-                onChange(step);
-              }
-            }}
-            disabled={!editing}
-            style={{
-              flex: 1,
-              height: 22,
-              borderRadius: 4,
-              backgroundColor: step <= val ? color : COLORS.surfaceSecondary,
-            }}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
 
 function TagInput({ label, tags, onAdd, onRemove, color = COLORS.primary, editing }: {
   label: string; tags: string[]; onAdd: (t: string) => void; onRemove: (t: string) => void;
@@ -738,66 +699,6 @@ export default function ProfileScreen() {
               onRemove={(t) => update('hobbies', (editData.hobbies || []).filter((h) => h !== t))}
               color={COLORS.primary}
               editing={editing}
-            />
-          </View>
-
-          {/* Flags card */}
-          <View
-            style={{
-              backgroundColor: COLORS.surface,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: COLORS.border,
-              shadowColor: COLORS.primary,
-              shadowOpacity: 0.06,
-              shadowRadius: 12,
-            }}
-          >
-            <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>Self-Awareness</Text>
-            <TagInput
-              label="What I Bring"
-              tags={displayData.what_i_bring || []}
-              onAdd={(t) => update('what_i_bring', [...(editData.what_i_bring || []), t])}
-              onRemove={(t) => update('what_i_bring', (editData.what_i_bring || []).filter((f) => f !== t))}
-              color={COLORS.success}
-              editing={editing}
-            />
-            <TagInput
-              label="Things to Work On"
-              tags={displayData.things_to_work_on || []}
-              onAdd={(t) => update('things_to_work_on', [...(editData.things_to_work_on || []), t])}
-              onRemove={(t) => update('things_to_work_on', (editData.things_to_work_on || []).filter((f) => f !== t))}
-              color={COLORS.danger}
-              editing={editing}
-            />
-          </View>
-
-          {/* Self-ratings */}
-          <View
-            style={{
-              backgroundColor: COLORS.surface,
-              borderRadius: 16,
-              padding: 16,
-              borderWidth: 1,
-              borderColor: COLORS.border,
-              shadowColor: COLORS.primary,
-              shadowOpacity: 0.06,
-              shadowRadius: 12,
-            }}
-          >
-            <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>Self-Ratings</Text>
-            <SelfSlider
-              label="Attractiveness"
-              value={displayData.attractiveness_self}
-              editing={editing}
-              onChange={(v) => update('attractiveness_self', v)}
-            />
-            <SelfSlider
-              label="Communication"
-              value={displayData.communication_self}
-              editing={editing}
-              onChange={(v) => update('communication_self', v)}
             />
           </View>
 
