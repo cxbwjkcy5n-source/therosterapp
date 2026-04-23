@@ -1,6 +1,8 @@
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { eq } from 'drizzle-orm';
+import { gateway } from '@specific-dev/framework';
+import { generateText } from 'ai';
 import { OpenAI } from 'openai';
 import * as schema from '../db/schema/schema.js';
 
@@ -349,14 +351,11 @@ export function registerAIRoutes(app: App) {
       const { message, history } = request.body;
       app.logger.info({ userId: session.user.id, message }, 'Getting AI chat response');
 
-      const systemMessage = {
-        role: 'system' as const,
-        content:
-          'You are Nova, an empathetic and insightful dating coach. You help users navigate modern dating with confidence, self-awareness, and emotional intelligence. Give specific, actionable advice tailored to what the user shares. Be warm, direct, and encouraging.',
-      };
+      const systemPrompt =
+        'You are Nova, a warm and insightful dating coach. Give specific, actionable advice tailored to the user\'s question. Be empathetic, direct, and helpful. Never give the same generic response — always respond to what the user actually asked.';
 
-      // Build messages array: system message + history + new message
-      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [systemMessage];
+      // Build messages array: history + new message (system prompt passed separately)
+      const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
 
       if (history && Array.isArray(history)) {
         messages.push(
@@ -372,29 +371,19 @@ export function registerAIRoutes(app: App) {
         content: message,
       });
 
-      let reply_text: string;
+      try {
+        const { text } = await generateText({
+          model: gateway('openai/gpt-4o-mini'),
+          system: systemPrompt,
+          messages,
+        });
 
-      if (!hasOpenAIKey()) {
-        // Provide mock response when API key is not configured
-        reply_text = `I'm Nova, your dating coach. That's a great insight! Here's my perspective: Be authentic and listen actively. Remember that confidence comes from knowing your worth. Take care of yourself first.`;
-        app.logger.info({ userId: session.user.id }, 'Returning mock chat response (OPENAI_API_KEY not configured)');
-      } else {
-        try {
-          const response = await getOpenAI().chat.completions.create({
-            model: 'gpt-4o-mini',
-            max_tokens: 1024,
-            messages: messages as any,
-          });
-
-          reply_text = response.choices[0].message.content || '';
-        } catch (error) {
-          app.logger.error({ err: error, userId: session.user.id }, 'Failed to get AI response');
-          throw error;
-        }
+        app.logger.info({ userId: session.user.id }, 'AI chat response generated');
+        return { reply: text };
+      } catch (error) {
+        app.logger.error({ err: error, userId: session.user.id }, 'Failed to get AI response');
+        throw error;
       }
-
-      app.logger.info({ userId: session.user.id }, 'AI chat response generated');
-      return { reply: reply_text };
     }
   );
 

@@ -705,7 +705,7 @@ describe("API Integration Tests", () => {
   });
 
   // ========== Photo Upload Tests ==========
-  test("Upload a photo", async () => {
+  test("Upload a photo with required base64 field", async () => {
     // Simple base64 encoded 1x1 transparent PNG
     const base64Png =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
@@ -714,34 +714,38 @@ describe("API Integration Tests", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        image_base64: base64Png,
-        mime_type: "image/png",
+        base64: base64Png,
       }),
     });
     await expectStatus(res, 201);
     const data = await res.json();
-    expect(data.url).toBeDefined();
-    expect(typeof data.url).toBe("string");
+    expect(data.photo_url).toBeDefined();
+    expect(typeof data.photo_url).toBe("string");
+  });
+
+  test("Upload a photo with optional person_id", async () => {
+    const base64Png =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+    const res = await authenticatedApi("/api/upload-photo", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        base64: base64Png,
+        person_id: personId,
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.photo_url).toBeDefined();
+    expect(typeof data.photo_url).toBe("string");
   });
 
   test("Upload photo without base64 fails", async () => {
     const res = await authenticatedApi("/api/upload-photo", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mime_type: "image/png",
-      }),
-    });
-    await expectStatus(res, 400);
-  });
-
-  test("Upload photo without mime_type fails", async () => {
-    const res = await authenticatedApi("/api/upload-photo", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        image_base64: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-      }),
+      body: JSON.stringify({}),
     });
     await expectStatus(res, 400);
   });
@@ -1239,8 +1243,7 @@ describe("API Integration Tests", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        image_base64: "test",
-        mime_type: "image/png",
+        base64: "test",
       }),
     });
     await expectStatus(res, 401);
