@@ -886,8 +886,19 @@ export default function PersonDetailScreen() {
 
   const handleEdit = () => {
     console.log('[PersonDetail] Edit mode toggled on');
+    const sliderDefaults = {
+      interest_level: person?.interest_level ?? 5,
+      attractiveness: person?.attractiveness ?? 5,
+      sexual_chemistry: person?.sexual_chemistry ?? 5,
+      overall_chemistry: person?.overall_chemistry ?? 5,
+      communication: person?.communication ?? 5,
+      consistency: person?.consistency ?? 5,
+      emotional_availability: person?.emotional_availability ?? 5,
+      date_planning: person?.date_planning ?? 5,
+      alignment: person?.alignment ?? 5,
+    };
     setEditing(true);
-    setEditData({ ...person });
+    setEditData({ ...person, ...sliderDefaults });
   };
 
   const handleSave = async () => {
@@ -906,7 +917,7 @@ export default function PersonDetailScreen() {
       const payload: Record<string, any> = {};
       for (const key of ALLOWED_FIELDS) {
         const val = (editData as any)[key];
-        if (val === undefined || val === null || val === '') continue;
+        if (val === undefined) continue;
         payload[key] = val;
       }
       await apiPut(`/api/persons/${id}`, payload);

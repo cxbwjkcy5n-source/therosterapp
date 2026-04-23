@@ -136,9 +136,9 @@ export default function DateHaveScreen() {
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: 16,
-          paddingTop: 24,
+          paddingTop: 20,
           paddingBottom: 12,
-          marginTop: 4,
+          marginTop: 0,
           borderBottomWidth: 1,
           borderBottomColor: COLORS.border,
         }}

@@ -101,9 +101,9 @@ export default function DatePlanScreen() {
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: 16,
-          paddingTop: 12,
+          paddingTop: 20,
           paddingBottom: 12,
-          marginTop: 16,
+          marginTop: 0,
           borderBottomWidth: 1,
           borderBottomColor: COLORS.border,
         }}
