@@ -455,7 +455,10 @@ export default function RosterScreen() {
           </View>
 
           <Pressable
-            onPress={() => console.log('[Roster iOS] Notification bell pressed')}
+            onPress={() => {
+              console.log('[Roster iOS] Notification bell pressed — navigating to reminders');
+              router.push('/reminders');
+            }}
             style={{ padding: 4 }}
           >
             <Bell size={22} color="#fff" />
