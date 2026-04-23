@@ -108,22 +108,33 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
 
   return (
     <Animated.View style={[styles.splashContainer, { opacity: screenOpacity }]}>
+      {/* Phase 2 background image */}
       <Animated.Image
         source={require('../assets/images/63013054-0171-449a-99c7-6c7734be3ef4.jpeg')}
         style={[StyleSheet.absoluteFillObject, { opacity: imageOpacity }]}
         resizeMode="cover"
       />
-      <Animated.Text
-        style={[
-          styles.splashTitle,
-          {
-            opacity: textOpacity,
-            transform: [{ scale: textScale }],
-          },
-        ]}
+      {/* Phase 1 logo + text */}
+      <Animated.View
+        style={{
+          alignItems: 'center',
+          gap: 20,
+          opacity: textOpacity,
+          transform: [{ scale: textScale }],
+        }}
       >
-        The Roster
-      </Animated.Text>
+        <Animated.Image
+          source={require('../assets/images/e3a34f91-42cb-494c-a1c0-3dffd2f0d0fe.jpeg')}
+          style={{
+            width: 140,
+            height: 140,
+            borderRadius: 70,
+            overflow: 'hidden',
+          }}
+          resizeMode="contain"
+        />
+        <Text style={styles.splashTitle}>The Roster</Text>
+      </Animated.View>
     </Animated.View>
   );
 }
