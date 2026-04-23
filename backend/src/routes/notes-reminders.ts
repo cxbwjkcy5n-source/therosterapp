@@ -1,6 +1,6 @@
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, gt, gte, lte, ne, isNotNull, or, sql, max } from 'drizzle-orm';
 import * as schema from '../db/schema/schema.js';
 
 interface CreateNoteBody {
@@ -344,6 +344,175 @@ export function registerNotesRemindersRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id, reminderId: id }, 'Reminder deleted');
       return reply.status(204).send();
+    }
+  );
+
+  // GET /api/reminders/feed - Get upcoming dates and nudges
+  app.fastify.get(
+    '/api/reminders/feed',
+    {
+      schema: {
+        description: 'Get upcoming dates and nudge suggestions',
+        tags: ['reminders'],
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              upcoming_dates: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    title: { type: 'string' },
+                    date_time: { type: 'string', format: 'date-time' },
+                    location: { type: ['string', 'null'] },
+                    person_name: { type: 'string' },
+                    person_photo_url: { type: ['string', 'null'] },
+                  },
+                },
+              },
+              nudges: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    person_id: { type: 'string', format: 'uuid' },
+                    person_name: { type: 'string' },
+                    person_photo_url: { type: ['string', 'null'] },
+                    interest_level: { type: ['integer', 'null'] },
+                    days_since_contact: { type: 'integer' },
+                    message: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const userId = session.user.id;
+      app.logger.info({ userId }, 'Getting reminders feed');
+
+      try {
+        // Get upcoming dates (next 30 days, in the future, not completed/cancelled)
+        const now = new Date();
+        const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+        const upcomingDates = await app.db
+          .select({
+            id: schema.dates.id,
+            title: schema.dates.title,
+            date_time: schema.dates.dateTime,
+            location: schema.dates.location,
+            person_name: schema.persons.name,
+            person_photo_url: schema.persons.photoUrl,
+          })
+          .from(schema.dates)
+          .innerJoin(schema.persons, eq(schema.dates.personId, schema.persons.id))
+          .where(
+            and(
+              eq(schema.dates.userId, userId),
+              isNotNull(schema.dates.dateTime),
+              gt(schema.dates.dateTime, now.toISOString()),
+              lte(schema.dates.dateTime, thirtyDaysFromNow.toISOString()),
+              ne(schema.dates.status, 'completed'),
+              ne(schema.dates.status, 'cancelled')
+            )
+          )
+          .orderBy(schema.dates.dateTime);
+
+        // Get all active persons with interest_level >= 6
+        const activePersons = await app.db
+          .select({
+            id: schema.persons.id,
+            name: schema.persons.name,
+            photoUrl: schema.persons.photoUrl,
+            interestLevel: schema.persons.interestLevel,
+          })
+          .from(schema.persons)
+          .where(
+            and(
+              eq(schema.persons.userId, userId),
+              eq(schema.persons.isBenched, false),
+              isNotNull(schema.persons.interestLevel),
+              gte(schema.persons.interestLevel, 6)
+            )
+          );
+
+        // Get nudges for active persons
+        const nudges = [];
+        for (const person of activePersons) {
+          // Get most recent date for this person
+          const recentDate = await app.db
+            .select({ dateTime: max(schema.dates.dateTime) })
+            .from(schema.dates)
+            .where(eq(schema.dates.personId, person.id));
+
+          // Get most recent interaction for this person
+          const recentInteraction = await app.db
+            .select({ occurredAt: max(schema.interactions.occurredAt) })
+            .from(schema.interactions)
+            .where(eq(schema.interactions.personId, person.id));
+
+          const lastDatetime = recentDate[0]?.dateTime ? new Date(recentDate[0].dateTime) : null;
+          const lastInteractionTime = recentInteraction[0]?.occurredAt ? new Date(recentInteraction[0].occurredAt) : null;
+
+          // Determine last_contact
+          let lastContact: Date | null = null;
+          if (lastDatetime && lastInteractionTime) {
+            lastContact = lastDatetime > lastInteractionTime ? lastDatetime : lastInteractionTime;
+          } else if (lastDatetime) {
+            lastContact = lastDatetime;
+          } else if (lastInteractionTime) {
+            lastContact = lastInteractionTime;
+          }
+
+          // Check if should be included as nudge
+          const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+          const shouldInclude = lastContact === null || lastContact < fourteenDaysAgo;
+
+          if (shouldInclude) {
+            let daysSinceContact: number;
+            let message: string;
+
+            if (lastContact === null) {
+              daysSinceContact = 9999;
+              message = `You've never had a date or interaction with ${person.name} — time to make a move!`;
+            } else {
+              const daysDiff = Math.floor((now.getTime() - lastContact.getTime()) / (24 * 60 * 60 * 1000));
+              daysSinceContact = daysDiff;
+              message = `You haven't reached out to ${person.name} in ${daysDiff} days — they're a ${person.interestLevel}/10 match!`;
+            }
+
+            nudges.push({
+              person_id: person.id,
+              person_name: person.name,
+              person_photo_url: person.photoUrl,
+              interest_level: person.interestLevel,
+              days_since_contact: daysSinceContact,
+              message,
+            });
+          }
+        }
+
+        // Sort nudges by days_since_contact descending (least recent first)
+        nudges.sort((a, b) => b.days_since_contact - a.days_since_contact);
+
+        app.logger.info({ userId, upcoming_dates_count: upcomingDates.length, nudges_count: nudges.length }, 'Feed retrieved');
+        return {
+          upcoming_dates: upcomingDates,
+          nudges,
+        };
+      } catch (error) {
+        app.logger.error({ userId, err: error }, 'Error getting reminders feed');
+        throw error;
+      }
     }
   );
 }

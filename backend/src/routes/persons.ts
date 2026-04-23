@@ -335,6 +335,35 @@ export function registerPersonsRoutes(app: App) {
             type: 'object',
             properties: {
               id: { type: 'string', format: 'uuid' },
+              userId: { type: 'string' },
+              name: { type: 'string' },
+              location: { type: 'string' },
+              photoUrl: { type: ['string', 'null'] },
+              age: { type: ['integer', 'null'] },
+              birthday: { type: ['string', 'null'] },
+              zodiac: { type: ['string', 'null'] },
+              instagram: { type: ['string', 'null'] },
+              tiktok: { type: ['string', 'null'] },
+              twitterX: { type: ['string', 'null'] },
+              interestLevel: { type: ['integer', 'null'] },
+              attractiveness: { type: ['integer', 'null'] },
+              sexualChemistry: { type: ['integer', 'null'] },
+              communication: { type: ['integer', 'null'] },
+              overallChemistry: { type: ['integer', 'null'] },
+              consistency: { type: ['integer', 'null'] },
+              emotionalAvailability: { type: ['integer', 'null'] },
+              datePlanning: { type: ['integer', 'null'] },
+              alignment: { type: ['integer', 'null'] },
+              connectionType: { type: ['string', 'null'] },
+              connectionTypeCustom: { type: ['string', 'null'] },
+              favoriteFoods: { type: ['array', 'null'], items: { type: 'string' } },
+              hobbies: { type: ['array', 'null'], items: { type: 'string' } },
+              redFlags: { type: ['array', 'null'], items: { type: 'string' } },
+              greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
+              isBenched: { type: 'boolean' },
+              benchReason: { type: ['string', 'null'] },
+              createdAt: { type: 'string', format: 'date-time' },
+              updatedAt: { type: 'string', format: 'date-time' },
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -392,7 +421,13 @@ export function registerPersonsRoutes(app: App) {
       if (request.body.hobbies !== undefined) updateData.hobbies = request.body.hobbies;
       if (request.body.redFlags !== undefined) updateData.redFlags = request.body.redFlags;
       if (request.body.greenFlags !== undefined) updateData.greenFlags = request.body.greenFlags;
-      if (request.body.isBenched !== undefined) updateData.isBenched = request.body.isBenched;
+      if (request.body.isBenched !== undefined) {
+        updateData.isBenched = request.body.isBenched;
+        // When unbending (is_benched = false), clear the bench reason
+        if (request.body.isBenched === false) {
+          updateData.benchReason = null;
+        }
+      }
       if (request.body.benchReason !== undefined) updateData.benchReason = request.body.benchReason;
 
       const [updated] = await app.db

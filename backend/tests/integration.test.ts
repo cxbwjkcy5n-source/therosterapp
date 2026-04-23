@@ -1097,6 +1097,17 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 404);
   });
 
+  // ========== Reminders Feed Tests ==========
+  test("Get reminders feed with upcoming dates and nudges", async () => {
+    const res = await authenticatedApi("/api/reminders/feed", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.upcoming_dates).toBeDefined();
+    expect(Array.isArray(data.upcoming_dates)).toBe(true);
+    expect(data.nudges).toBeDefined();
+    expect(Array.isArray(data.nudges)).toBe(true);
+  });
+
   // ========== Places Autocomplete Tests ==========
   test("Get place autocomplete suggestions with input", async () => {
     const res = await authenticatedApi("/api/places/autocomplete?input=New%20York", authToken);
@@ -1316,6 +1327,11 @@ describe("API Integration Tests", () => {
         method: "DELETE",
       }
     );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/reminders/feed returns 401", async () => {
+    const res = await api("/api/reminders/feed");
     await expectStatus(res, 401);
   });
 
