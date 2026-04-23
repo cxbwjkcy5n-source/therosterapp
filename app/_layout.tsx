@@ -134,6 +134,7 @@ export default function RootLayout() {
                       headerTintColor: COLORS.text,
                       headerShadowVisible: false,
                       title: '',
+                      headerBackTitle: '',
                     }}
                   />
                   <Stack.Screen
@@ -144,6 +145,7 @@ export default function RootLayout() {
                       headerTintColor: COLORS.text,
                       headerShadowVisible: false,
                       title: 'Dating Coach',
+                      headerBackTitle: '',
                     }}
                   />
                   <Stack.Screen
@@ -154,6 +156,7 @@ export default function RootLayout() {
                       headerTintColor: COLORS.text,
                       headerShadowVisible: false,
                       title: 'Insights',
+                      headerBackTitle: '',
                     }}
                   />
                   <Stack.Screen
@@ -164,6 +167,7 @@ export default function RootLayout() {
                       headerTintColor: COLORS.text,
                       headerShadowVisible: false,
                       title: 'Review Date',
+                      headerBackTitle: '',
                     }}
                   />
                   <Stack.Screen
@@ -174,7 +178,7 @@ export default function RootLayout() {
                       headerTintColor: COLORS.primary,
                       headerShadowVisible: false,
                       title: 'Add Person',
-                      headerBackTitle: 'Back',
+                      headerBackTitle: '',
                       presentation: 'modal',
                     }}
                   />

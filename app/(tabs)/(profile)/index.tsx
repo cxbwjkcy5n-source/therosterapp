@@ -37,11 +37,28 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPut } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
+import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
   if (!source) return { uri: '' };
   if (typeof source === 'string') return { uri: source };
   return source as ImageSourcePropType;
+}
+
+function getZodiacFromMMDD(mm: number, dd: number): string | null {
+  if ((mm === 3 && dd >= 21) || (mm === 4 && dd <= 19)) return 'aries';
+  if ((mm === 4 && dd >= 20) || (mm === 5 && dd <= 20)) return 'taurus';
+  if ((mm === 5 && dd >= 21) || (mm === 6 && dd <= 20)) return 'gemini';
+  if ((mm === 6 && dd >= 21) || (mm === 7 && dd <= 22)) return 'cancer';
+  if ((mm === 7 && dd >= 23) || (mm === 8 && dd <= 22)) return 'leo';
+  if ((mm === 8 && dd >= 23) || (mm === 9 && dd <= 22)) return 'virgo';
+  if ((mm === 9 && dd >= 23) || (mm === 10 && dd <= 22)) return 'libra';
+  if ((mm === 10 && dd >= 23) || (mm === 11 && dd <= 21)) return 'scorpio';
+  if ((mm === 11 && dd >= 22) || (mm === 12 && dd <= 21)) return 'sagittarius';
+  if ((mm === 12 && dd >= 22) || (mm === 1 && dd <= 19)) return 'capricorn';
+  if ((mm === 1 && dd >= 20) || (mm === 2 && dd <= 18)) return 'aquarius';
+  if ((mm === 2 && dd >= 19) || (mm === 3 && dd <= 20)) return 'pisces';
+  return null;
 }
 
 const ZODIAC_SIGNS = [
@@ -260,15 +277,16 @@ export default function ProfileScreen() {
       if (!user) return;
       console.log('[Profile] Loading profile and analytics');
       Promise.all([
-        apiGet<UserProfile>('/api/profile').catch((e) => {
+        apiGet<any>('/api/profile').catch((e) => {
           console.error('[Profile] Failed to load profile:', e);
-          return {} as UserProfile;
+          return {} as any;
         }),
         apiGet<Analytics>('/api/analytics').catch((e) => {
           console.error('[Profile] Failed to load analytics:', e);
           return {} as Analytics;
         }),
-      ]).then(([profileData, analyticsData]) => {
+      ]).then(([res, analyticsData]) => {
+        const profileData: UserProfile = (res as any).profile ?? res;
         console.log('[Profile] Profile and analytics loaded');
         setProfile(profileData);
         setEditData(profileData);
@@ -290,10 +308,14 @@ export default function ProfileScreen() {
     setSaving(true);
     try {
       await apiPut('/api/profile', editData);
-      setProfile({ ...editData });
+      console.log('[Profile] PUT succeeded, re-fetching profile');
+      const res = await apiGet<any>('/api/profile');
+      const saved: UserProfile = (res as any).profile ?? res;
+      console.log('[Profile] Profile saved and re-fetched successfully');
+      setProfile(saved);
+      setEditData(saved);
       setEditing(false);
       setNewPhotoUri(null);
-      console.log('[Profile] Profile saved successfully');
     } catch (e: any) {
       console.error('[Profile] Save failed:', e);
       Alert.alert('Could not save', e?.message || 'Please try again.');
@@ -551,7 +573,18 @@ export default function ProfileScreen() {
                     <FormField label="Age" value={editData.age?.toString() || ''} onChangeText={(v) => update('age', v ? parseInt(v, 10) : undefined)} placeholder="e.g. 28" keyboardType="numeric" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <FormField label="Birthday" value={editData.birthday || ''} onChangeText={(v) => update('birthday', v)} placeholder="YYYY-MM-DD" />
+                    <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>Birthday</Text>
+                    <BirthdayPicker
+                      value={editData.birthday || ''}
+                      onChange={(v) => {
+                        update('birthday', v);
+                        if (v) {
+                          const [mm, dd] = v.split('-').map(Number);
+                          const zodiac = getZodiacFromMMDD(mm, dd);
+                          if (zodiac) update('zodiac', zodiac);
+                        }
+                      }}
+                    />
                   </View>
                 </View>
                 <View style={{ marginBottom: 14 }}>

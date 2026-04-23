@@ -840,16 +840,20 @@ export default function AnalyticsScreen() {
   const loadData = useCallback(() => {
     setLoading(true);
     setError(null);
-    console.log('[Analytics] Fetching /api/persons and /api/dates in parallel');
+    console.log('[Analytics] Fetching /api/persons (active+benched) and /api/dates in parallel');
     Promise.all([
       apiGet<{ persons: Person[] }>('/api/persons'),
+      apiGet<{ persons: Person[] }>('/api/persons?benched=true'),
       apiGet<{ dates: DateEntry[] }>('/api/dates'),
     ])
-      .then(([personsRes, datesRes]) => {
-        const p = personsRes.persons || [];
+      .then(([activeRes, benchedRes, datesRes]) => {
+        const active = activeRes.persons || [];
+        const benched = benchedRes.persons || [];
+        const seen = new Set(active.map((p) => p.id));
+        const allPersons = [...active, ...benched.filter((p) => !seen.has(p.id))];
         const d = datesRes.dates || [];
-        console.log('[Analytics] Data loaded — persons:', p.length, 'dates:', d.length);
-        setPersons(p);
+        console.log('[Analytics] Data loaded — active:', active.length, 'benched:', benched.length, 'total:', allPersons.length, 'dates:', d.length);
+        setPersons(allPersons);
         setDates(d);
         fadeAnim.setValue(0);
         Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
