@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as FileSystem from 'expo-file-system';
 import {
   View,
   Text,
@@ -305,15 +306,7 @@ export default function AddPersonScreen() {
       if (photoUri && personId) {
         try {
           console.log('[AddPerson] Uploading photo for person:', personId);
-          const base64 = await fetch(photoUri).then((r) => r.blob()).then(
-            (blob) =>
-              new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              })
-          );
+          const base64 = await FileSystem.readAsStringAsync(photoUri, { encoding: 'base64' });
           const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', {
             base64,
             person_id: personId,

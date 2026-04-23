@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import * as FileSystem from 'expo-file-system';
 import {
   View,
   Text,
@@ -897,14 +898,7 @@ export default function PersonDetailScreen() {
       await apiPut(`/api/persons/${id}`, editData);
       if (newPhotoUri) {
         try {
-          const base64 = await fetch(newPhotoUri).then((r) => r.blob()).then(
-            (blob) => new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            })
-          );
+          const base64 = await FileSystem.readAsStringAsync(newPhotoUri, { encoding: 'base64' });
           const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64, person_id: id });
           if (uploadResult?.photo_url) {
             await apiPut(`/api/persons/${id}`, { photo_url: uploadResult.photo_url });
@@ -1507,52 +1501,55 @@ export default function PersonDetailScreen() {
           </View>
         )}
 
-        {/* Edit / Delete buttons */}
-        <View style={{ flexDirection: 'row', gap: 12, marginTop: 4 }}>
-          <AnimatedPressable
-            onPress={editing ? handleSave : handleEdit}
-            disabled={saving}
-            style={{ flex: 1 }}
-          >
-            <View style={{
-              backgroundColor: '#1A1A1A', borderRadius: 14, paddingVertical: 16,
-              alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8,
-            }}>
+        {/* Edit / Delete / Bench row */}
+        <View style={{ paddingTop: 12, paddingBottom: 8, gap: 10 }}>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <AnimatedPressable
+              onPress={editing ? handleSave : handleEdit}
+              disabled={saving}
+              style={{
+                flex: 1, height: 48, borderRadius: 14,
+                backgroundColor: '#1A1A1A',
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
               {saving ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <>
                   <Pencil size={16} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
                     {editing ? 'Save' : 'Edit'}
                   </Text>
                 </>
               )}
-            </View>
-          </AnimatedPressable>
-          <AnimatedPressable onPress={handleDelete} style={{ flex: 1 }}>
-            <View style={{
-              backgroundColor: RED, borderRadius: 14, paddingVertical: 16,
-              alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8,
-            }}>
+            </AnimatedPressable>
+            <AnimatedPressable
+              onPress={handleDelete}
+              style={{
+                flex: 1, height: 48, borderRadius: 14,
+                backgroundColor: RED,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
               <Trash2 size={16} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Delete</Text>
-            </View>
-          </AnimatedPressable>
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Delete</Text>
+            </AnimatedPressable>
+          </View>
+          {!person.is_benched && !editing && (
+            <AnimatedPressable
+              onPress={handleBench}
+              style={{
+                height: 48, borderRadius: 14,
+                borderWidth: 1.5, borderColor: '#FF9800',
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <Users size={16} color="#FF9800" />
+              <Text style={{ color: '#FF9800', fontSize: 15, fontWeight: '600' }}>Move to Bench</Text>
+            </AnimatedPressable>
+          )}
         </View>
-
-        {!person.is_benched && !editing && (
-          <AnimatedPressable onPress={handleBench}>
-            <View style={{
-              borderWidth: 1, borderColor: COLORS.warning, borderRadius: 14,
-              paddingVertical: 14, alignItems: 'center', flexDirection: 'row',
-              justifyContent: 'center', gap: 8,
-            }}>
-              <Users size={16} color={COLORS.warning} />
-              <Text style={{ color: COLORS.warning, fontSize: 15, fontWeight: '600' }}>Move to Bench</Text>
-            </View>
-          </AnimatedPressable>
-        )}
       </View>
     );
   };
@@ -1953,7 +1950,7 @@ export default function PersonDetailScreen() {
       />
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 160 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >

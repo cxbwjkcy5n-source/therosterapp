@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import * as FileSystem from 'expo-file-system';
 import {
   View,
   Text,
@@ -34,7 +35,7 @@ import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiGet, apiPut } from '@/utils/api';
+import { apiGet, apiPut, apiPost } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
 import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
@@ -225,6 +226,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const [analytics, setAnalytics] = useState<Analytics>({});
   const [notifications, setNotifications] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({});
   const [editData, setEditData] = useState<UserProfile>({});
   const [editing, setEditing] = useState(false);
@@ -268,7 +270,22 @@ export default function ProfileScreen() {
     console.log('[Profile] Saving profile');
     setSaving(true);
     try {
-      await apiPut('/api/profile', editData);
+      let dataToSave = { ...editData };
+
+      // Upload photo if a new one was selected
+      if (newPhotoUri) {
+        try {
+          const base64 = await FileSystem.readAsStringAsync(newPhotoUri, { encoding: 'base64' });
+          const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64 });
+          if (uploadResult?.photo_url) {
+            dataToSave.photo_url = uploadResult.photo_url;
+          }
+        } catch (photoErr) {
+          console.error('[Profile] Photo upload failed (non-fatal):', photoErr);
+        }
+      }
+
+      await apiPut('/api/profile', dataToSave);
       console.log('[Profile] PUT succeeded, re-fetching profile');
       const res = await apiGet<any>('/api/profile');
       const saved: UserProfile = (res as any).profile ?? res;
@@ -770,8 +787,11 @@ export default function ProfileScreen() {
               </View>
               <Text style={{ flex: 1, color: COLORS.text, fontSize: 15 }}>Dark mode</Text>
               <Switch
-                value={true}
-                onValueChange={() => console.log('[Profile] Dark mode toggle (always on)')}
+                value={darkMode}
+                onValueChange={(v) => {
+                  console.log('[Profile] Dark mode toggled:', v);
+                  setDarkMode(v);
+                }}
                 trackColor={{ false: COLORS.surfaceSecondary, true: COLORS.primary }}
                 thumbColor="#fff"
               />

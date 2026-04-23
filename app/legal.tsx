@@ -140,6 +140,22 @@ const SECTIONS: Section[] = [
       'Your data will be permanently removed (subject to technical limitations and legal obligations)',
     ],
   },
+  {
+    heading: 'Limitation of Liability',
+    body: 'To the fullest extent permitted by law, Roster and its creators shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the app, including but not limited to emotional distress, relationship outcomes, or data loss.',
+  },
+  {
+    heading: 'Governing Law',
+    body: 'These Terms are governed by the laws of the United States. Any disputes arising from these Terms or your use of the App shall be resolved through binding arbitration, except where prohibited by law.',
+  },
+  {
+    heading: 'Changes to Terms',
+    body: 'We reserve the right to update these Terms at any time. Continued use of the App after changes are posted constitutes your acceptance of the new Terms. We will notify users of significant changes through the app.',
+  },
+  {
+    heading: 'Contact',
+    body: "If you have questions about these Terms, please contact us through the app's support channel.",
+  },
 ];
 
 function SectionBlock({ section }: { section: Section }) {
@@ -221,7 +237,7 @@ export default function LegalScreen() {
         {/* Title block */}
         <View style={{ marginBottom: 28 }}>
           <Text style={{ fontSize: 20, fontWeight: '800', color: '#1A1A1A', marginBottom: 4, letterSpacing: -0.4 }}>
-            Terms & Conditions – The Roster
+            Terms of Service – Roster
           </Text>
           <Text style={{ fontSize: 13, color: '#999999' }}>Last Updated: 3/28/2026</Text>
         </View>

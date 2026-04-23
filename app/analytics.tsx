@@ -872,7 +872,7 @@ export default function AnalyticsScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
-        <Stack.Screen options={{ title: 'Insights' }} />
+        <Stack.Screen options={{ title: 'Insights', headerBackTitle: '' }} />
         <ActivityIndicator color={COLORS.primary} size="large" />
       </View>
     );
@@ -881,7 +881,7 @@ export default function AnalyticsScreen() {
   if (error) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <Stack.Screen options={{ title: 'Insights' }} />
+        <Stack.Screen options={{ title: 'Insights', headerBackTitle: '' }} />
         <View
           style={{
             backgroundColor: COLORS.dangerMuted,
@@ -923,7 +923,7 @@ export default function AnalyticsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      <Stack.Screen options={{ title: 'Insights' }} />
+      <Stack.Screen options={{ title: 'Insights', headerBackTitle: '' }} />
 
       {/* Red section header */}
       <View
