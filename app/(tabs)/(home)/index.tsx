@@ -217,7 +217,7 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
         }}
         style={{
           marginHorizontal: 16,
-          marginVertical: 5,
+          marginVertical: 4,
           backgroundColor: '#fff',
           borderRadius: 16,
           padding: 14,
@@ -415,7 +415,7 @@ export default function RosterScreen() {
             backgroundColor: RED,
             paddingHorizontal: 16,
             paddingTop: 8,
-            paddingBottom: 20,
+            paddingBottom: 16,
             flexDirection: 'row',
             alignItems: 'center',
           }}
@@ -587,7 +587,7 @@ export default function RosterScreen() {
           data={sorted}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => <PersonCard item={item} index={index} />}
-          contentContainerStyle={{ paddingTop: 12, paddingBottom: 120 }}
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: 120 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>

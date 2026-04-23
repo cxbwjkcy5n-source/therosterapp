@@ -208,30 +208,19 @@ export default function BenchScreen() {
     loadPersons(true);
   }, [loadPersons]);
 
-  const handleUnbench = useCallback((person: Person) => {
+  const handleUnbench = useCallback(async (person: Person) => {
     console.log('[Bench] Unbenching person:', person.id, person.name);
-    Alert.alert(
-      `Move ${person.name} back?`,
-      'They will be moved back to your active roster.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Move Back',
-          onPress: async () => {
-            try {
-              console.log('[Bench] PUT /api/persons/:id { is_benched: false } for:', person.id);
-              await apiPut(`/api/persons/${person.id}`, { is_benched: false });
-              console.log('[Bench] Successfully moved back to roster:', person.id);
-              setPersons((prev) => prev.filter((p) => p.id !== person.id));
-              loadPersons();
-            } catch (e) {
-              console.error('[Bench] Failed to unbench:', e);
-              Alert.alert('Error', 'Could not move them back. Try again.');
-            }
-          },
-        },
-      ]
-    );
+    // Optimistic remove
+    setPersons((prev) => prev.filter((p) => p.id !== person.id));
+    try {
+      await apiPut(`/api/persons/${person.id}`, { is_benched: false });
+      console.log('[Bench] Successfully moved back to roster:', person.id);
+      loadPersons();
+    } catch (e) {
+      console.error('[Bench] Failed to unbench:', e);
+      Alert.alert('Error', 'Could not move them back. Try again.');
+      loadPersons(); // reload to restore state
+    }
   }, [loadPersons]);
 
   return (

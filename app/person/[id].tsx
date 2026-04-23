@@ -274,14 +274,14 @@ function ReadOnlySlider({ label, value, excluded, onToggleExclude }: {
           <Pressable
             onPress={onToggleExclude}
             style={{
-              width: 18, height: 18, borderRadius: 4,
+              width: 22, height: 22, borderRadius: 5,
               borderWidth: 1.5,
               borderColor: excluded ? '#CCCCCC' : RED,
               backgroundColor: excluded ? 'transparent' : RED,
               alignItems: 'center', justifyContent: 'center',
             }}
           >
-            {!excluded && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', lineHeight: 13 }}>✓</Text>}
+            {!excluded && <Ionicons name="checkmark" size={14} color="#fff" />}
           </Pressable>
           <Text style={{ color: '#444444', fontSize: 14, fontWeight: '500' }}>{label}</Text>
         </View>
@@ -314,14 +314,14 @@ function EditableSlider({ label, value, onChange, excluded, onToggleExclude }: {
           <Pressable
             onPress={onToggleExclude}
             style={{
-              width: 18, height: 18, borderRadius: 4,
+              width: 22, height: 22, borderRadius: 5,
               borderWidth: 1.5,
               borderColor: excluded ? '#CCCCCC' : RED,
               backgroundColor: excluded ? 'transparent' : RED,
               alignItems: 'center', justifyContent: 'center',
             }}
           >
-            {!excluded && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', lineHeight: 13 }}>✓</Text>}
+            {!excluded && <Ionicons name="checkmark" size={14} color="#fff" />}
           </Pressable>
           <Text style={{ color: '#444444', fontSize: 14, fontWeight: '500' }}>{label}</Text>
         </View>

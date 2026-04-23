@@ -218,6 +218,17 @@ export default function RootLayout() {
                       headerShown: false,
                     }}
                   />
+                  <Stack.Screen
+                    name="legal"
+                    options={{
+                      headerShown: true,
+                      headerStyle: { backgroundColor: '#FFFFFF' },
+                      headerTintColor: '#1A1A1A',
+                      headerShadowVisible: false,
+                      title: 'Terms & Conditions',
+                      headerBackTitle: '',
+                    }}
+                  />
                 </Stack>
               </AuthGuard>
               <SystemBars style="dark" />
