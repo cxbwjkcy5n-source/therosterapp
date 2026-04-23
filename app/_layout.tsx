@@ -68,6 +68,7 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
   const imageOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    SplashScreen.hideAsync();
     // Phase 1 (0–600ms): text fades in and grows
     Animated.parallel([
       Animated.timing(textOpacity, {
@@ -101,7 +102,6 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
             duration: 600,
             useNativeDriver: true,
           }).start(() => {
-            SplashScreen.hideAsync();
             onDone();
           });
         }, 600);
@@ -157,144 +157,148 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <ThemeProvider value={AppLightTheme}>
             <AuthProvider>
-              <AuthGuard>
-                <Stack screenOptions={{ headerShown: false, headerBackTitle: '' }}>
-                  <Stack.Screen name="auth-screen" options={{ headerShown: false }} />
-                  <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
-                  <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-                  <Stack.Screen name="(tabs)" options={{ headerShown: false, headerBackTitle: '', title: '' }} />
-                  <Stack.Screen
-                    name="person/[id]"
-                    options={{
-                      headerShown: true,
-                      headerStyle: { backgroundColor: COLORS.background },
-                      headerTintColor: COLORS.text,
-                      headerShadowVisible: false,
-                      title: '',
-                      headerBackTitle: '',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="coach"
-                    options={{
-                      headerShown: true,
-                      headerStyle: { backgroundColor: COLORS.background },
-                      headerTintColor: COLORS.text,
-                      headerShadowVisible: false,
-                      title: 'Dating Coach',
-                      headerBackTitle: '',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="analytics"
-                    options={{
-                      headerShown: true,
-                      headerStyle: { backgroundColor: COLORS.background },
-                      headerTintColor: COLORS.text,
-                      headerShadowVisible: false,
-                      title: 'Insights',
-                      headerBackTitle: '',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="date-review"
-                    options={{
-                      headerShown: true,
-                      headerStyle: { backgroundColor: COLORS.background },
-                      headerTintColor: COLORS.text,
-                      headerShadowVisible: false,
-                      title: 'Review Date',
-                      headerBackTitle: '',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="add-person"
-                    options={{
-                      headerShown: true,
-                      headerStyle: { backgroundColor: COLORS.background },
-                      headerTintColor: COLORS.primary,
-                      headerShadowVisible: false,
-                      title: 'Add Person',
-                      headerBackTitle: '',
-                      presentation: 'modal',
-                      headerLeft: () => (
-                        <Pressable onPress={() => router.back()} style={{ paddingRight: 8 }}>
-                          <Text style={{ color: COLORS.primary, fontSize: 16 }}>Cancel</Text>
-                        </Pressable>
-                      ),
-                    }}
-                  />
-                  <Stack.Screen
-                    name="bench-reason"
-                    options={{
-                      presentation: 'formSheet',
-                      sheetGrabberVisible: true,
-                      sheetAllowedDetents: [0.5],
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="date-have"
-                    options={{
-                      presentation: 'formSheet',
-                      sheetGrabberVisible: true,
-                      sheetAllowedDetents: [1.0],
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="date-plan"
-                    options={{
-                      presentation: 'formSheet',
-                      sheetGrabberVisible: true,
-                      sheetAllowedDetents: [1.0],
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="date-safety"
-                    options={{
-                      presentation: 'formSheet',
-                      sheetGrabberVisible: true,
-                      sheetAllowedDetents: [1.0],
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="reminders"
-                    options={{
-                      headerShown: true,
-                      headerStyle: { backgroundColor: COLORS.background },
-                      headerTintColor: COLORS.text,
-                      headerShadowVisible: false,
-                      title: 'Reminders',
-                      headerBackTitle: '',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="privacy"
-                    options={{
-                      headerShown: true,
-                      headerStyle: { backgroundColor: '#FFFFFF' },
-                      headerTintColor: '#1A1A1A',
-                      headerShadowVisible: false,
-                      title: 'Privacy Policy',
-                      headerBackTitle: '',
-                    }}
-                  />
-                  <Stack.Screen
-                    name="legal"
-                    options={{
-                      headerShown: true,
-                      headerStyle: { backgroundColor: '#FFFFFF' },
-                      headerTintColor: '#1A1A1A',
-                      headerShadowVisible: false,
-                      title: 'Terms & Conditions',
-                      headerBackTitle: '',
-                    }}
-                  />
-                </Stack>
-              </AuthGuard>
+              {showSplash ? (
+                <View style={{ flex: 1, backgroundColor: '#E53935' }} />
+              ) : (
+                <AuthGuard>
+                  <Stack screenOptions={{ headerShown: false, headerBackTitle: '' }}>
+                    <Stack.Screen name="auth-screen" options={{ headerShown: false }} />
+                    <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
+                    <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false, headerBackTitle: '', title: '' }} />
+                    <Stack.Screen
+                      name="person/[id]"
+                      options={{
+                        headerShown: true,
+                        headerStyle: { backgroundColor: COLORS.background },
+                        headerTintColor: COLORS.text,
+                        headerShadowVisible: false,
+                        title: '',
+                        headerBackTitle: '',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="coach"
+                      options={{
+                        headerShown: true,
+                        headerStyle: { backgroundColor: COLORS.background },
+                        headerTintColor: COLORS.text,
+                        headerShadowVisible: false,
+                        title: 'Dating Coach',
+                        headerBackTitle: '',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="analytics"
+                      options={{
+                        headerShown: true,
+                        headerStyle: { backgroundColor: COLORS.background },
+                        headerTintColor: COLORS.text,
+                        headerShadowVisible: false,
+                        title: 'Insights',
+                        headerBackTitle: '',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="date-review"
+                      options={{
+                        headerShown: true,
+                        headerStyle: { backgroundColor: COLORS.background },
+                        headerTintColor: COLORS.text,
+                        headerShadowVisible: false,
+                        title: 'Review Date',
+                        headerBackTitle: '',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="add-person"
+                      options={{
+                        headerShown: true,
+                        headerStyle: { backgroundColor: COLORS.background },
+                        headerTintColor: COLORS.primary,
+                        headerShadowVisible: false,
+                        title: 'Add Person',
+                        headerBackTitle: '',
+                        presentation: 'modal',
+                        headerLeft: () => (
+                          <Pressable onPress={() => router.back()} style={{ paddingRight: 8 }}>
+                            <Text style={{ color: COLORS.primary, fontSize: 16 }}>Cancel</Text>
+                          </Pressable>
+                        ),
+                      }}
+                    />
+                    <Stack.Screen
+                      name="bench-reason"
+                      options={{
+                        presentation: 'formSheet',
+                        sheetGrabberVisible: true,
+                        sheetAllowedDetents: [0.5],
+                        headerShown: false,
+                      }}
+                    />
+                    <Stack.Screen
+                      name="date-have"
+                      options={{
+                        presentation: 'formSheet',
+                        sheetGrabberVisible: true,
+                        sheetAllowedDetents: [1.0],
+                        headerShown: false,
+                      }}
+                    />
+                    <Stack.Screen
+                      name="date-plan"
+                      options={{
+                        presentation: 'formSheet',
+                        sheetGrabberVisible: true,
+                        sheetAllowedDetents: [1.0],
+                        headerShown: false,
+                      }}
+                    />
+                    <Stack.Screen
+                      name="date-safety"
+                      options={{
+                        presentation: 'formSheet',
+                        sheetGrabberVisible: true,
+                        sheetAllowedDetents: [1.0],
+                        headerShown: false,
+                      }}
+                    />
+                    <Stack.Screen
+                      name="reminders"
+                      options={{
+                        headerShown: true,
+                        headerStyle: { backgroundColor: COLORS.background },
+                        headerTintColor: COLORS.text,
+                        headerShadowVisible: false,
+                        title: 'Reminders',
+                        headerBackTitle: '',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="privacy"
+                      options={{
+                        headerShown: true,
+                        headerStyle: { backgroundColor: '#FFFFFF' },
+                        headerTintColor: '#1A1A1A',
+                        headerShadowVisible: false,
+                        title: 'Privacy Policy',
+                        headerBackTitle: '',
+                      }}
+                    />
+                    <Stack.Screen
+                      name="legal"
+                      options={{
+                        headerShown: true,
+                        headerStyle: { backgroundColor: '#FFFFFF' },
+                        headerTintColor: '#1A1A1A',
+                        headerShadowVisible: false,
+                        title: 'Terms & Conditions',
+                        headerBackTitle: '',
+                      }}
+                    />
+                  </Stack>
+                </AuthGuard>
+              )}
               <SystemBars style="dark" />
             </AuthProvider>
           </ThemeProvider>
