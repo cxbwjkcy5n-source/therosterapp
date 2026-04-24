@@ -1543,67 +1543,31 @@ export default function PersonDetailScreen() {
           </View>
         )}
 
-        {/* Edit / Delete / Bench row */}
+        {/* Delete / Bench row */}
         <View style={{ paddingTop: 12, paddingBottom: 8, gap: 10, paddingHorizontal: 16 }}>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <AnimatedPressable
+            onPress={handleDelete}
+            style={{
+              width: '100%', height: 48, borderRadius: 14,
+              backgroundColor: RED,
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <Trash2 size={16} color="#fff" />
+            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Delete</Text>
+          </AnimatedPressable>
+          {!editing && !person.is_benched && (
             <AnimatedPressable
-              onPress={editing ? handleSave : handleEdit}
-              disabled={saving}
+              onPress={handleBench}
               style={{
-                flex: 1, height: 48, borderRadius: 14,
-                backgroundColor: '#1A1A1A',
+                height: 48, borderRadius: 14,
+                borderWidth: 1.5, borderColor: '#FF9800',
                 flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
               }}
             >
-              {saving ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <Pencil size={16} color="#fff" />
-                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
-                    {editing ? 'Save' : 'Edit'}
-                  </Text>
-                </>
-              )}
+              <Users size={16} color="#FF9800" />
+              <Text style={{ color: '#FF9800', fontSize: 15, fontWeight: '600' }}>Move to Bench</Text>
             </AnimatedPressable>
-            <AnimatedPressable
-              onPress={handleDelete}
-              style={{
-                flex: 1, height: 48, borderRadius: 14,
-                backgroundColor: RED,
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
-              <Trash2 size={16} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Delete</Text>
-            </AnimatedPressable>
-          </View>
-          {!editing && (
-            person.is_benched ? (
-              <AnimatedPressable
-                onPress={handleUnbench}
-                style={{
-                  height: 48, borderRadius: 14,
-                  borderWidth: 1.5, borderColor: '#4CAF50',
-                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-                }}
-              >
-                <Users size={16} color="#4CAF50" />
-                <Text style={{ color: '#4CAF50', fontSize: 15, fontWeight: '600' }}>Move Back to Roster</Text>
-              </AnimatedPressable>
-            ) : (
-              <AnimatedPressable
-                onPress={handleBench}
-                style={{
-                  height: 48, borderRadius: 14,
-                  borderWidth: 1.5, borderColor: '#FF9800',
-                  flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-                }}
-              >
-                <Users size={16} color="#FF9800" />
-                <Text style={{ color: '#FF9800', fontSize: 15, fontWeight: '600' }}>Move to Bench</Text>
-              </AnimatedPressable>
-            )
           )}
         </View>
       </View>
@@ -2002,6 +1966,28 @@ export default function PersonDetailScreen() {
           headerTintColor: '#1A1A1A',
           headerTitleStyle: { fontWeight: '600', fontSize: 17 },
           headerShadowVisible: false,
+          headerRight: () => (
+            <Pressable
+              onPress={() => {
+                if (editing) {
+                  console.log('[Person] Header Save pressed');
+                  handleSave();
+                } else {
+                  console.log('[Person] Header Edit pressed');
+                  handleEdit();
+                }
+              }}
+              style={{ paddingHorizontal: 8, paddingVertical: 4 }}
+            >
+              {saving ? (
+                <ActivityIndicator color="#1A1A1A" size="small" />
+              ) : editing ? (
+                <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '600' }}>Save</Text>
+              ) : (
+                <Pencil size={20} color="#1A1A1A" />
+              )}
+            </Pressable>
+          ),
         }}
       />
 
