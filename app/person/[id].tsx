@@ -1544,7 +1544,7 @@ export default function PersonDetailScreen() {
         )}
 
         {/* Edit / Delete / Bench row */}
-        <View style={{ paddingTop: 12, paddingBottom: 8, gap: 10 }}>
+        <View style={{ paddingTop: 12, paddingBottom: 8, gap: 10, paddingHorizontal: 16 }}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <AnimatedPressable
               onPress={editing ? handleSave : handleEdit}
