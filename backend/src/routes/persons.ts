@@ -10,10 +10,11 @@ interface PersonInput {
   age?: number;
   birthday?: string;
   zodiac?: string;
+  phoneNumber?: string;
   instagram?: string;
   tiktok?: string;
   twitterX?: string;
-  phoneNumber?: string;
+  facebook?: string;
   interestLevel?: number;
   attractiveness?: number;
   sexualChemistry?: number;
@@ -316,10 +317,12 @@ export function registerPersonsRoutes(app: App) {
             photoUrl: { type: 'string' },
             age: { type: 'integer' },
             birthday: { type: 'string' },
-            zodiac: { type: 'string', enum: ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'] },
+            zodiac: { type: ['string', 'null'], enum: ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'] },
+            phoneNumber: { type: 'string' },
             instagram: { type: 'string' },
             tiktok: { type: 'string' },
             twitterX: { type: 'string' },
+            facebook: { type: 'string' },
             interestLevel: { type: 'integer' },
             attractiveness: { type: 'integer' },
             sexualChemistry: { type: 'integer' },
@@ -354,9 +357,11 @@ export function registerPersonsRoutes(app: App) {
                   age: { type: ['integer', 'null'] },
                   birthday: { type: ['string', 'null'] },
                   zodiac: { type: ['string', 'null'] },
+                  phoneNumber: { type: ['string', 'null'] },
                   instagram: { type: ['string', 'null'] },
                   tiktok: { type: ['string', 'null'] },
                   twitterX: { type: ['string', 'null'] },
+                  facebook: { type: ['string', 'null'] },
                   interestLevel: { type: ['integer', 'null'] },
                   attractiveness: { type: ['integer', 'null'] },
                   sexualChemistry: { type: ['integer', 'null'] },
@@ -447,9 +452,11 @@ export function registerPersonsRoutes(app: App) {
       if (Object.prototype.hasOwnProperty.call(request.body, 'age')) updateData.age = request.body.age;
       if (Object.prototype.hasOwnProperty.call(request.body, 'birthday')) updateData.birthday = request.body.birthday;
       if (Object.prototype.hasOwnProperty.call(request.body, 'zodiac')) updateData.zodiac = request.body.zodiac as any;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'phoneNumber')) updateData.phoneNumber = request.body.phoneNumber;
       if (Object.prototype.hasOwnProperty.call(request.body, 'instagram')) updateData.instagram = request.body.instagram;
       if (Object.prototype.hasOwnProperty.call(request.body, 'tiktok')) updateData.tiktok = request.body.tiktok;
       if (Object.prototype.hasOwnProperty.call(request.body, 'twitterX')) updateData.twitterX = request.body.twitterX;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'facebook')) updateData.facebook = request.body.facebook;
       if (Object.prototype.hasOwnProperty.call(request.body, 'interestLevel')) updateData.interestLevel = request.body.interestLevel;
       if (Object.prototype.hasOwnProperty.call(request.body, 'attractiveness')) updateData.attractiveness = request.body.attractiveness;
       if (Object.prototype.hasOwnProperty.call(request.body, 'sexualChemistry')) updateData.sexualChemistry = request.body.sexualChemistry;
