@@ -209,6 +209,19 @@ describe("API Integration Tests", () => {
     expect(data.isBenched).toBe(true);
   });
 
+  test("Bench nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/bench",
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
   test("List benched persons", async () => {
     const res = await authenticatedApi("/api/bench", authToken);
     await expectStatus(res, 200);
@@ -538,6 +551,11 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 200);
     const data = await res.json();
     expect(data.success).toBe(true);
+  });
+
+  test("Get deleted person returns 404", async () => {
+    const res = await authenticatedApi(`/api/persons/${personId2}`, authToken);
+    await expectStatus(res, 404);
   });
 
   test("Delete nonexistent person returns 404", async () => {
@@ -960,6 +978,18 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 400);
   });
 
+  test("Create note for nonexistent person returns 404", async () => {
+    const res = await authenticatedApi("/api/notes", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: "00000000-0000-0000-0000-000000000000",
+        content: "This person doesn't exist",
+      }),
+    });
+    await expectStatus(res, 404);
+  });
+
   test("List notes for a person", async () => {
     const res = await authenticatedApi(`/api/notes?person_id=${personId}`, authToken);
     await expectStatus(res, 200);
@@ -983,6 +1013,14 @@ describe("API Integration Tests", () => {
   test("List notes with invalid person_id format returns 400", async () => {
     const res = await authenticatedApi(`/api/notes?person_id=invalid-uuid`, authToken);
     await expectStatus(res, 400);
+  });
+
+  test("Get notes for nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/notes?person_id=00000000-0000-0000-0000-000000000000",
+      authToken
+    );
+    await expectStatus(res, 404);
   });
 
   test("Delete a note", async () => {

@@ -245,9 +245,11 @@ export function registerPersonsRoutes(app: App) {
               age: { type: ['integer', 'null'] },
               birthday: { type: ['string', 'null'] },
               zodiac: { type: ['string', 'null'] },
+              phoneNumber: { type: ['string', 'null'] },
               instagram: { type: ['string', 'null'] },
               tiktok: { type: ['string', 'null'] },
               twitterX: { type: ['string', 'null'] },
+              facebook: { type: ['string', 'null'] },
               interestLevel: { type: ['integer', 'null'] },
               attractiveness: { type: ['integer', 'null'] },
               sexualChemistry: { type: ['integer', 'null'] },
@@ -517,7 +519,7 @@ export function registerPersonsRoutes(app: App) {
       // Always include updated_at
       updateData.updatedAt = new Date();
 
-      app.logger.debug({ userId: session.user.id, personId: id, setClauses: updateData }, 'Executing person update');
+      app.logger.debug({ userId: session.user.id, personId: id, updateData }, 'Executing person update with data');
 
       const [updated] = await app.db
         .update(schema.persons)
