@@ -1,6 +1,6 @@
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { eq, and, count } from 'drizzle-orm';
+import { eq, and, count, sql } from 'drizzle-orm';
 import * as schema from '../db/schema/schema.js';
 
 interface PersonInput {
@@ -102,15 +102,22 @@ export function registerPersonsRoutes(app: App) {
       if (!session) return;
 
       const { benched } = request.query;
-      // Parse query parameter: 'true' string becomes true, everything else becomes false
-      const isBenchedFilter = benched === 'true';
 
-      app.logger.info({ userId: session.user.id, benched: isBenchedFilter }, 'Listing persons');
+      app.logger.info({ userId: session.user.id, benched }, 'Listing persons');
+
+      // Use literal boolean values in SQL instead of parameterized values
+      let whereClause = eq(schema.persons.userId, session.user.id);
+      if (benched === 'true') {
+        whereClause = and(whereClause, sql`is_benched = true`);
+      } else {
+        // Default to active persons (is_benched = false) when benched is not 'true'
+        whereClause = and(whereClause, sql`is_benched = false`);
+      }
 
       const persons = await app.db
         .select()
         .from(schema.persons)
-        .where(and(eq(schema.persons.userId, session.user.id), eq(schema.persons.isBenched, isBenchedFilter)));
+        .where(whereClause);
 
       app.logger.info({ userId: session.user.id, count: persons.length }, 'Listed persons');
       return { persons };
@@ -400,54 +407,63 @@ export function registerPersonsRoutes(app: App) {
         return reply.status(403).send({ error: 'Access denied' });
       }
 
+      // Special case: if is_benched is explicitly set to false, use explicit SET with hardcoded values
+      if (request.body.isBenched === false) {
+        const [updated] = await app.db
+          .update(schema.persons)
+          .set({
+            isBenched: false,
+            benchReason: null,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)))
+          .returning();
+
+        app.logger.info({ userId: session.user.id, personId: id }, 'Person updated (is_benched = false)');
+        return { person: updated };
+      }
+
+      // For all other updates, build dynamic SET clause using hasOwnProperty checks
       const updateData: any = {
         updatedAt: new Date(),
       };
 
-      const bodyKeys = Object.keys(request.body);
-
-      if (bodyKeys.includes('name')) updateData.name = request.body.name;
-      if (bodyKeys.includes('location')) updateData.location = request.body.location;
-      if (bodyKeys.includes('photoUrl')) updateData.photoUrl = request.body.photoUrl;
-      if (bodyKeys.includes('age')) updateData.age = request.body.age;
-      if (bodyKeys.includes('birthday')) updateData.birthday = request.body.birthday;
-      if (bodyKeys.includes('zodiac')) updateData.zodiac = request.body.zodiac as any;
-      if (bodyKeys.includes('instagram')) updateData.instagram = request.body.instagram;
-      if (bodyKeys.includes('tiktok')) updateData.tiktok = request.body.tiktok;
-      if (bodyKeys.includes('twitterX')) updateData.twitterX = request.body.twitterX;
-      if (bodyKeys.includes('interestLevel')) updateData.interestLevel = request.body.interestLevel;
-      if (bodyKeys.includes('attractiveness')) updateData.attractiveness = request.body.attractiveness;
-      if (bodyKeys.includes('sexualChemistry')) updateData.sexualChemistry = request.body.sexualChemistry;
-      if (bodyKeys.includes('communication')) updateData.communication = request.body.communication;
-      if (bodyKeys.includes('overallChemistry')) updateData.overallChemistry = request.body.overallChemistry;
-      if (bodyKeys.includes('consistency')) updateData.consistency = request.body.consistency;
-      if (bodyKeys.includes('emotionalAvailability')) updateData.emotionalAvailability = request.body.emotionalAvailability;
-      if (bodyKeys.includes('datePlanning')) updateData.datePlanning = request.body.datePlanning;
-      if (bodyKeys.includes('alignment')) updateData.alignment = request.body.alignment;
-      if (bodyKeys.includes('connectionType')) updateData.connectionType = request.body.connectionType as any;
-      if (bodyKeys.includes('connectionTypeCustom')) updateData.connectionTypeCustom = request.body.connectionTypeCustom;
-      if (bodyKeys.includes('favoriteFoods')) updateData.favoriteFoods = request.body.favoriteFoods;
-      if (bodyKeys.includes('hobbies')) updateData.hobbies = request.body.hobbies;
-      if (bodyKeys.includes('redFlags')) updateData.redFlags = request.body.redFlags;
-      if (bodyKeys.includes('greenFlags')) updateData.greenFlags = request.body.greenFlags;
-      if (bodyKeys.includes('isBenched')) {
+      if (Object.prototype.hasOwnProperty.call(request.body, 'name')) updateData.name = request.body.name;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'location')) updateData.location = request.body.location;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'photoUrl')) updateData.photoUrl = request.body.photoUrl;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'age')) updateData.age = request.body.age;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'birthday')) updateData.birthday = request.body.birthday;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'zodiac')) updateData.zodiac = request.body.zodiac as any;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'instagram')) updateData.instagram = request.body.instagram;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'tiktok')) updateData.tiktok = request.body.tiktok;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'twitterX')) updateData.twitterX = request.body.twitterX;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'interestLevel')) updateData.interestLevel = request.body.interestLevel;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'attractiveness')) updateData.attractiveness = request.body.attractiveness;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'sexualChemistry')) updateData.sexualChemistry = request.body.sexualChemistry;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'communication')) updateData.communication = request.body.communication;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'overallChemistry')) updateData.overallChemistry = request.body.overallChemistry;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'consistency')) updateData.consistency = request.body.consistency;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'emotionalAvailability')) updateData.emotionalAvailability = request.body.emotionalAvailability;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'datePlanning')) updateData.datePlanning = request.body.datePlanning;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'alignment')) updateData.alignment = request.body.alignment;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'connectionType')) updateData.connectionType = request.body.connectionType as any;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'connectionTypeCustom')) updateData.connectionTypeCustom = request.body.connectionTypeCustom;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'favoriteFoods')) updateData.favoriteFoods = request.body.favoriteFoods;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'hobbies')) updateData.hobbies = request.body.hobbies;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'redFlags')) updateData.redFlags = request.body.redFlags;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'greenFlags')) updateData.greenFlags = request.body.greenFlags;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'isBenched')) {
         const val = request.body.isBenched as any;
-        // Explicitly handle true cases (both boolean true and string 'true')
         if (val === true || val === 'true') {
           updateData.isBenched = true;
         }
-        // Explicitly handle false cases (both boolean false and string 'false') - clear bench reason
-        else if (val === false || val === 'false') {
-          updateData.isBenched = false;
-          updateData.benchReason = null;
-        }
       }
-      if (bodyKeys.includes('benchReason')) updateData.benchReason = request.body.benchReason;
+      if (Object.prototype.hasOwnProperty.call(request.body, 'benchReason')) updateData.benchReason = request.body.benchReason;
 
       const [updated] = await app.db
         .update(schema.persons)
         .set(updateData)
-        .where(eq(schema.persons.id, id))
+        .where(and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)))
         .returning();
 
       app.logger.info({ userId: session.user.id, personId: id }, 'Person updated');
