@@ -897,8 +897,15 @@ export default function PersonDetailScreen() {
       date_planning: person?.date_planning ?? 5,
       alignment: person?.alignment ?? 5,
     };
+    const contactDefaults = {
+      phone_number: person?.phone_number ?? '',
+      instagram: person?.instagram ?? '',
+      tiktok: person?.tiktok ?? '',
+      facebook: person?.facebook ?? '',
+      twitter_x: person?.twitter_x ?? '',
+    };
     setEditing(true);
-    setEditData({ ...person, ...sliderDefaults });
+    setEditData({ ...person, ...sliderDefaults, ...contactDefaults });
   };
 
   const handleSave = async () => {
@@ -1433,115 +1440,6 @@ export default function PersonDetailScreen() {
           </View>
           <Text style={{ color: '#AAAAAA', fontSize: 12 }}>Based on your ratings</Text>
         </View>
-
-        {/* Details (edit mode) */}
-        {editing && (
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-            <SectionHeader label="Details" />
-            <View style={{ gap: 12 }}>
-              <View>
-                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>Nickname</Text>
-                <TextInput
-                  value={editData.nickname || ''}
-                  onChangeText={(v) => update('nickname', v)}
-                  placeholder="Nickname"
-                  placeholderTextColor="#BBBBBB"
-                  style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
-                />
-              </View>
-              <View>
-                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>Age</Text>
-                <TextInput
-                  value={editData.age?.toString() || ''}
-                  onChangeText={(v) => update('age', v ? parseInt(v, 10) : undefined)}
-                  keyboardType="numeric"
-                  placeholder="Age"
-                  placeholderTextColor="#BBBBBB"
-                  style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
-                />
-              </View>
-              <View>
-                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>Birthday</Text>
-                <BirthdayPicker
-                  value={editData.birthday || ''}
-                  onChange={(v) => {
-                    console.log('[PersonDetail] Birthday selected:', v);
-                    update('birthday', v);
-                    const computed = getZodiacFromBirthday(v);
-                    if (computed) {
-                      console.log('[PersonDetail] Auto-setting zodiac from birthday:', computed);
-                      update('zodiac', computed);
-                    }
-                  }}
-                />
-              </View>
-              <View>
-                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 6 }}>Zodiac</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    {ZODIAC_SIGNS.map((z) => (
-                      <Pressable
-                        key={z.value}
-                        onPress={() => update('zodiac', z.value)}
-                        style={{
-                          paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14,
-                          backgroundColor: editData.zodiac === z.value ? 'rgba(229,57,53,0.1)' : '#F5F5F5',
-                          borderWidth: 1,
-                          borderColor: editData.zodiac === z.value ? RED : '#E0E0E0',
-                        }}
-                      >
-                        <Text style={{ color: editData.zodiac === z.value ? RED : '#666666', fontSize: 11 }}>{z.label}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-              <View>
-                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 6 }}>Connection Type</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    {CONNECTION_TYPES.map((ct) => (
-                      <Pressable
-                        key={ct.value}
-                        onPress={() => update('connection_type', ct.value)}
-                        style={{
-                          paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16,
-                          backgroundColor: editData.connection_type === ct.value ? RED : '#F5F5F5',
-                          borderWidth: 1,
-                          borderColor: editData.connection_type === ct.value ? RED : '#E0E0E0',
-                        }}
-                      >
-                        <Text style={{ color: editData.connection_type === ct.value ? '#fff' : '#666666', fontSize: 12 }}>
-                          {ct.label}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
-              {[
-                { label: 'Phone Number', key: 'phone_number' as keyof Person, keyboard: 'phone-pad' as const },
-                { label: 'Instagram', key: 'instagram' as keyof Person, keyboard: 'default' as const },
-                { label: 'TikTok', key: 'tiktok' as keyof Person, keyboard: 'default' as const },
-                { label: 'Facebook', key: 'facebook' as keyof Person, keyboard: 'default' as const },
-                { label: 'X / Twitter', key: 'twitter_x' as keyof Person, keyboard: 'default' as const },
-              ].map((field) => (
-                <View key={field.key}>
-                  <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>{field.label}</Text>
-                  <TextInput
-                    value={(editData[field.key] as string) || ''}
-                    onChangeText={(v) => update(field.key, v)}
-                    placeholder={field.label}
-                    placeholderTextColor="#BBBBBB"
-                    keyboardType={field.keyboard}
-                    autoCapitalize="none"
-                    style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
-                  />
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
 
         {/* Delete / Bench row */}
         <View style={{ paddingTop: 12, paddingBottom: 8, gap: 10, paddingHorizontal: 16 }}>
@@ -2137,6 +2035,115 @@ export default function PersonDetailScreen() {
             </Pressable>
           </View>
         </View>
+
+        {/* Details (edit mode) — shown here so it's first when editing */}
+        {editing && (
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, marginHorizontal: 16, marginTop: 14, ...CARD_SHADOW }}>
+            <SectionHeader label="Details" />
+            <View style={{ gap: 12 }}>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>Nickname</Text>
+                <TextInput
+                  value={editData.nickname || ''}
+                  onChangeText={(v) => update('nickname', v)}
+                  placeholder="Nickname"
+                  placeholderTextColor="#BBBBBB"
+                  style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
+                />
+              </View>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>Age</Text>
+                <TextInput
+                  value={editData.age?.toString() || ''}
+                  onChangeText={(v) => update('age', v ? parseInt(v, 10) : undefined)}
+                  keyboardType="numeric"
+                  placeholder="Age"
+                  placeholderTextColor="#BBBBBB"
+                  style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
+                />
+              </View>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>Birthday</Text>
+                <BirthdayPicker
+                  value={editData.birthday || ''}
+                  onChange={(v) => {
+                    console.log('[PersonDetail] Birthday selected:', v);
+                    update('birthday', v);
+                    const computed = getZodiacFromBirthday(v);
+                    if (computed) {
+                      console.log('[PersonDetail] Auto-setting zodiac from birthday:', computed);
+                      update('zodiac', computed);
+                    }
+                  }}
+                />
+              </View>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 6 }}>Zodiac</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {ZODIAC_SIGNS.map((z) => (
+                      <Pressable
+                        key={z.value}
+                        onPress={() => update('zodiac', z.value)}
+                        style={{
+                          paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14,
+                          backgroundColor: editData.zodiac === z.value ? 'rgba(229,57,53,0.1)' : '#F5F5F5',
+                          borderWidth: 1,
+                          borderColor: editData.zodiac === z.value ? RED : '#E0E0E0',
+                        }}
+                      >
+                        <Text style={{ color: editData.zodiac === z.value ? RED : '#666666', fontSize: 11 }}>{z.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 6 }}>Connection Type</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {CONNECTION_TYPES.map((ct) => (
+                      <Pressable
+                        key={ct.value}
+                        onPress={() => update('connection_type', ct.value)}
+                        style={{
+                          paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16,
+                          backgroundColor: editData.connection_type === ct.value ? RED : '#F5F5F5',
+                          borderWidth: 1,
+                          borderColor: editData.connection_type === ct.value ? RED : '#E0E0E0',
+                        }}
+                      >
+                        <Text style={{ color: editData.connection_type === ct.value ? '#fff' : '#666666', fontSize: 12 }}>
+                          {ct.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+              {[
+                { label: 'Phone Number', key: 'phone_number' as keyof Person, keyboard: 'phone-pad' as const },
+                { label: 'Instagram', key: 'instagram' as keyof Person, keyboard: 'default' as const },
+                { label: 'TikTok', key: 'tiktok' as keyof Person, keyboard: 'default' as const },
+                { label: 'Facebook', key: 'facebook' as keyof Person, keyboard: 'default' as const },
+                { label: 'X / Twitter', key: 'twitter_x' as keyof Person, keyboard: 'default' as const },
+              ].map((field) => (
+                <View key={field.key}>
+                  <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>{field.label}</Text>
+                  <TextInput
+                    value={(editData[field.key] as string) || ''}
+                    onChangeText={(v) => update(field.key, v)}
+                    placeholder={field.label}
+                    placeholderTextColor="#BBBBBB"
+                    keyboardType={field.keyboard}
+                    autoCapitalize="none"
+                    style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
         <View style={{
