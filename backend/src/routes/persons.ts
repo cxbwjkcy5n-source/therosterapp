@@ -412,21 +412,27 @@ export function registerPersonsRoutes(app: App) {
         return reply.status(403).send({ error: 'Access denied' });
       }
 
-      // Extract both camelCase and snake_case forms from request body
-      const isBenched = Object.prototype.hasOwnProperty.call(request.body, 'isBenched')
-        ? (request.body.isBenched as any)
-        : Object.prototype.hasOwnProperty.call(request.body, 'is_benched')
-          ? (request.body as any).is_benched
-          : undefined;
+      // Helper function to get value from request body supporting both camelCase and snake_case
+      const getFieldValue = (camelCase: string, snakeCase: string): any => {
+        const body = request.body as any;
+        if (Object.prototype.hasOwnProperty.call(body, snakeCase)) {
+          return body[snakeCase];
+        }
+        if (Object.prototype.hasOwnProperty.call(body, camelCase)) {
+          return body[camelCase];
+        }
+        return undefined;
+      };
 
-      const benchReason = Object.prototype.hasOwnProperty.call(request.body, 'benchReason')
-        ? (request.body.benchReason as any)
-        : Object.prototype.hasOwnProperty.call(request.body, 'bench_reason')
-          ? (request.body as any).bench_reason
-          : undefined;
+      // Check if a field is present in the request body (either form)
+      const hasField = (camelCase: string, snakeCase: string): boolean => {
+        const body = request.body as any;
+        return Object.prototype.hasOwnProperty.call(body, camelCase) || Object.prototype.hasOwnProperty.call(body, snakeCase);
+      };
 
-      // Special case: if is_benched is explicitly set to false, use hardcoded SET values
-      if (isBenched === false) {
+      // UNBENCH FAST PATH - Check for is_benched === false BEFORE building SET clause
+      const isBenchedValue = getFieldValue('isBenched', 'is_benched');
+      if (isBenchedValue === false) {
         const [updated] = await app.db
           .update(schema.persons)
           .set({
@@ -437,45 +443,58 @@ export function registerPersonsRoutes(app: App) {
           .where(and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)))
           .returning();
 
-        app.logger.info({ userId: session.user.id, personId: id }, 'Person updated (is_benched = false)');
+        if (!updated) {
+          app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found after unbench update');
+          return reply.status(404).send({ error: 'Person not found' });
+        }
+
+        app.logger.info({ userId: session.user.id, personId: id }, 'Person unbenched');
         return { person: updated };
       }
 
-      // For all other updates, build dynamic SET clause using hasOwnProperty checks
-      const updateData: any = {
-        updatedAt: new Date(),
-      };
+      // Build dynamic SET clause supporting ALL fields with both camelCase and snake_case
+      const updateData: any = {};
 
-      if (Object.prototype.hasOwnProperty.call(request.body, 'name')) updateData.name = request.body.name;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'location')) updateData.location = request.body.location;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'photoUrl')) updateData.photoUrl = request.body.photoUrl;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'age')) updateData.age = request.body.age;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'birthday')) updateData.birthday = request.body.birthday;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'zodiac')) updateData.zodiac = request.body.zodiac as any;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'phoneNumber')) updateData.phoneNumber = request.body.phoneNumber;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'instagram')) updateData.instagram = request.body.instagram;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'tiktok')) updateData.tiktok = request.body.tiktok;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'twitterX')) updateData.twitterX = request.body.twitterX;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'facebook')) updateData.facebook = request.body.facebook;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'interestLevel')) updateData.interestLevel = request.body.interestLevel;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'attractiveness')) updateData.attractiveness = request.body.attractiveness;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'sexualChemistry')) updateData.sexualChemistry = request.body.sexualChemistry;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'communication')) updateData.communication = request.body.communication;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'overallChemistry')) updateData.overallChemistry = request.body.overallChemistry;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'consistency')) updateData.consistency = request.body.consistency;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'emotionalAvailability')) updateData.emotionalAvailability = request.body.emotionalAvailability;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'datePlanning')) updateData.datePlanning = request.body.datePlanning;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'alignment')) updateData.alignment = request.body.alignment;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'connectionType')) updateData.connectionType = request.body.connectionType as any;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'connectionTypeCustom')) updateData.connectionTypeCustom = request.body.connectionTypeCustom;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'favoriteFoods')) updateData.favoriteFoods = request.body.favoriteFoods;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'hobbies')) updateData.hobbies = request.body.hobbies;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'redFlags')) updateData.redFlags = request.body.redFlags;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'greenFlags')) updateData.greenFlags = request.body.greenFlags;
+      // List of all updatable fields with their mappings: { camelCase, snakeCase, dbField }
+      const fieldMappings = [
+        { camel: 'name', snake: 'name', dbField: 'name' },
+        { camel: 'location', snake: 'location', dbField: 'location' },
+        { camel: 'photoUrl', snake: 'photo_url', dbField: 'photoUrl' },
+        { camel: 'age', snake: 'age', dbField: 'age' },
+        { camel: 'birthday', snake: 'birthday', dbField: 'birthday' },
+        { camel: 'zodiac', snake: 'zodiac', dbField: 'zodiac' },
+        { camel: 'phoneNumber', snake: 'phone_number', dbField: 'phoneNumber' },
+        { camel: 'instagram', snake: 'instagram', dbField: 'instagram' },
+        { camel: 'tiktok', snake: 'tiktok', dbField: 'tiktok' },
+        { camel: 'twitterX', snake: 'twitter_x', dbField: 'twitterX' },
+        { camel: 'facebook', snake: 'facebook', dbField: 'facebook' },
+        { camel: 'interestLevel', snake: 'interest_level', dbField: 'interestLevel' },
+        { camel: 'attractiveness', snake: 'attractiveness', dbField: 'attractiveness' },
+        { camel: 'sexualChemistry', snake: 'sexual_chemistry', dbField: 'sexualChemistry' },
+        { camel: 'communication', snake: 'communication', dbField: 'communication' },
+        { camel: 'overallChemistry', snake: 'overall_chemistry', dbField: 'overallChemistry' },
+        { camel: 'consistency', snake: 'consistency', dbField: 'consistency' },
+        { camel: 'emotionalAvailability', snake: 'emotional_availability', dbField: 'emotionalAvailability' },
+        { camel: 'datePlanning', snake: 'date_planning', dbField: 'datePlanning' },
+        { camel: 'alignment', snake: 'alignment', dbField: 'alignment' },
+        { camel: 'connectionType', snake: 'connection_type', dbField: 'connectionType' },
+        { camel: 'connectionTypeCustom', snake: 'connection_type_custom', dbField: 'connectionTypeCustom' },
+        { camel: 'favoriteFoods', snake: 'favorite_foods', dbField: 'favoriteFoods' },
+        { camel: 'hobbies', snake: 'hobbies', dbField: 'hobbies' },
+        { camel: 'redFlags', snake: 'red_flags', dbField: 'redFlags' },
+        { camel: 'greenFlags', snake: 'green_flags', dbField: 'greenFlags' },
+      ];
 
-      // Handle isBenched using the local variable (supports both true and false)
-      if (isBenched !== undefined) {
-        const val = isBenched as any;
+      // Populate updateData with all fields that are present in the request body
+      for (const mapping of fieldMappings) {
+        if (hasField(mapping.camel, mapping.snake)) {
+          updateData[mapping.dbField] = getFieldValue(mapping.camel, mapping.snake);
+        }
+      }
+
+      // Handle isBenched and benchReason with proper logic
+      if (hasField('isBenched', 'is_benched')) {
+        const val = getFieldValue('isBenched', 'is_benched');
         if (val === true || val === 'true') {
           updateData.isBenched = true;
         } else if (val === false || val === 'false') {
@@ -484,16 +503,32 @@ export function registerPersonsRoutes(app: App) {
         }
       }
 
-      // Handle benchReason using the local variable
-      if (benchReason !== undefined) {
-        updateData.benchReason = benchReason;
+      if (hasField('benchReason', 'bench_reason')) {
+        updateData.benchReason = getFieldValue('benchReason', 'bench_reason');
       }
+
+      // Check if any real fields were provided (not just updatedAt)
+      const hasRealFields = Object.keys(updateData).length > 0;
+      if (!hasRealFields) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'No valid fields provided for update');
+        return reply.status(400).send({ error: 'No valid fields provided' });
+      }
+
+      // Always include updated_at
+      updateData.updatedAt = new Date();
+
+      app.logger.debug({ userId: session.user.id, personId: id, setClauses: updateData }, 'Executing person update');
 
       const [updated] = await app.db
         .update(schema.persons)
         .set(updateData)
         .where(and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)))
         .returning();
+
+      if (!updated) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found after update');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
 
       app.logger.info({ userId: session.user.id, personId: id }, 'Person updated');
       return { person: updated };
