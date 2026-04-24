@@ -407,8 +407,21 @@ export function registerPersonsRoutes(app: App) {
         return reply.status(403).send({ error: 'Access denied' });
       }
 
-      // Special case: if is_benched is explicitly set to false, use explicit SET with hardcoded values
-      if (request.body.isBenched === false) {
+      // Extract both camelCase and snake_case forms from request body
+      const isBenched = Object.prototype.hasOwnProperty.call(request.body, 'isBenched')
+        ? (request.body.isBenched as any)
+        : Object.prototype.hasOwnProperty.call(request.body, 'is_benched')
+          ? (request.body as any).is_benched
+          : undefined;
+
+      const benchReason = Object.prototype.hasOwnProperty.call(request.body, 'benchReason')
+        ? (request.body.benchReason as any)
+        : Object.prototype.hasOwnProperty.call(request.body, 'bench_reason')
+          ? (request.body as any).bench_reason
+          : undefined;
+
+      // Special case: if is_benched is explicitly set to false, use hardcoded SET values
+      if (isBenched === false) {
         const [updated] = await app.db
           .update(schema.persons)
           .set({
@@ -452,13 +465,22 @@ export function registerPersonsRoutes(app: App) {
       if (Object.prototype.hasOwnProperty.call(request.body, 'hobbies')) updateData.hobbies = request.body.hobbies;
       if (Object.prototype.hasOwnProperty.call(request.body, 'redFlags')) updateData.redFlags = request.body.redFlags;
       if (Object.prototype.hasOwnProperty.call(request.body, 'greenFlags')) updateData.greenFlags = request.body.greenFlags;
-      if (Object.prototype.hasOwnProperty.call(request.body, 'isBenched')) {
-        const val = request.body.isBenched as any;
+
+      // Handle isBenched using the local variable (supports both true and false)
+      if (isBenched !== undefined) {
+        const val = isBenched as any;
         if (val === true || val === 'true') {
           updateData.isBenched = true;
+        } else if (val === false || val === 'false') {
+          updateData.isBenched = false;
+          updateData.benchReason = null;
         }
       }
-      if (Object.prototype.hasOwnProperty.call(request.body, 'benchReason')) updateData.benchReason = request.body.benchReason;
+
+      // Handle benchReason using the local variable
+      if (benchReason !== undefined) {
+        updateData.benchReason = benchReason;
+      }
 
       const [updated] = await app.db
         .update(schema.persons)
