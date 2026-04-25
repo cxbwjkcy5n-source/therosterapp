@@ -404,43 +404,50 @@ export function registerPersonsRoutes(app: App) {
       if (!session) return;
 
       const { id } = request.params;
-      app.logger.info({ userId: session.user.id, personId: id, body: request.body }, 'Updating person');
+      const body = request.body as any;
 
-      const person = await app.db.query.persons.findFirst({
-        where: eq(schema.persons.id, id),
-      });
+      app.logger.info({ userId: session.user.id, personId: id, body }, 'Updating person');
 
-      if (!person) {
-        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
-        return reply.status(404).send({ error: 'Person not found' });
-      }
-
-      if (person.userId !== session.user.id) {
-        app.logger.warn({ userId: session.user.id, personId: id }, 'Access denied');
-        return reply.status(403).send({ error: 'Access denied' });
-      }
-
-      // Helper function to get value from request body supporting both camelCase and snake_case
-      const getFieldValue = (camelCase: string, snakeCase: string): any => {
-        const body = request.body as any;
-        if (Object.prototype.hasOwnProperty.call(body, snakeCase)) {
-          return body[snakeCase];
-        }
-        if (Object.prototype.hasOwnProperty.call(body, camelCase)) {
-          return body[camelCase];
-        }
-        return undefined;
+      // Helper to extract values from both snake_case and camelCase
+      const getFieldValue = (snakeCase: string, camelCase: string): any => {
+        return body[snakeCase] !== undefined ? body[snakeCase] : body[camelCase];
       };
 
-      // Check if a field is present in the request body (either form)
-      const hasField = (camelCase: string, snakeCase: string): boolean => {
-        const body = request.body as any;
-        return Object.prototype.hasOwnProperty.call(body, camelCase) || Object.prototype.hasOwnProperty.call(body, snakeCase);
-      };
+      // Extract all fields, accepting both naming conventions
+      let name = getFieldValue('name', 'name');
+      let location = getFieldValue('location', 'location');
+      let age = getFieldValue('age', 'age');
+      let birthday = getFieldValue('birthday', 'birthday');
+      let zodiac = getFieldValue('zodiac', 'zodiac');
+      if (zodiac === '') zodiac = null;
 
-      // UNBENCH FAST PATH - Check for is_benched === false BEFORE building SET clause
-      const isBenchedValue = getFieldValue('isBenched', 'is_benched');
-      if (isBenchedValue === false) {
+      let phoneNumber = getFieldValue('phone_number', 'phoneNumber');
+      if (phoneNumber === '') phoneNumber = null;
+
+      let instagram = getFieldValue('instagram', 'instagram');
+      let tiktok = getFieldValue('tiktok', 'tiktok');
+      let twitterX = getFieldValue('twitter_x', 'twitterX');
+      let facebook = getFieldValue('facebook', 'facebook');
+
+      let connectionType = getFieldValue('connection_type', 'connectionType');
+      if (connectionType === '') connectionType = null;
+
+      let connectionTypeCustom = getFieldValue('connection_type_custom', 'connectionTypeCustom');
+      let interestLevel = getFieldValue('interest_level', 'interestLevel');
+      let attractiveness = getFieldValue('attractiveness', 'attractiveness');
+      let sexualChemistry = getFieldValue('sexual_chemistry', 'sexualChemistry');
+      let overallChemistry = getFieldValue('overall_chemistry', 'overallChemistry');
+      let communication = getFieldValue('communication', 'communication');
+      let consistency = getFieldValue('consistency', 'consistency');
+      let emotionalAvailability = getFieldValue('emotional_availability', 'emotionalAvailability');
+      let datePlanning = getFieldValue('date_planning', 'datePlanning');
+      let alignment = getFieldValue('alignment', 'alignment');
+      let photoUrl = getFieldValue('photo_url', 'photoUrl');
+      let isBenched = getFieldValue('is_benched', 'isBenched');
+      let benchReason = getFieldValue('bench_reason', 'benchReason');
+
+      // SPECIAL CASE: Unbenching fast path
+      if (isBenched === false) {
         const [updated] = await app.db
           .update(schema.persons)
           .set({
@@ -460,76 +467,65 @@ export function registerPersonsRoutes(app: App) {
         return { person: updated };
       }
 
-      // Build dynamic SET clause supporting ALL fields with both camelCase and snake_case
-      const updateData: any = {};
-
-      // List of all updatable fields with their mappings: { camelCase, snakeCase, dbField }
-      const fieldMappings = [
-        { camel: 'name', snake: 'name', dbField: 'name' },
-        { camel: 'location', snake: 'location', dbField: 'location' },
-        { camel: 'photoUrl', snake: 'photo_url', dbField: 'photoUrl' },
-        { camel: 'age', snake: 'age', dbField: 'age' },
-        { camel: 'birthday', snake: 'birthday', dbField: 'birthday' },
-        { camel: 'zodiac', snake: 'zodiac', dbField: 'zodiac' },
-        { camel: 'phoneNumber', snake: 'phone_number', dbField: 'phoneNumber' },
-        { camel: 'instagram', snake: 'instagram', dbField: 'instagram' },
-        { camel: 'tiktok', snake: 'tiktok', dbField: 'tiktok' },
-        { camel: 'twitterX', snake: 'twitter_x', dbField: 'twitterX' },
-        { camel: 'facebook', snake: 'facebook', dbField: 'facebook' },
-        { camel: 'interestLevel', snake: 'interest_level', dbField: 'interestLevel' },
-        { camel: 'attractiveness', snake: 'attractiveness', dbField: 'attractiveness' },
-        { camel: 'sexualChemistry', snake: 'sexual_chemistry', dbField: 'sexualChemistry' },
-        { camel: 'communication', snake: 'communication', dbField: 'communication' },
-        { camel: 'overallChemistry', snake: 'overall_chemistry', dbField: 'overallChemistry' },
-        { camel: 'consistency', snake: 'consistency', dbField: 'consistency' },
-        { camel: 'emotionalAvailability', snake: 'emotional_availability', dbField: 'emotionalAvailability' },
-        { camel: 'datePlanning', snake: 'date_planning', dbField: 'datePlanning' },
-        { camel: 'alignment', snake: 'alignment', dbField: 'alignment' },
-        { camel: 'connectionType', snake: 'connection_type', dbField: 'connectionType' },
-        { camel: 'connectionTypeCustom', snake: 'connection_type_custom', dbField: 'connectionTypeCustom' },
-        { camel: 'favoriteFoods', snake: 'favorite_foods', dbField: 'favoriteFoods' },
-        { camel: 'hobbies', snake: 'hobbies', dbField: 'hobbies' },
-        { camel: 'redFlags', snake: 'red_flags', dbField: 'redFlags' },
-        { camel: 'greenFlags', snake: 'green_flags', dbField: 'greenFlags' },
+      // Build params array for hardcoded SQL (24 positional parameters)
+      const params = [
+        name ?? null,                    // $1
+        location ?? null,                // $2
+        age ?? null,                     // $3
+        birthday ?? null,                // $4
+        zodiac ?? null,                  // $5
+        phoneNumber ?? null,             // $6
+        instagram ?? null,               // $7
+        tiktok ?? null,                  // $8
+        twitterX ?? null,                // $9
+        facebook ?? null,                // $10
+        connectionType ?? null,          // $11
+        connectionTypeCustom ?? null,    // $12
+        interestLevel ?? null,           // $13
+        attractiveness ?? null,          // $14
+        sexualChemistry ?? null,         // $15
+        overallChemistry ?? null,        // $16
+        communication ?? null,           // $17
+        consistency ?? null,             // $18
+        emotionalAvailability ?? null,   // $19
+        datePlanning ?? null,            // $20
+        alignment ?? null,               // $21
+        photoUrl ?? null,                // $22
+        id,                              // $23
+        session.user.id,                 // $24
       ];
 
-      // Populate updateData with all fields that are present in the request body
-      for (const mapping of fieldMappings) {
-        if (hasField(mapping.camel, mapping.snake)) {
-          updateData[mapping.dbField] = getFieldValue(mapping.camel, mapping.snake);
-        }
-      }
-
-      // Handle isBenched and benchReason with proper logic
-      if (hasField('isBenched', 'is_benched')) {
-        const val = getFieldValue('isBenched', 'is_benched');
-        if (val === true || val === 'true') {
-          updateData.isBenched = true;
-        } else if (val === false || val === 'false') {
-          updateData.isBenched = false;
-          updateData.benchReason = null;
-        }
-      }
-
-      if (hasField('benchReason', 'bench_reason')) {
-        updateData.benchReason = getFieldValue('benchReason', 'bench_reason');
-      }
-
-      // Check if any real fields were provided (not just updatedAt)
-      const hasRealFields = Object.keys(updateData).length > 0;
-      if (!hasRealFields) {
-        app.logger.warn({ userId: session.user.id, personId: id }, 'No valid fields provided for update');
-        return reply.status(400).send({ error: 'No valid fields provided' });
-      }
-
-      // Always include updated_at
-      updateData.updatedAt = new Date();
-
-      app.logger.debug({ userId: session.user.id, personId: id, updateData }, 'Executing person update with data');
+      app.logger.info({ params }, 'PUT /api/persons/:id executing SQL');
 
       const [updated] = await app.db
         .update(schema.persons)
-        .set(updateData)
+        .set({
+          name: name !== undefined ? name : sql`name`,
+          location: location !== undefined ? location : sql`location`,
+          age: age !== undefined ? age : sql`age`,
+          birthday: birthday !== undefined ? birthday : sql`birthday`,
+          zodiac: zodiac !== undefined ? zodiac : sql`zodiac`,
+          phoneNumber: phoneNumber !== undefined ? phoneNumber : sql`phone_number`,
+          instagram: instagram !== undefined ? instagram : sql`instagram`,
+          tiktok: tiktok !== undefined ? tiktok : sql`tiktok`,
+          twitterX: twitterX !== undefined ? twitterX : sql`twitter_x`,
+          facebook: facebook !== undefined ? facebook : sql`facebook`,
+          connectionType: connectionType !== undefined ? connectionType : sql`connection_type`,
+          connectionTypeCustom: connectionTypeCustom !== undefined ? connectionTypeCustom : sql`connection_type_custom`,
+          interestLevel: interestLevel !== undefined ? interestLevel : sql`interest_level`,
+          attractiveness: attractiveness !== undefined ? attractiveness : sql`attractiveness`,
+          sexualChemistry: sexualChemistry !== undefined ? sexualChemistry : sql`sexual_chemistry`,
+          overallChemistry: overallChemistry !== undefined ? overallChemistry : sql`overall_chemistry`,
+          communication: communication !== undefined ? communication : sql`communication`,
+          consistency: consistency !== undefined ? consistency : sql`consistency`,
+          emotionalAvailability: emotionalAvailability !== undefined ? emotionalAvailability : sql`emotional_availability`,
+          datePlanning: datePlanning !== undefined ? datePlanning : sql`date_planning`,
+          alignment: alignment !== undefined ? alignment : sql`alignment`,
+          photoUrl: photoUrl !== undefined ? photoUrl : sql`photo_url`,
+          isBenched: isBenched !== undefined ? isBenched : sql`is_benched`,
+          benchReason: benchReason !== undefined ? benchReason : sql`bench_reason`,
+          updatedAt: new Date(),
+        })
         .where(and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)))
         .returning();
 
