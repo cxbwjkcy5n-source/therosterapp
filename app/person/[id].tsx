@@ -160,11 +160,10 @@ interface DateEntry {
   date_time?: string;
   status?: string;
   notes?: string;
-  overall_rating?: number;
-  conversation_rating?: number;
-  attraction_rating?: number;
-  effort_rating?: number;
-  would_go_again?: string;
+  rating?: number;
+  went_well?: string;
+  went_poorly?: string;
+  want_another_date?: boolean;
   created_at: string;
 }
 
@@ -1242,7 +1241,7 @@ export default function PersonDetailScreen() {
                 const isLast = index === sortedDates.length - 1;
                 const dateLabel = formatShortDate(d.date_time || d.created_at);
                 const typeLabel = d.type ? (d.type.charAt(0).toUpperCase() + d.type.slice(1)) : 'Date';
-                const ratingVal = d.overall_rating ?? 0;
+                const ratingVal = d.rating ?? 0;
                 const ratingStr = ratingVal > 0 ? `${ratingVal}/10` : '—';
                 return (
                   <View key={d.id} style={{ flexDirection: 'row', gap: 12, marginBottom: isLast ? 0 : 16 }}>
@@ -1496,16 +1495,13 @@ export default function PersonDetailScreen() {
             const isExpanded = expandedDateId === d.id;
             const typeLabel = d.type ? (d.type.charAt(0).toUpperCase() + d.type.slice(1)) : 'Date';
             const dateTimeStr = formatDateTimeLabel(d.date_time || d.created_at);
-            const overallVal = d.overall_rating ?? 0;
+            const overallVal = d.rating ?? 0;
             const overallStr = String(overallVal);
-            const convoVal = d.conversation_rating ?? 0;
-            const attractVal = d.attraction_rating ?? 0;
-            const effortVal = d.effort_rating ?? 0;
-            const wouldGoRaw = d.would_go_again || '';
-            const wouldGoLabel = wouldGoRaw ? (wouldGoRaw.charAt(0).toUpperCase() + wouldGoRaw.slice(1)) : null;
+            const hasRating = !!d.rating;
+            const wantAnotherLabel = d.want_another_date != null ? (d.want_another_date ? 'Yes' : 'No') : null;
             const badgeNum = String(index + 1);
 
-            const wouldGoBg = wouldGoLabel === 'Yes' ? '#4CAF50' : wouldGoLabel === 'Maybe' ? RED : '#999999';
+            const wantAnotherBg = d.want_another_date ? '#4CAF50' : '#999999';
 
             return (
               <Pressable
@@ -1549,8 +1545,14 @@ export default function PersonDetailScreen() {
 
                     {/* Right: star + score + chevron */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={{ fontSize: 14 }}>⭐</Text>
-                      <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '700' }}>{overallStr}</Text>
+                      {hasRating ? (
+                        <>
+                          <Text style={{ fontSize: 14 }}>⭐</Text>
+                          <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '700' }}>{overallStr}</Text>
+                        </>
+                      ) : (
+                        <Text style={{ color: '#CCCCCC', fontSize: 13, fontWeight: '600' }}>—</Text>
+                      )}
                       {isExpanded ? <ChevronUp size={16} color="#999999" /> : <ChevronDown size={16} color="#999999" />}
                     </View>
                   </View>
@@ -1560,44 +1562,37 @@ export default function PersonDetailScreen() {
                     <View style={{ paddingHorizontal: 14, paddingBottom: 0 }}>
                       <View style={{ height: 1, backgroundColor: '#F0F0F0', marginBottom: 14 }} />
 
-                      {/* 2x2 score grid */}
-                      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-                        <View style={{ flex: 1, gap: 10 }}>
-                          {/* Overall */}
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ fontSize: 16 }}>⭐</Text>
-                            <Text style={{ color: '#1A1A1A', fontSize: 13, flex: 1 }}>Overall</Text>
-                            <ScoreRing score={overallVal} color="#F5A623" size={36} />
-                          </View>
-                          {/* Attraction IRL */}
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ fontSize: 16 }}>💙</Text>
-                            <Text style={{ color: '#1A1A1A', fontSize: 13, flex: 1 }}>Attraction IRL</Text>
-                            <ScoreRing score={attractVal} color="#1565C0" size={36} />
-                          </View>
+                      {/* Overall rating */}
+                      {hasRating ? (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                          <Text style={{ fontSize: 16 }}>⭐</Text>
+                          <Text style={{ color: '#1A1A1A', fontSize: 13, flex: 1 }}>Overall Rating</Text>
+                          <ScoreRing score={overallVal} color="#F5A623" size={36} />
                         </View>
-                        <View style={{ flex: 1, gap: 10 }}>
-                          {/* Convo */}
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ fontSize: 16 }}>💬</Text>
-                            <Text style={{ color: '#1A1A1A', fontSize: 13, flex: 1 }}>Convo</Text>
-                            <ScoreRing score={convoVal} color="#00897B" size={36} />
-                          </View>
-                          {/* Effort */}
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ fontSize: 16 }}>🔥</Text>
-                            <Text style={{ color: '#1A1A1A', fontSize: 13, flex: 1 }}>Effort</Text>
-                            <ScoreRing score={effortVal} color="#E65100" size={36} />
-                          </View>
-                        </View>
-                      </View>
+                      ) : null}
 
-                      {/* Would go again */}
-                      {wouldGoLabel ? (
+                      {/* Went well */}
+                      {d.went_well ? (
+                        <View style={{ backgroundColor: 'rgba(76,175,80,0.08)', borderRadius: 10, padding: 10, marginBottom: 10 }}>
+                          <Text style={{ color: '#2E7D32', fontSize: 12, fontWeight: '600', marginBottom: 3 }}>Went well</Text>
+                          <Text style={{ color: '#1A1A1A', fontSize: 13, lineHeight: 18 }}>{d.went_well}</Text>
+                        </View>
+                      ) : null}
+
+                      {/* Could be better */}
+                      {d.went_poorly ? (
+                        <View style={{ backgroundColor: 'rgba(229,57,53,0.08)', borderRadius: 10, padding: 10, marginBottom: 10 }}>
+                          <Text style={{ color: RED, fontSize: 12, fontWeight: '600', marginBottom: 3 }}>Could be better</Text>
+                          <Text style={{ color: '#1A1A1A', fontSize: 13, lineHeight: 18 }}>{d.went_poorly}</Text>
+                        </View>
+                      ) : null}
+
+                      {/* Want another date */}
+                      {wantAnotherLabel ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                          <Text style={{ color: '#1A1A1A', fontSize: 14 }}>Would go again?</Text>
-                          <View style={{ backgroundColor: wouldGoBg, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5 }}>
-                            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>{wouldGoLabel}</Text>
+                          <Text style={{ color: '#1A1A1A', fontSize: 14 }}>Want another date?</Text>
+                          <View style={{ backgroundColor: wantAnotherBg, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5 }}>
+                            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>{wantAnotherLabel}</Text>
                           </View>
                         </View>
                       ) : null}
@@ -1608,6 +1603,24 @@ export default function PersonDetailScreen() {
                           {d.notes}
                         </Text>
                       ) : null}
+
+                      {/* Rate & Review / Edit Review button */}
+                      <Pressable
+                        onPress={() => {
+                          console.log('[PersonDetail] Rate & Review pressed for dateId:', d.id, 'hasRating:', hasRating);
+                          router.push({ pathname: '/date-review', params: { dateId: d.id, personName: person?.name ?? '', personPhoto: person?.photo_url ?? '' } });
+                        }}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          backgroundColor: hasRating ? 'rgba(229,57,53,0.08)' : RED,
+                          borderRadius: 10, paddingVertical: 10, marginBottom: 10,
+                        }}
+                      >
+                        <Star size={15} color={hasRating ? RED : '#fff'} />
+                        <Text style={{ color: hasRating ? RED : '#fff', fontSize: 14, fontWeight: '600' }}>
+                          {hasRating ? 'Edit Review' : 'Rate & Review'}
+                        </Text>
+                      </Pressable>
 
                       {/* Edit / Delete buttons */}
                       <View style={{ flexDirection: 'row', gap: 0, marginHorizontal: -14, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
