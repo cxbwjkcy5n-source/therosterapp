@@ -339,6 +339,90 @@ describe("API Integration Tests", () => {
     expect(typeof data.dates_count).toBe("number");
   });
 
+  // ========== Person Phone Update Tests ==========
+  test("Update person's phone number with phone_number field", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/phone`,
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone_number: "555-1234",
+        }),
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.phone_number).toBe("555-1234");
+  });
+
+  test("Update person's phone number with phoneNumber field (camelCase)", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/phone`,
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneNumber: "555-5678",
+        }),
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.phone_number).toBeDefined();
+  });
+
+  test("Update person's phone number with null value", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/phone`,
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone_number: null,
+        }),
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test("Update person phone with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/phone",
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone_number: "555-1234",
+        }),
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Update phone for nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/phone",
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phone_number: "555-1234",
+        }),
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
   // ========== Dates CRUD Tests ==========
   test("Create a date with required fields", async () => {
     const res = await authenticatedApi("/api/dates", authToken, {
@@ -1387,6 +1471,18 @@ describe("API Integration Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: "Test", location: "Test" }),
     });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated PATCH /api/persons/{id}/phone returns 401", async () => {
+    const res = await api(
+      "/api/persons/00000000-0000-0000-0000-000000000000/phone",
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone_number: "555-1234" }),
+      }
+    );
     await expectStatus(res, 401);
   });
 

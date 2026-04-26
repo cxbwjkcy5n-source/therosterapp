@@ -341,6 +341,7 @@ export function registerPersonsRoutes(app: App) {
         return reply.status(404).send({ error: 'Person not found' });
       }
 
+      console.log(`[GET /persons/:id] phone_number value: ${person.phoneNumber}`);
       app.logger.info({ userId: session.user.id, personId: id }, 'Person retrieved');
       return toSnakePerson(person);
     }
@@ -654,6 +655,73 @@ export function registerPersonsRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id, personId: id }, 'Person deleted');
       return { success: true };
+    }
+  );
+
+  // PATCH /api/persons/:id/phone - Update a person's phone number
+  app.fastify.patch(
+    '/api/persons/:id/phone',
+    {
+      schema: {
+        description: 'Update a person\'s phone number',
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        body: {
+          type: 'object',
+          additionalProperties: true,
+          properties: {
+            phone_number: { type: ['string', 'null'] },
+            phoneNumber: { type: ['string', 'null'] },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              phone_number: { type: ['string', 'null'] },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: string }; Body: any }>, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      const body = request.body as any;
+
+      app.logger.info({ userId: session.user.id, personId: id, body }, 'Updating person phone number');
+
+      // Extract phone_number from either snake_case or camelCase
+      let phoneNumber = body.phone_number !== undefined ? body.phone_number : body.phoneNumber;
+
+      const [updated] = await app.db
+        .update(schema.persons)
+        .set({
+          phoneNumber: phoneNumber,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)))
+        .returning();
+
+      if (!updated) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      console.log(`[PATCH /phone] Updated phone_number for person ${id} to: ${phoneNumber}`);
+      app.logger.info({ userId: session.user.id, personId: id, phoneNumber }, 'Person phone number updated');
+      return { success: true, phone_number: updated.phoneNumber };
     }
   );
 
