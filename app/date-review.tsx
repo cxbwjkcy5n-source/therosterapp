@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { Star } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-import { apiPatch } from '@/utils/api';
+import { apiPatch, apiGet } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
 
@@ -45,6 +45,28 @@ export default function DateReviewScreen() {
   const [wentPoorly, setWentPoorly] = useState('');
   const [wantAnother, setWantAnother] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!dateId) {
+      setLoading(false);
+      return;
+    }
+    console.log('[DateReview] Fetching existing review for date:', dateId);
+    apiGet<any>(`/api/dates/${dateId}`)
+      .then((data) => {
+        const d = data?.date ?? data;
+        console.log('[DateReview] Existing review loaded:', d);
+        if (d?.rating) setRating(d.rating);
+        if (d?.went_well) setWentWell(d.went_well);
+        if (d?.went_poorly) setWentPoorly(d.went_poorly);
+        if (d?.want_another_date != null) setWantAnother(d.want_another_date);
+      })
+      .catch((e) => {
+        console.error('[DateReview] Failed to load existing review:', e);
+      })
+      .finally(() => setLoading(false));
+  }, [dateId]);
 
   const displayName = personName || 'Unknown';
   const initials = getInitials(displayName);
@@ -74,6 +96,14 @@ export default function DateReviewScreen() {
       setSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -832,8 +833,14 @@ export default function PersonDetailScreen() {
   }, [id]);
 
   useEffect(() => {
-    Promise.all([loadPerson(), loadDates(), loadNotes(), loadReminders()]);
-  }, [loadPerson, loadDates, loadNotes, loadReminders]);
+    Promise.all([loadPerson(), loadNotes(), loadReminders()]);
+  }, [loadPerson, loadNotes, loadReminders]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (id) loadDates();
+    }, [id, loadDates])
+  );
 
   // ── actions ──────────────────────────────────────────────────────────────
 
@@ -878,11 +885,16 @@ export default function PersonDetailScreen() {
       for (const key of ALLOWED_FIELDS) {
         const val = (editData as any)[key];
         if (val === undefined) continue;
+        if (key === 'zodiac' || key === 'connection_type') {
+          if (val) payload[key] = val;
+          // if falsy, skip entirely — backend rejects empty string for enum fields
+          continue;
+        }
         if (key === 'phone_number') {
           payload[key] = val === '' ? null : val;
-        } else {
-          payload[key] = val;
+          continue;
         }
+        payload[key] = val;
       }
       await apiPut(`/api/persons/${id}`, payload);
       if (newPhotoUri && newPhotoBase64) {
