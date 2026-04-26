@@ -434,6 +434,28 @@ describe("API Integration Tests", () => {
     expect(dateWithOurPerson).toBeDefined();
   });
 
+  test("Get a date by ID", async () => {
+    const res = await authenticatedApi(`/api/dates/${dateId}`, authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.date).toBeDefined();
+    expect(data.date.id).toBe(dateId);
+    expect(data.date.title).toBeDefined();
+  });
+
+  test("Get date with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(`/api/dates/invalid-uuid`, authToken);
+    await expectStatus(res, 400);
+  });
+
+  test("Get nonexistent date returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/dates/00000000-0000-0000-0000-000000000000",
+      authToken
+    );
+    await expectStatus(res, 404);
+  });
+
   test("Update a date with partial data", async () => {
     const res = await authenticatedApi(`/api/dates/${dateId}`, authToken, {
       method: "PUT",
@@ -1375,6 +1397,11 @@ describe("API Integration Tests", () => {
 
   test("Unauthenticated GET /api/dates returns 401", async () => {
     const res = await api("/api/dates");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/dates/{id} returns 401", async () => {
+    const res = await api("/api/dates/00000000-0000-0000-0000-000000000000");
     await expectStatus(res, 401);
   });
 

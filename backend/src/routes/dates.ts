@@ -70,6 +70,9 @@ export function registerDatesRoutes(app: App) {
           status: schema.dates.status,
           location: schema.dates.location,
           notes: schema.dates.notes,
+          wentWell: schema.dates.wentWell,
+          wentPoorly: schema.dates.wentPoorly,
+          wantAnotherDate: schema.dates.wantAnotherDate,
           createdAt: schema.dates.createdAt,
         })
         .from(schema.dates)
@@ -81,11 +84,15 @@ export function registerDatesRoutes(app: App) {
         id: date.id,
         person_id: date.personId,
         title: date.title,
+        type: null,
         date_time: date.dateTime,
         rating: date.rating,
         status: date.status,
         location: date.location,
         notes: date.notes,
+        went_well: date.wentWell,
+        went_poorly: date.wentPoorly,
+        want_another_date: date.wantAnotherDate,
         created_at: date.createdAt,
       }));
 
@@ -521,6 +528,92 @@ export function registerDatesRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id, count: dates.length }, 'Retrieved pending review dates');
       return dates;
+    }
+  );
+
+  // GET /api/dates/:id - Get a single date
+  app.fastify.get(
+    '/api/dates/:id',
+    {
+      schema: {
+        description: 'Get a single date entry for the authenticated user',
+        tags: ['dates'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              date: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  person_id: { type: 'string', format: 'uuid' },
+                  title: { type: 'string' },
+                  type: { type: ['string', 'null'] },
+                  date_time: { type: ['string', 'null'] },
+                  location: { type: ['string', 'null'] },
+                  notes: { type: ['string', 'null'] },
+                  status: { type: 'string' },
+                  rating: { type: ['integer', 'null'] },
+                  went_well: { type: ['string', 'null'] },
+                  went_poorly: { type: ['string', 'null'] },
+                  want_another_date: { type: ['boolean', 'null'] },
+                  created_at: { type: 'string', format: 'date-time' },
+                },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          403: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      app.logger.info({ userId: session.user.id, dateId: id }, 'Getting date');
+
+      const date = await app.db.query.dates.findFirst({
+        where: eq(schema.dates.id, id),
+      });
+
+      if (!date) {
+        app.logger.warn({ userId: session.user.id, dateId: id }, 'Date not found');
+        return reply.status(404).send({ error: 'Date not found' });
+      }
+
+      if (date.userId !== session.user.id) {
+        app.logger.warn({ userId: session.user.id, dateId: id }, 'Access denied');
+        return reply.status(403).send({ error: 'Access denied' });
+      }
+
+      app.logger.info({ userId: session.user.id, dateId: id }, 'Date retrieved');
+      return {
+        date: {
+          id: date.id,
+          person_id: date.personId,
+          title: date.title,
+          type: null,
+          date_time: date.dateTime,
+          location: date.location,
+          notes: date.notes,
+          status: date.status,
+          rating: date.rating,
+          went_well: date.wentWell,
+          went_poorly: date.wentPoorly,
+          want_another_date: date.wantAnotherDate,
+          created_at: date.createdAt,
+        },
+      };
     }
   );
 }

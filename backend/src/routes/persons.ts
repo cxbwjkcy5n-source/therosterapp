@@ -34,6 +34,49 @@ interface PersonInput {
   benchReason?: string;
 }
 
+function toSnakePerson(person: any) {
+  return {
+    id: person.id,
+    user_id: person.userId,
+    name: person.name,
+    location: person.location,
+    photo_url: person.photoUrl,
+    age: person.age,
+    birthday: person.birthday,
+    zodiac: person.zodiac,
+    phone_number: person.phoneNumber,
+    instagram: person.instagram,
+    tiktok: person.tiktok,
+    twitter_x: person.twitterX,
+    facebook: person.facebook,
+    interest_level: person.interestLevel,
+    attractiveness: person.attractiveness,
+    sexual_chemistry: person.sexualChemistry,
+    overall_chemistry: person.overallChemistry,
+    communication: person.communication,
+    consistency: person.consistency,
+    emotional_availability: person.emotionalAvailability,
+    date_planning: person.datePlanning,
+    alignment: person.alignment,
+    connection_type: person.connectionType,
+    connection_type_custom: person.connectionTypeCustom,
+    favorite_foods: person.favoriteFoods,
+    favorite_color: person.favoriteColor,
+    things_they_like: person.thingsTheyLike,
+    lifestyle_vibe: person.lifestyleVibe,
+    intention: person.intention,
+    distance_type: person.distanceType,
+    hobbies: person.hobbies,
+    green_flags: person.greenFlags,
+    red_flags: person.redFlags,
+    is_benched: person.isBenched,
+    bench_reason: person.benchReason,
+    nickname: person.nickname,
+    created_at: person.createdAt,
+    updated_at: person.updatedAt,
+  };
+}
+
 export function registerPersonsRoutes(app: App) {
   const requireAuth = app.requireAuth();
 
@@ -123,7 +166,7 @@ export function registerPersonsRoutes(app: App) {
         .where(whereClause);
 
       app.logger.info({ userId: session.user.id, count: persons.length }, 'Listed persons');
-      return { persons };
+      return { persons: persons.map(toSnakePerson) };
     }
   );
 
@@ -299,7 +342,7 @@ export function registerPersonsRoutes(app: App) {
       }
 
       app.logger.info({ userId: session.user.id, personId: id }, 'Person retrieved');
-      return person;
+      return toSnakePerson(person);
     }
   );
 
@@ -481,7 +524,7 @@ export function registerPersonsRoutes(app: App) {
         }
 
         app.logger.info({ userId: session.user.id, personId: id }, 'Person unbenched');
-        return { person: updated };
+        return { person: toSnakePerson(updated) };
       }
 
       // Log phone_number parameter value before executing query
@@ -555,7 +598,7 @@ export function registerPersonsRoutes(app: App) {
       }
 
       app.logger.info({ userId: session.user.id, personId: id }, 'Person updated');
-      return { person: updated };
+      return { person: toSnakePerson(updated) };
     }
   );
 
