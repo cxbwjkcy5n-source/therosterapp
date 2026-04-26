@@ -27,6 +27,12 @@ export function registerDatesRoutes(app: App) {
       schema: {
         description: 'List all dates for the authenticated user',
         tags: ['dates'],
+        querystring: {
+          type: 'object',
+          properties: {
+            person_id: { type: 'string', format: 'uuid', description: 'Filter by person ID' },
+          },
+        },
         response: {
           200: {
             type: 'object',
@@ -54,11 +60,18 @@ export function registerDatesRoutes(app: App) {
         },
       },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Querystring: { person_id?: string } }>, reply: FastifyReply) => {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
-      app.logger.info({ userId: session.user.id }, 'Listing dates');
+      const { person_id } = request.query;
+      app.logger.info({ userId: session.user.id, personId: person_id }, 'Listing dates');
+
+      // Build where clause - always filter by user, optionally by person_id
+      let whereClause = eq(schema.dates.userId, session.user.id);
+      if (person_id) {
+        whereClause = and(whereClause, eq(schema.dates.personId, person_id));
+      }
 
       const datesData = await app.db
         .select({
@@ -76,7 +89,7 @@ export function registerDatesRoutes(app: App) {
           createdAt: schema.dates.createdAt,
         })
         .from(schema.dates)
-        .where(eq(schema.dates.userId, session.user.id))
+        .where(whereClause)
         .orderBy(sql`${schema.dates.dateTime} DESC NULLS LAST`, sql`${schema.dates.createdAt} DESC`);
 
       // Convert camelCase to snake_case for response
@@ -96,7 +109,7 @@ export function registerDatesRoutes(app: App) {
         created_at: date.createdAt,
       }));
 
-      app.logger.info({ userId: session.user.id, count: dates.length }, 'Listed dates');
+      app.logger.info({ userId: session.user.id, personId: person_id, count: dates.length }, 'Listed dates');
       return { dates };
     }
   );

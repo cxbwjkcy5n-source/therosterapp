@@ -108,9 +108,9 @@ describe("API Integration Tests", () => {
     const res = await authenticatedApi(`/api/persons/${personId}`, authToken);
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.id).toBe(personId);
-    expect(data.name).toBe("Alice");
-    expect(data.location).toBe("San Francisco");
+    expect(data.person.id).toBe(personId);
+    expect(data.person.name).toBe("Alice");
+    expect(data.person.location).toBe("San Francisco");
   });
 
   test("Get person with invalid ID format returns 400", async () => {
