@@ -912,25 +912,8 @@ describe("API Integration Tests", () => {
   });
 
   // ========== Photo Upload Tests ==========
-  test("Upload a photo with required base64 field", async () => {
+  test("Upload a photo with both required fields", async () => {
     // Simple base64 encoded 1x1 transparent PNG
-    const base64Png =
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-
-    const res = await authenticatedApi("/api/upload-photo", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        base64: base64Png,
-      }),
-    });
-    await expectStatus(res, 201);
-    const data = await res.json();
-    expect(data.photo_url).toBeDefined();
-    expect(typeof data.photo_url).toBe("string");
-  });
-
-  test("Upload a photo with optional person_id", async () => {
     const base64Png =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
@@ -942,7 +925,7 @@ describe("API Integration Tests", () => {
         person_id: personId,
       }),
     });
-    await expectStatus(res, 201);
+    await expectStatus(res, 200);
     const data = await res.json();
     expect(data.photo_url).toBeDefined();
     expect(typeof data.photo_url).toBe("string");
@@ -952,9 +935,40 @@ describe("API Integration Tests", () => {
     const res = await authenticatedApi("/api/upload-photo", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        person_id: personId,
+      }),
     });
     await expectStatus(res, 400);
+  });
+
+  test("Upload photo without person_id fails", async () => {
+    const base64Png =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+    const res = await authenticatedApi("/api/upload-photo", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        base64: base64Png,
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Upload photo with nonexistent person returns 404", async () => {
+    const base64Png =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+    const res = await authenticatedApi("/api/upload-photo", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        base64: base64Png,
+        person_id: "00000000-0000-0000-0000-000000000000",
+      }),
+    });
+    await expectStatus(res, 404);
   });
 
   // ========== Interactions Tests ==========
@@ -1531,6 +1545,7 @@ describe("API Integration Tests", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         base64: "test",
+        person_id: "00000000-0000-0000-0000-000000000000",
       }),
     });
     await expectStatus(res, 401);
