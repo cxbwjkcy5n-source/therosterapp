@@ -917,7 +917,7 @@ export default function PersonDetailScreen() {
     setSaving(true);
     try {
       const ALLOWED_FIELDS = [
-        'name', 'location', 'age', 'birthday', 'zodiac', 'phone_number',
+        'name', 'location', 'age', 'birthday', 'zodiac',
         'instagram', 'tiktok', 'twitter_x', 'facebook', 'connection_type',
         'connection_type_custom', 'interest_level', 'attractiveness',
         'sexual_chemistry', 'communication', 'overall_chemistry', 'consistency',
@@ -933,13 +933,17 @@ export default function PersonDetailScreen() {
           // if falsy, skip entirely — backend rejects empty string for enum fields
           continue;
         }
-        if (key === 'phone_number') {
-          payload[key] = val === '' ? null : val;
-          continue;
-        }
         payload[key] = val;
       }
       await apiPut(`/api/persons/${id}`, payload);
+      // Always PATCH phone_number separately via dedicated endpoint
+      const phoneVal = (editData.phone_number as string) ?? '';
+      try {
+        await apiPatch(`/api/persons/${id}/phone`, { phone_number: phoneVal === '' ? null : phoneVal });
+        console.log('[PersonDetail] Phone number patched separately:', phoneVal || 'null');
+      } catch (phoneErr) {
+        console.error('[PersonDetail] Phone PATCH failed:', phoneErr);
+      }
       if (newPhotoUri && newPhotoBase64) {
         try {
           const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64: newPhotoBase64, person_id: id });
