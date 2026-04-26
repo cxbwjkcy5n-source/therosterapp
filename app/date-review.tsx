@@ -57,10 +57,14 @@ export default function DateReviewScreen() {
       .then((data) => {
         const d = data?.date ?? data;
         console.log('[DateReview] Existing review loaded:', d);
-        if (d?.rating) setRating(d.rating);
-        if (d?.went_well) setWentWell(d.went_well);
-        if (d?.went_poorly) setWentPoorly(d.went_poorly);
-        if (d?.want_another_date != null) setWantAnother(d.want_another_date);
+        const ratingVal = d?.rating;
+        if (ratingVal) setRating(ratingVal);
+        const wentWellVal = d?.went_well ?? d?.wentWell;
+        if (wentWellVal) setWentWell(wentWellVal);
+        const wentPoorlyVal = d?.went_poorly ?? d?.wentPoorly;
+        if (wentPoorlyVal) setWentPoorly(wentPoorlyVal);
+        const wantAnotherVal = d?.want_another_date ?? d?.wantAnotherDate;
+        if (wantAnotherVal != null) setWantAnother(wantAnotherVal);
       })
       .catch((e) => {
         console.error('[DateReview] Failed to load existing review:', e);

@@ -113,6 +113,49 @@ function getConnectionLabel(type?: string, custom?: string) {
   return type ? (map[type] || type) : '';
 }
 
+// ─── normalizer ──────────────────────────────────────────────────────────────
+
+function normalizePerson(raw: any): Person {
+  if (!raw) return raw;
+  return {
+    id: raw.id,
+    name: raw.name,
+    location: raw.location,
+    photo_url: raw.photo_url ?? raw.photoUrl,
+    age: raw.age,
+    birthday: raw.birthday,
+    zodiac: raw.zodiac,
+    phone_number: raw.phone_number ?? raw.phoneNumber,
+    instagram: raw.instagram,
+    tiktok: raw.tiktok,
+    twitter_x: raw.twitter_x ?? raw.twitterX,
+    facebook: raw.facebook,
+    interest_level: raw.interest_level ?? raw.interestLevel,
+    attractiveness: raw.attractiveness,
+    sexual_chemistry: raw.sexual_chemistry ?? raw.sexualChemistry,
+    overall_chemistry: raw.overall_chemistry ?? raw.overallChemistry,
+    communication: raw.communication,
+    consistency: raw.consistency,
+    emotional_availability: raw.emotional_availability ?? raw.emotionalAvailability,
+    date_planning: raw.date_planning ?? raw.datePlanning,
+    alignment: raw.alignment,
+    connection_type: raw.connection_type ?? raw.connectionType,
+    connection_type_custom: raw.connection_type_custom ?? raw.connectionTypeCustom,
+    favorite_foods: raw.favorite_foods ?? raw.favoriteFoods,
+    favorite_color: raw.favorite_color ?? raw.favoriteColor,
+    things_they_like: raw.things_they_like ?? raw.thingsTheyLike,
+    lifestyle_vibe: raw.lifestyle_vibe ?? raw.lifestyleVibe,
+    intention: raw.intention,
+    distance_type: raw.distance_type ?? raw.distanceType,
+    hobbies: raw.hobbies,
+    green_flags: raw.green_flags ?? raw.greenFlags,
+    red_flags: raw.red_flags ?? raw.redFlags,
+    is_benched: raw.is_benched ?? raw.isBenched,
+    bench_reason: raw.bench_reason ?? raw.benchReason,
+    nickname: raw.nickname,
+  };
+}
+
 // ─── interfaces ──────────────────────────────────────────────────────────────
 
 interface Person {
@@ -775,8 +818,8 @@ export default function PersonDetailScreen() {
     try {
       const data = await apiGet<any>(`/api/persons/${personId}`);
       console.log('[PersonDetail] Raw API response keys:', Object.keys(data || {}));
-      // Handle both { person: {...} } and direct person object shapes
-      const resolved: Person = data?.person ?? data;
+      // Handle both { person: {...} } and direct person object shapes, normalize camelCase→snake_case
+      const resolved: Person = normalizePerson(data?.person ?? data);
       console.log('[PersonDetail] Person loaded:', resolved?.name, 'id:', resolved?.id);
       if (!resolved?.id) {
         console.error('[PersonDetail] Person not found in response:', data);
@@ -908,7 +951,7 @@ export default function PersonDetailScreen() {
         }
       }
       const updatedRaw = await apiGet<any>(`/api/persons/${id}`);
-      const updated: Person = updatedRaw?.person ?? updatedRaw;
+      const updated: Person = normalizePerson(updatedRaw?.person ?? updatedRaw);
       setPerson(updated);
       setEditData(updated);
       setEditing(false);
