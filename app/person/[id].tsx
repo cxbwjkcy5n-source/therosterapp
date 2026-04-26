@@ -1293,6 +1293,30 @@ export default function PersonDetailScreen() {
           )}
         </View>
 
+        {/* Details */}
+        {!editing && (
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+            <SectionHeader label="Details" />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 0 }}>
+              {[
+                { label: 'Age', value: displayData.age?.toString() },
+                { label: 'Birthday', value: displayData.birthday ? formatBirthdayDisplay(displayData.birthday) : undefined },
+                { label: 'Zodiac', value: ZODIAC_SIGNS.find(z => z.value === displayData.zodiac)?.label },
+                { label: 'Location', value: displayData.location },
+                { label: 'Connection', value: getConnectionLabel(displayData.connection_type, displayData.connection_type_custom) || undefined },
+                { label: 'Instagram', value: displayData.instagram ? `@${displayData.instagram.replace('@', '')}` : undefined },
+                { label: 'TikTok', value: displayData.tiktok ? `@${displayData.tiktok.replace('@', '')}` : undefined },
+                { label: 'Phone', value: displayData.phone_number || undefined },
+              ].filter(f => !!f.value).map((f) => (
+                <View key={f.label} style={{ width: '50%', paddingVertical: 8, paddingRight: 8 }}>
+                  <Text style={{ color: '#999999', fontSize: 11, marginBottom: 2 }}>{f.label}</Text>
+                  <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '500' }} numberOfLines={1}>{f.value}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* Favorites */}
         {(favTags.length > 0 || editing) && (
           <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
