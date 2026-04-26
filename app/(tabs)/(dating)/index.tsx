@@ -25,6 +25,7 @@ interface Analytics {
 interface Person {
   id: string;
   name: string;
+  photo_url?: string;
 }
 
 interface DateEntry {
@@ -125,7 +126,7 @@ function ActionCard({ title, description, icon, accentColor, onPress, cardWidth 
   );
 }
 
-function DateCard({ entry, persons }: { entry: DateEntry; persons: Person[] }) {
+function DateCard({ entry, persons, onPress }: { entry: DateEntry; persons: Person[]; onPress: () => void }) {
   const dateStr = entry.date_time || entry.scheduled_at;
   const dateLabel = dateStr
     ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -139,7 +140,8 @@ function DateCard({ entry, persons }: { entry: DateEntry; persons: Person[] }) {
   const personName = foundPerson?.name || entry.person_name || 'Unknown';
 
   return (
-    <View
+    <AnimatedPressable
+      onPress={onPress}
       style={{
         backgroundColor: '#fff',
         borderRadius: 12,
@@ -187,7 +189,7 @@ function DateCard({ entry, persons }: { entry: DateEntry; persons: Person[] }) {
         <Text style={{ fontSize: 13 }}>⭐</Text>
         <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '700' }}>{ratingDisplay}</Text>
       </View>
-    </View>
+    </AnimatedPressable>
   );
 }
 
@@ -391,9 +393,22 @@ export default function DatingScreen() {
             </View>
           ) : (
             <View style={{ gap: 8 }}>
-              {recentDates.map((entry) => (
-                <DateCard key={entry.id} entry={entry} persons={persons} />
-              ))}
+              {recentDates.map((entry) => {
+                const foundPerson = entry.person_id ? persons.find((p) => p.id === entry.person_id) : null;
+                const personName = foundPerson?.name || entry.person_name || 'Unknown';
+                const personPhoto = foundPerson?.photo_url || '';
+                return (
+                  <DateCard
+                    key={entry.id}
+                    entry={entry}
+                    persons={persons}
+                    onPress={() => {
+                      console.log('[Dating] Date card pressed, dateId:', entry.id, 'person:', personName);
+                      router.push({ pathname: '/date-review', params: { dateId: entry.id, personName, personPhoto } });
+                    }}
+                  />
+                );
+              })}
             </View>
           )}
         </Animated.View>

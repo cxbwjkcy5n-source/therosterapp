@@ -554,11 +554,6 @@ function LogDateModal({
   showDatePicker, setShowDatePicker,
   showTimePicker, setShowTimePicker,
   dateLocation, setDateLocation,
-  dateOverall, setDateOverall,
-  dateConversation, setDateConversation,
-  dateAttraction, setDateAttraction,
-  dateEffort, setDateEffort,
-  dateWouldGoAgain, setDateWouldGoAgain,
   dateNotes, setDateNotes,
   savingDate,
 }: {
@@ -568,11 +563,6 @@ function LogDateModal({
   showDatePicker: boolean; setShowDatePicker: (v: boolean) => void;
   showTimePicker: boolean; setShowTimePicker: (v: boolean) => void;
   dateLocation: string; setDateLocation: (v: string) => void;
-  dateOverall: number; setDateOverall: (v: number) => void;
-  dateConversation: number; setDateConversation: (v: number) => void;
-  dateAttraction: number; setDateAttraction: (v: number) => void;
-  dateEffort: number; setDateEffort: (v: number) => void;
-  dateWouldGoAgain: string; setDateWouldGoAgain: (v: string) => void;
   dateNotes: string; setDateNotes: (v: string) => void;
   savingDate: boolean;
 }) {
@@ -679,37 +669,6 @@ function LogDateModal({
               }}
             />
 
-            {/* Rate the Date */}
-            <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 12 }}>Rate the Date</Text>
-            <EditableSlider label="Overall" value={dateOverall} onChange={(v) => { console.log('[PersonDetail] Date overall rating:', v); setDateOverall(v); }} />
-            <EditableSlider label="Conversation" value={dateConversation} onChange={(v) => { console.log('[PersonDetail] Date conversation rating:', v); setDateConversation(v); }} />
-            <EditableSlider label="Attraction IRL" value={dateAttraction} onChange={(v) => { console.log('[PersonDetail] Date attraction rating:', v); setDateAttraction(v); }} />
-            <EditableSlider label="Effort & Intent" value={dateEffort} onChange={(v) => { console.log('[PersonDetail] Date effort rating:', v); setDateEffort(v); }} />
-
-            {/* Would go again */}
-            <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Would go again?</Text>
-            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
-              {WOULD_GO_AGAIN_OPTIONS.map((opt) => {
-                const isSelected = dateWouldGoAgain === opt;
-                return (
-                  <Pressable
-                    key={opt}
-                    onPress={() => {
-                      console.log('[PersonDetail] Would go again selected:', opt);
-                      setDateWouldGoAgain(opt);
-                    }}
-                    style={{
-                      paddingHorizontal: 20, paddingVertical: 9, borderRadius: 20,
-                      backgroundColor: isSelected ? RED : '#F5F5F5',
-                      borderWidth: 1, borderColor: isSelected ? RED : '#E0E0E0',
-                    }}
-                  >
-                    <Text style={{ color: isSelected ? '#fff' : '#666666', fontSize: 14, fontWeight: '500' }}>{opt}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
             {/* Notes */}
             <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Notes</Text>
             <TextInput
@@ -780,11 +739,6 @@ export default function PersonDetailScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [dateLocation, setDateLocation] = useState('');
-  const [dateOverall, setDateOverall] = useState(5);
-  const [dateConversation, setDateConversation] = useState(5);
-  const [dateAttraction, setDateAttraction] = useState(5);
-  const [dateEffort, setDateEffort] = useState(5);
-  const [dateWouldGoAgain, setDateWouldGoAgain] = useState('Maybe');
   const [dateNotes, setDateNotes] = useState('');
   const [savingDate, setSavingDate] = useState(false);
 
@@ -924,7 +878,11 @@ export default function PersonDetailScreen() {
       for (const key of ALLOWED_FIELDS) {
         const val = (editData as any)[key];
         if (val === undefined) continue;
-        payload[key] = val;
+        if (key === 'phone_number') {
+          payload[key] = val === '' ? null : val;
+        } else {
+          payload[key] = val;
+        }
       }
       await apiPut(`/api/persons/${id}`, payload);
       if (newPhotoUri && newPhotoBase64) {
@@ -1018,31 +976,34 @@ export default function PersonDetailScreen() {
     console.log('[PersonDetail] Saving date for person:', id, 'type:', dateType);
     setSavingDate(true);
     try {
-      await apiPost('/api/dates', {
+      const result = await apiPost<any>('/api/dates', {
         person_id: id,
         type: dateType.toLowerCase(),
         location: dateLocation.trim() || undefined,
         date_time: dateWhen.toISOString(),
-        overall_rating: dateOverall,
-        conversation_rating: dateConversation,
-        attraction_rating: dateAttraction,
-        effort_rating: dateEffort,
-        would_go_again: dateWouldGoAgain.toLowerCase(),
         notes: dateNotes.trim() || undefined,
         status: 'completed',
+        title: `Date with ${person?.name || 'Unknown'}`,
       });
-      console.log('[PersonDetail] Date saved successfully');
+      console.log('[PersonDetail] Date saved successfully, result:', result);
+      const newDateId = result?.date?.id || result?.id;
       setDateType('Coffee');
       setDateWhen(new Date());
       setDateLocation('');
-      setDateOverall(5);
-      setDateConversation(5);
-      setDateAttraction(5);
-      setDateEffort(5);
-      setDateWouldGoAgain('Maybe');
       setDateNotes('');
       setShowLogDateModal(false);
       await loadDates();
+      if (newDateId) {
+        console.log('[PersonDetail] Navigating to date-review for dateId:', newDateId);
+        router.push({
+          pathname: '/date-review',
+          params: {
+            dateId: newDateId,
+            personName: person?.name || '',
+            personPhoto: person?.photo_url || '',
+          },
+        });
+      }
     } catch (e: any) {
       console.error('[PersonDetail] Failed to save date:', e);
       Alert.alert('Could not save date', e?.message || 'Please try again.');
@@ -1985,15 +1946,15 @@ export default function PersonDetailScreen() {
                 console.log('[PersonDetail] Call button pressed');
                 if (hasPhone) setShowCallModal(true);
               }}
+              disabled={!hasPhone}
               style={{
                 flex: 1, height: 36, borderRadius: 20,
                 borderWidth: 1, borderColor: '#EEEEEE',
                 flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-                opacity: hasPhone ? 1 : 0.4,
               }}
             >
-              <Ionicons name="call-outline" size={14} color="#1A1A1A" />
-              <Text style={{ color: '#1A1A1A', fontSize: 12, fontWeight: '500' }}>Call</Text>
+              <Ionicons name="call-outline" size={14} color={hasPhone ? '#1A1A1A' : '#CCCCCC'} />
+              <Text style={{ color: hasPhone ? '#1A1A1A' : '#CCCCCC', fontSize: 12, fontWeight: '500' }}>Call</Text>
             </Pressable>
 
             {/* Text */}
@@ -2002,15 +1963,15 @@ export default function PersonDetailScreen() {
                 console.log('[PersonDetail] Text button pressed');
                 if (hasPhone) setShowTextModal(true);
               }}
+              disabled={!hasPhone}
               style={{
                 flex: 1, height: 36, borderRadius: 20,
                 borderWidth: 1, borderColor: '#EEEEEE',
                 flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-                opacity: hasPhone ? 1 : 0.4,
               }}
             >
-              <Ionicons name="chatbubble-outline" size={14} color="#1A1A1A" />
-              <Text style={{ color: '#1A1A1A', fontSize: 12, fontWeight: '500' }}>Text</Text>
+              <Ionicons name="chatbubble-outline" size={14} color={hasPhone ? '#1A1A1A' : '#CCCCCC'} />
+              <Text style={{ color: hasPhone ? '#1A1A1A' : '#CCCCCC', fontSize: 12, fontWeight: '500' }}>Text</Text>
             </Pressable>
 
             {/* Insta */}
@@ -2225,16 +2186,6 @@ export default function PersonDetailScreen() {
         setShowTimePicker={setShowTimePicker}
         dateLocation={dateLocation}
         setDateLocation={setDateLocation}
-        dateOverall={dateOverall}
-        setDateOverall={setDateOverall}
-        dateConversation={dateConversation}
-        setDateConversation={setDateConversation}
-        dateAttraction={dateAttraction}
-        setDateAttraction={setDateAttraction}
-        dateEffort={dateEffort}
-        setDateEffort={setDateEffort}
-        dateWouldGoAgain={dateWouldGoAgain}
-        setDateWouldGoAgain={setDateWouldGoAgain}
         dateNotes={dateNotes}
         setDateNotes={setDateNotes}
         savingDate={savingDate}
