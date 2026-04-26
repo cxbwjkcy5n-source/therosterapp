@@ -406,7 +406,7 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 400);
   });
 
-  test("Create date fails without required title", async () => {
+  test("Create date with auto-generated title", async () => {
     const res = await authenticatedApi("/api/dates", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -414,7 +414,9 @@ describe("API Integration Tests", () => {
         person_id: personId,
       }),
     });
-    await expectStatus(res, 400);
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.title).toBe("Date");
   });
 
   test("List dates returns dates with person info", async () => {

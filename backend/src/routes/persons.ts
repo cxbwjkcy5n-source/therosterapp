@@ -445,6 +445,7 @@ export function registerPersonsRoutes(app: App) {
       let photoUrl = getFieldValue('photo_url', 'photoUrl');
       let isBenched = getFieldValue('is_benched', 'isBenched');
       let benchReason = getFieldValue('bench_reason', 'benchReason');
+      if (benchReason === '') benchReason = null;
 
       // SPECIAL CASE: Unbenching fast path
       if (isBenched === false) {
@@ -466,6 +467,9 @@ export function registerPersonsRoutes(app: App) {
         app.logger.info({ userId: session.user.id, personId: id }, 'Person unbenched');
         return { person: updated };
       }
+
+      // Log phone_number parameter value before executing query
+      app.logger.debug({ phoneNumberValue: phoneNumber }, 'phone_number parameter');
 
       // Build params array for hardcoded SQL (24 positional parameters)
       const params = [

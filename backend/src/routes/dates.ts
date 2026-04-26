@@ -5,7 +5,8 @@ import * as schema from '../db/schema/schema.js';
 
 interface DateInput {
   person_id: string;
-  title: string;
+  title?: string;
+  type?: string;
   location?: string;
   date_time?: string;
   budget?: string;
@@ -102,10 +103,11 @@ export function registerDatesRoutes(app: App) {
         tags: ['dates'],
         body: {
           type: 'object',
-          required: ['person_id', 'title'],
+          required: ['person_id'],
           properties: {
             person_id: { type: 'string', format: 'uuid' },
             title: { type: 'string' },
+            type: { type: 'string' },
             location: { type: 'string' },
             date_time: { type: 'string' },
             budget: { type: 'string' },
@@ -134,10 +136,16 @@ export function registerDatesRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id, body: request.body }, 'Creating date');
 
+      // Auto-generate title if not provided
+      const title = request.body.title ||
+        (request.body.type
+          ? request.body.type.charAt(0).toUpperCase() + request.body.type.slice(1) + ' Date'
+          : 'Date');
+
       const insertData: any = {
         userId: session.user.id,
         personId: request.body.person_id,
-        title: request.body.title,
+        title,
       };
 
       // Add optional fields only if provided
