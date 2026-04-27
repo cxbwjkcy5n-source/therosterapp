@@ -126,7 +126,7 @@ export default function DateSafetyScreen() {
 
       {/* Form content — scrolls */}
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 32, paddingBottom: insets.bottom + 40, gap: 28 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
