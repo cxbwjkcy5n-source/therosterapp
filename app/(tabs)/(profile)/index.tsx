@@ -269,18 +269,15 @@ export default function ProfileScreen() {
     console.log('[Profile] Saving profile');
     setSaving(true);
     try {
-      let dataToSave = { ...editData };
+      const dataToSave = { ...editData };
 
-      // Strip photo_url from the main PUT — send it separately if it's a new base64 photo
-      const photoToSave = newPhotoBase64 ? `data:image/jpeg;base64,${newPhotoBase64}` : null;
-      delete (dataToSave as any).photo_url;
+      // Include base64 photo directly in the main PUT payload
+      if (newPhotoBase64) {
+        dataToSave.photo_url = `data:image/jpeg;base64,${newPhotoBase64}`;
+        console.log('[Profile] Including new photo in save payload');
+      }
 
       await apiPut('/api/profile', dataToSave);
-
-      // Save photo separately only if a new one was picked
-      if (photoToSave) {
-        await apiPut('/api/profile', { photo_url: photoToSave });
-      }
 
       console.log('[Profile] PUT succeeded, re-fetching profile');
       const res = await apiGet<any>('/api/profile');

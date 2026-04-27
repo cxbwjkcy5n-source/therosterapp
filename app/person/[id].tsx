@@ -952,6 +952,12 @@ export default function PersonDetailScreen() {
         }
         payload[key] = val;
       }
+      // Include base64 photo directly in the main PUT payload
+      if (newPhotoBase64) {
+        payload.photo_url = `data:image/jpeg;base64,${newPhotoBase64}`;
+        console.log('[PersonDetail] Including new photo in save payload');
+      }
+
       await apiPut(`/api/persons/${id}`, payload);
       // Always PATCH phone_number separately via dedicated endpoint
       const phoneVal = (editData.phone_number as string) ?? '';
@@ -960,16 +966,6 @@ export default function PersonDetailScreen() {
         console.log('[PersonDetail] Phone number patched separately:', phoneVal || 'null');
       } catch (phoneErr) {
         console.error('[PersonDetail] Phone PATCH failed:', phoneErr);
-      }
-      if (newPhotoUri && newPhotoBase64) {
-        try {
-          const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64: newPhotoBase64, person_id: Number(id) });
-          if (uploadResult?.photo_url) {
-            await apiPut(`/api/persons/${id}`, { photo_url: uploadResult.photo_url });
-          }
-        } catch (photoErr) {
-          console.error('[PersonDetail] Photo upload failed:', photoErr);
-        }
       }
       const updatedRaw = await apiGet<any>(`/api/persons/${id}`);
       const updated: Person = normalizePerson(updatedRaw?.person ?? updatedRaw);
@@ -1038,8 +1034,12 @@ export default function PersonDetailScreen() {
     });
     if (!result.canceled && result.assets[0]) {
       console.log('[PersonDetail] New photo selected');
+      const base64 = result.assets[0].base64 ?? null;
       setNewPhotoUri(result.assets[0].uri);
-      setNewPhotoBase64(result.assets[0].base64 ?? null);
+      setNewPhotoBase64(base64);
+      if (base64) {
+        setEditData((prev) => ({ ...prev, photo_url: `data:image/jpeg;base64,${base64}` }));
+      }
     }
   };
 
@@ -1208,7 +1208,7 @@ export default function PersonDetailScreen() {
   }
 
   const displayData = editing ? editData : person;
-  const photoSource = newPhotoUri || displayData.photo_url;
+  const photoSource = displayData.photo_url || newPhotoUri;
   const hasPhoto = !!photoSource;
   const initials = getInitials(displayData.name || '');
   const connectionLabel = getConnectionLabel(displayData.connection_type, displayData.connection_type_custom);
