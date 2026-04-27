@@ -233,9 +233,9 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
         {/* Avatar */}
         <View
           style={{
-            width: 52,
-            height: 52,
-            borderRadius: 26,
+            width: 64,
+            height: 64,
+            borderRadius: 32,
             borderWidth: 2,
             borderColor: RED,
             overflow: 'hidden',
@@ -248,11 +248,11 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
           {hasPhoto ? (
             <Image
               source={resolveImageSource(item.photo_url)}
-              style={{ width: 48, height: 48, borderRadius: 24 }}
+              style={{ width: 60, height: 60, borderRadius: 30 }}
               contentFit="cover"
             />
           ) : (
-            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>{initials}</Text>
+            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700' }}>{initials}</Text>
           )}
         </View>
 

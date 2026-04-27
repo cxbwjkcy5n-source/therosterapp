@@ -9,6 +9,7 @@ import {
   Pressable,
   ActivityIndicator,
   Image,
+  Alert,
 } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
@@ -188,69 +189,49 @@ export default function AuthScreen() {
           </Text>
         </View>
 
-        {/* Mode toggle */}
-        <View
+        {/* Sign In button */}
+        <AnimatedPressable
+          onPress={() => {
+            console.log('[Auth] Switched to sign in mode');
+            setMode('signin');
+            setError(null);
+          }}
           style={{
-            flexDirection: 'row',
-            backgroundColor: COLORS.surface,
-            borderRadius: 12,
-            padding: 3,
-            gap: 2,
-            marginBottom: 32,
+            backgroundColor: isSignIn ? COLORS.primary : COLORS.surface,
+            borderRadius: 14,
+            paddingVertical: 16,
+            alignItems: 'center',
+            marginBottom: 10,
             borderWidth: 1,
-            borderColor: COLORS.border,
-            overflow: 'hidden',
+            borderColor: isSignIn ? COLORS.primary : COLORS.border,
           }}
         >
-          <AnimatedPressable
-            onPress={() => {
-              console.log('[Auth] Switched to sign in mode');
-              setMode('signin');
-              setError(null);
-            }}
-            style={{
-              flex: 1,
-              paddingVertical: 11,
-              borderRadius: 9,
-              alignItems: 'center',
-              backgroundColor: isSignIn ? COLORS.primary : 'transparent',
-            }}
-          >
-            <Text
-              style={{
-                color: isSignIn ? '#fff' : COLORS.textSecondary,
-                fontWeight: isSignIn ? '700' : '400',
-                fontSize: 14,
-              }}
-            >
-              Sign in
-            </Text>
-          </AnimatedPressable>
-          <AnimatedPressable
-            onPress={() => {
-              console.log('[Auth] Switched to create account mode');
-              setMode('signup');
-              setError(null);
-            }}
-            style={{
-              flex: 1,
-              paddingVertical: 11,
-              borderRadius: 9,
-              alignItems: 'center',
-              backgroundColor: !isSignIn ? COLORS.primary : 'transparent',
-            }}
-          >
-            <Text
-              style={{
-                color: !isSignIn ? '#fff' : COLORS.textSecondary,
-                fontWeight: !isSignIn ? '700' : '400',
-                fontSize: 14,
-              }}
-            >
-              Create account
-            </Text>
-          </AnimatedPressable>
-        </View>
+          <Text style={{ color: isSignIn ? '#fff' : COLORS.textSecondary, fontWeight: '700', fontSize: 15 }}>
+            Sign In
+          </Text>
+        </AnimatedPressable>
+
+        {/* Create Account button */}
+        <AnimatedPressable
+          onPress={() => {
+            console.log('[Auth] Switched to create account mode');
+            setMode('signup');
+            setError(null);
+          }}
+          style={{
+            backgroundColor: !isSignIn ? COLORS.primary : COLORS.surface,
+            borderRadius: 14,
+            paddingVertical: 16,
+            alignItems: 'center',
+            marginBottom: 32,
+            borderWidth: 1,
+            borderColor: !isSignIn ? COLORS.primary : COLORS.border,
+          }}
+        >
+          <Text style={{ color: !isSignIn ? '#fff' : COLORS.textSecondary, fontWeight: '700', fontSize: 15 }}>
+            Create Account
+          </Text>
+        </AnimatedPressable>
 
         {/* Form */}
         <View style={{ gap: 14, marginBottom: 20 }}>
@@ -349,6 +330,18 @@ export default function AuthScreen() {
               </Pressable>
             </View>
           </View>
+
+          {isSignIn && (
+            <Pressable
+              onPress={() => {
+                console.log('[Auth] Forgot password pressed');
+                Alert.alert('Forgot Password', 'Password reset coming soon.');
+              }}
+              style={{ alignSelf: 'flex-end', marginTop: 4, marginBottom: 4 }}
+            >
+              <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '500' }}>Forgot your password?</Text>
+            </Pressable>
+          )}
         </View>
 
         {error ? (

@@ -439,12 +439,13 @@ function CompatibilityRing({ score }: { score: number }) {
 
 // ─── Call Modal ───────────────────────────────────────────────────────────────
 
-function CallModal({ visible, name, phone, onClose }: { visible: boolean; name: string; phone: string; onClose: () => void }) {
+function CallModal({ visible, name, phone, onClose, onConfirm }: { visible: boolean; name: string; phone: string; onClose: () => void; onConfirm?: () => void }) {
   const handleStartCall = () => {
     console.log('[PersonDetail] Start Call pressed for:', name, phone);
     Linking.openURL(`tel:${phone.replace(/\s/g, '')}`).catch((e) =>
       console.error('[PersonDetail] Failed to open tel link:', e)
     );
+    onConfirm?.();
     onClose();
   };
 
@@ -496,7 +497,7 @@ function CallModal({ visible, name, phone, onClose }: { visible: boolean; name: 
 
 // ─── Text Modal ───────────────────────────────────────────────────────────────
 
-function TextModal({ visible, name, phone, onClose }: { visible: boolean; name: string; phone: string; onClose: () => void }) {
+function TextModal({ visible, name, phone, onClose, onConfirm }: { visible: boolean; name: string; phone: string; onClose: () => void; onConfirm?: () => void }) {
   const [customMessage, setCustomMessage] = useState('');
   const firstName = name.split(' ')[0];
 
@@ -507,6 +508,7 @@ function TextModal({ visible, name, phone, onClose }: { visible: boolean; name: 
     Linking.openURL(`sms:${cleanPhone}?body=${encoded}`).catch((e) =>
       console.error('[PersonDetail] Failed to open sms link:', e)
     );
+    onConfirm?.();
     onClose();
   };
 
@@ -806,6 +808,9 @@ export default function PersonDetailScreen() {
   const [showCallModal, setShowCallModal] = useState(false);
   const [showTextModal, setShowTextModal] = useState(false);
 
+  // interactions (calls/texts)
+  const [interactions, setInteractions] = useState<{ id: string; type: string; title: string; occurred_at: string }[]>([]);
+
   // edit date
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
 
@@ -875,9 +880,21 @@ export default function PersonDetailScreen() {
     }
   }, [id]);
 
+  const loadInteractions = useCallback(async () => {
+    if (!id) return;
+    console.log('[PersonDetail] Loading interactions for person:', id);
+    try {
+      const data = await apiGet<{ interactions: { id: string; type: string; title: string; occurred_at: string }[] }>(`/api/interactions?person_id=${id}`);
+      console.log('[PersonDetail] Loaded', data.interactions?.length ?? 0, 'interactions');
+      setInteractions(data.interactions || []);
+    } catch (e) {
+      console.error('[PersonDetail] Failed to load interactions:', e);
+    }
+  }, [id]);
+
   useEffect(() => {
-    Promise.all([loadPerson(), loadNotes(), loadReminders()]);
-  }, [loadPerson, loadNotes, loadReminders]);
+    Promise.all([loadPerson(), loadNotes(), loadReminders(), loadInteractions()]);
+  }, [loadPerson, loadNotes, loadReminders, loadInteractions]);
 
   useFocusEffect(
     useCallback(() => {
@@ -1241,6 +1258,27 @@ export default function PersonDetailScreen() {
       return db - da;
     });
 
+    type TimelineItem =
+      | { kind: 'date'; id: string; timestamp: number; data: DateEntry }
+      | { kind: 'interaction'; id: string; timestamp: number; data: { id: string; type: string; title: string; occurred_at: string } };
+
+    const timelineItems: TimelineItem[] = [
+      ...sortedDates.map((d): TimelineItem => ({
+        kind: 'date',
+        id: `date-${d.id}`,
+        timestamp: new Date(d.date_time || d.created_at).getTime(),
+        data: d,
+      })),
+      ...interactions.map((i): TimelineItem => ({
+        kind: 'interaction',
+        id: `interaction-${i.id}`,
+        timestamp: new Date(i.occurred_at).getTime(),
+        data: i,
+      })),
+    ].sort((a, b) => b.timestamp - a.timestamp);
+
+    const timelineEmpty = timelineItems.length === 0;
+
     return (
       <View style={{ gap: 16 }}>
         {/* Dating Timeline */}
@@ -1248,7 +1286,7 @@ export default function PersonDetailScreen() {
           <SectionHeader label="Dating Timeline" />
           {loadingDates ? (
             <ActivityIndicator color={RED} style={{ marginVertical: 12 }} />
-          ) : sortedDates.length === 0 ? (
+          ) : timelineEmpty ? (
             <View style={{ alignItems: 'center', paddingVertical: 20 }}>
               <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
                 <Heart size={22} color={RED} />
@@ -1257,37 +1295,66 @@ export default function PersonDetailScreen() {
             </View>
           ) : (
             <View>
-              {sortedDates.map((d, index) => {
-                const isLast = index === sortedDates.length - 1;
-                const dateLabel = formatShortDate(d.date_time || d.created_at);
-                const typeLabel = d.type ? (d.type.charAt(0).toUpperCase() + d.type.slice(1)) : 'Date';
-                const ratingVal = d.rating ?? 0;
-                const ratingStr = ratingVal > 0 ? `${ratingVal}/10` : '—';
-                return (
-                  <View key={d.id} style={{ flexDirection: 'row', gap: 12, marginBottom: isLast ? 0 : 16 }}>
-                    <View style={{ alignItems: 'center', width: 28 }}>
-                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: RED, marginTop: 4 }} />
-                      {!isLast && (
-                        <View style={{ width: 2, flex: 1, backgroundColor: '#EEEEEE', marginTop: 4, minHeight: 20 }} />
-                      )}
-                    </View>
-                    <View style={{ flex: 1, paddingBottom: isLast ? 0 : 4 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                        <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '600' }}>{typeLabel}</Text>
-                        <View style={{ backgroundColor: 'rgba(229,57,53,0.1)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
-                          <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>{ratingStr}</Text>
-                        </View>
+              {timelineItems.map((item, index) => {
+                const isLast = index === timelineItems.length - 1;
+                if (item.kind === 'date') {
+                  const d = item.data;
+                  const dateLabel = formatShortDate(d.date_time || d.created_at);
+                  const typeLabel = d.type ? (d.type.charAt(0).toUpperCase() + d.type.slice(1)) : 'Date';
+                  const ratingVal = d.rating ?? 0;
+                  const ratingStr = ratingVal > 0 ? `${ratingVal}/10` : '—';
+                  return (
+                    <View key={item.id} style={{ flexDirection: 'row', gap: 12, marginBottom: isLast ? 0 : 16 }}>
+                      <View style={{ alignItems: 'center', width: 28 }}>
+                        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: RED, marginTop: 4 }} />
+                        {!isLast && (
+                          <View style={{ width: 2, flex: 1, backgroundColor: '#EEEEEE', marginTop: 4, minHeight: 20 }} />
+                        )}
                       </View>
-                      <Text style={{ color: '#999999', fontSize: 12 }}>{dateLabel}</Text>
-                      {d.location ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                          <MapPin size={11} color="#AAAAAA" />
-                          <Text style={{ color: '#AAAAAA', fontSize: 12 }} numberOfLines={1}>{d.location}</Text>
+                      <View style={{ flex: 1, paddingBottom: isLast ? 0 : 4 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                          <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '600' }}>{typeLabel}</Text>
+                          <View style={{ backgroundColor: 'rgba(229,57,53,0.1)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
+                            <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>{ratingStr}</Text>
+                          </View>
                         </View>
-                      ) : null}
+                        <Text style={{ color: '#999999', fontSize: 12 }}>{dateLabel}</Text>
+                        {d.location ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                            <MapPin size={11} color="#AAAAAA" />
+                            <Text style={{ color: '#AAAAAA', fontSize: 12 }} numberOfLines={1}>{d.location}</Text>
+                          </View>
+                        ) : null}
+                      </View>
                     </View>
-                  </View>
-                );
+                  );
+                } else {
+                  const i = item.data;
+                  const interactionLabel = formatShortDate(i.occurred_at);
+                  const isCall = i.type === 'call';
+                  const dotColor = isCall ? '#4CAF50' : '#2196F3';
+                  return (
+                    <View key={item.id} style={{ flexDirection: 'row', gap: 12, marginBottom: isLast ? 0 : 16 }}>
+                      <View style={{ alignItems: 'center', width: 28 }}>
+                        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: dotColor, marginTop: 4 }} />
+                        {!isLast && (
+                          <View style={{ width: 2, flex: 1, backgroundColor: '#EEEEEE', marginTop: 4, minHeight: 20 }} />
+                        )}
+                      </View>
+                      <View style={{ flex: 1, paddingBottom: isLast ? 0 : 4 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                          {isCall ? (
+                            <Phone size={12} color={dotColor} />
+                          ) : (
+                            <MessageSquare size={12} color={dotColor} />
+                          )}
+                          <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '600' }}>{i.title}</Text>
+                        </View>
+                        <Text style={{ color: '#999999', fontSize: 12 }}>{interactionLabel}</Text>
+                      </View>
+                    </View>
+                  );
+                }
               })}
             </View>
           )}
@@ -2248,12 +2315,34 @@ export default function PersonDetailScreen() {
         name={personName}
         phone={phoneNumber}
         onClose={() => setShowCallModal(false)}
+        onConfirm={() => {
+          console.log('[PersonDetail] Logging call interaction for person:', id);
+          apiPost('/api/interactions', {
+            person_id: id,
+            type: 'call',
+            title: `Called ${person?.name}`,
+            occurred_at: new Date().toISOString(),
+          })
+            .then(() => loadInteractions())
+            .catch((e) => console.error('[PersonDetail] Failed to log call interaction:', e));
+        }}
       />
       <TextModal
         visible={showTextModal}
         name={personName}
         phone={phoneNumber}
         onClose={() => setShowTextModal(false)}
+        onConfirm={() => {
+          console.log('[PersonDetail] Logging text interaction for person:', id);
+          apiPost('/api/interactions', {
+            person_id: id,
+            type: 'text',
+            title: `Texted ${person?.name}`,
+            occurred_at: new Date().toISOString(),
+          })
+            .then(() => loadInteractions())
+            .catch((e) => console.error('[PersonDetail] Failed to log text interaction:', e));
+        }}
       />
       <LogDateModal
         visible={showLogDateModal}
