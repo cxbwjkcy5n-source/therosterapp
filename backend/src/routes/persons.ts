@@ -357,6 +357,7 @@ export function registerPersonsRoutes(app: App) {
   app.fastify.put(
     '/api/persons/:id',
     {
+      bodyLimit: 10485760, // 10MB
       schema: {
         description: 'Update a person',
         tags: ['persons'],
