@@ -136,7 +136,7 @@ export default function DateHaveScreen() {
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: 16,
-          paddingTop: insets.top + 16,
+          paddingTop: 20,
           paddingBottom: 12,
           marginTop: 0,
           borderBottomWidth: 1,
@@ -163,105 +163,112 @@ export default function DateHaveScreen() {
         <View style={{ width: 36 }} />
       </View>
 
+      {/* Person selector — fixed between header and scroll content */}
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+        }}
+      >
+        <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+          Who's the date with?
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {persons.map((p) => (
+              <Pressable
+                key={p.id}
+                onPress={() => {
+                  console.log('[DateHave] Person selected:', p.id, p.name);
+                  setSelectedPersonId(p.id);
+                }}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 20,
+                  backgroundColor: selectedPersonId === p.id ? COLORS.primary : COLORS.surface,
+                  borderWidth: 1,
+                  borderColor: selectedPersonId === p.id ? COLORS.primary : COLORS.border,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                {p.photo_url ? (
+                  <Image
+                    source={resolveImageSource(p.photo_url)}
+                    style={{ width: 24, height: 24, borderRadius: 12 }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor: selectedPersonId === p.id ? 'rgba(255,255,255,0.3)' : COLORS.primaryMuted || '#fde8ea',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: selectedPersonId === p.id ? '#fff' : COLORS.primary, fontSize: 11, fontWeight: '700' }}>
+                      {p.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <Text
+                  style={{
+                    color: selectedPersonId === p.id ? '#fff' : COLORS.textSecondary,
+                    fontSize: 14,
+                    fontWeight: '500',
+                  }}
+                >
+                  {p.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Person selector */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
-            Who's the date with?
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {persons.map((p) => (
-                <Pressable
-                  key={p.id}
-                  onPress={() => {
-                    console.log('[DateHave] Person selected:', p.id, p.name);
-                    setSelectedPersonId(p.id);
-                  }}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 20,
-                    backgroundColor: selectedPersonId === p.id ? COLORS.primary : COLORS.surface,
-                    borderWidth: 1,
-                    borderColor: selectedPersonId === p.id ? COLORS.primary : COLORS.border,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  {p.photo_url ? (
-                    <Image
-                      source={resolveImageSource(p.photo_url)}
-                      style={{ width: 24, height: 24, borderRadius: 12 }}
-                    />
-                  ) : (
-                    <View
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 12,
-                        backgroundColor: selectedPersonId === p.id ? 'rgba(255,255,255,0.3)' : COLORS.primaryMuted || '#fde8ea',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text style={{ color: selectedPersonId === p.id ? '#fff' : COLORS.primary, fontSize: 11, fontWeight: '700' }}>
-                        {p.name.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                  )}
-                  <Text
-                    style={{
-                      color: selectedPersonId === p.id ? '#fff' : COLORS.textSecondary,
-                      fontSize: 14,
-                      fontWeight: '500',
-                    }}
-                  >
-                    {p.name}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </ScrollView>
-
-          {/* Selected person avatar */}
-          {selectedPerson && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 14 }}>
-              {selectedPerson.photo_url ? (
-                <Image
-                  source={resolveImageSource(selectedPerson.photo_url)}
-                  style={{ width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: COLORS.primary }}
-                />
-              ) : (
-                <View
-                  style={{
-                    width: 60,
-                    height: 60,
-                    borderRadius: 30,
-                    backgroundColor: COLORS.primaryMuted || '#fde8ea',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: 2,
-                    borderColor: COLORS.primary,
-                  }}
-                >
-                  <Text style={{ color: COLORS.primary, fontSize: 22, fontWeight: '700' }}>
-                    {selectedPerson.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700' }}>{selectedPerson.name}</Text>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 2 }}>Your date</Text>
+        {/* Selected person avatar */}
+        {selectedPerson && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            {selectedPerson.photo_url ? (
+              <Image
+                source={resolveImageSource(selectedPerson.photo_url)}
+                style={{ width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: COLORS.primary }}
+              />
+            ) : (
+              <View
+                style={{
+                  width: 60,
+                  height: 60,
+                  borderRadius: 30,
+                  backgroundColor: COLORS.primaryMuted || '#fde8ea',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 2,
+                  borderColor: COLORS.primary,
+                }}
+              >
+                <Text style={{ color: COLORS.primary, fontSize: 22, fontWeight: '700' }}>
+                  {selectedPerson.name.charAt(0).toUpperCase()}
+                </Text>
               </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700' }}>{selectedPerson.name}</Text>
+              <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 2 }}>Your date</Text>
             </View>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Location */}
         <View style={{ zIndex: 10 }}>

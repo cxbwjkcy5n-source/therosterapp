@@ -149,7 +149,7 @@ export default function AuthScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Logo */}
-        <View style={{ alignItems: 'center', marginBottom: 44 }}>
+        <View style={{ alignItems: 'center', marginBottom: 32 }}>
           <View
             style={{
               width: 88,
@@ -190,20 +190,44 @@ export default function AuthScreen() {
         </View>
 
         {/* Mode selector tabs */}
-        <View style={{ flexDirection: 'row', marginBottom: 28, gap: 0 }}>
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 32 }}>
           <AnimatedPressable
             onPress={() => { console.log('[Auth] Switched to sign in mode'); setMode('signin'); setError(null); }}
-            style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: isSignIn ? COLORS.primary : COLORS.border }}
+            style={{
+              flex: 1,
+              paddingVertical: 14,
+              borderRadius: 14,
+              alignItems: 'center',
+              backgroundColor: isSignIn ? COLORS.primary : COLORS.surface,
+              borderWidth: 1.5,
+              borderColor: isSignIn ? COLORS.primary : COLORS.border,
+              shadowColor: isSignIn ? COLORS.primary : 'transparent',
+              shadowOpacity: isSignIn ? 0.25 : 0,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+            }}
           >
-            <Text style={{ color: isSignIn ? COLORS.primary : COLORS.textSecondary, fontWeight: isSignIn ? '700' : '500', fontSize: 15 }}>
+            <Text style={{ color: isSignIn ? '#fff' : COLORS.textSecondary, fontWeight: '700', fontSize: 15 }}>
               Sign In
             </Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => { console.log('[Auth] Switched to create account mode'); setMode('signup'); setError(null); }}
-            style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: !isSignIn ? COLORS.primary : COLORS.border }}
+            style={{
+              flex: 1,
+              paddingVertical: 14,
+              borderRadius: 14,
+              alignItems: 'center',
+              backgroundColor: !isSignIn ? COLORS.primary : COLORS.surface,
+              borderWidth: 1.5,
+              borderColor: !isSignIn ? COLORS.primary : COLORS.border,
+              shadowColor: !isSignIn ? COLORS.primary : 'transparent',
+              shadowOpacity: !isSignIn ? 0.25 : 0,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+            }}
           >
-            <Text style={{ color: !isSignIn ? COLORS.primary : COLORS.textSecondary, fontWeight: !isSignIn ? '700' : '500', fontSize: 15 }}>
+            <Text style={{ color: !isSignIn ? '#fff' : COLORS.textSecondary, fontWeight: '700', fontSize: 15 }}>
               Create Account
             </Text>
           </AnimatedPressable>

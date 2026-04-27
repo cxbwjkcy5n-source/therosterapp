@@ -101,7 +101,7 @@ export default function DatePlanScreen() {
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: 16,
-          paddingTop: insets.top + 16,
+          paddingTop: 20,
           paddingBottom: 12,
           marginTop: 0,
           borderBottomWidth: 1,
@@ -128,49 +128,56 @@ export default function DatePlanScreen() {
         <View style={{ width: 36 }} />
       </View>
 
+      {/* Person selector — fixed between header and scroll content */}
+      <View
+        style={{
+          paddingHorizontal: 16,
+          paddingVertical: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+        }}
+      >
+        <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+          Plan a date with
+        </Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {persons.map((p) => (
+              <Pressable
+                key={p.id}
+                onPress={() => {
+                  console.log('[DatePlan] Person selected:', p.id, p.name);
+                  setSelectedPersonId(p.id);
+                }}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 20,
+                  backgroundColor: selectedPersonId === p.id ? COLORS.accent : COLORS.surface,
+                  borderWidth: 1,
+                  borderColor: selectedPersonId === p.id ? COLORS.accent : COLORS.border,
+                }}
+              >
+                <Text
+                  style={{
+                    color: selectedPersonId === p.id ? '#000' : COLORS.textSecondary,
+                    fontSize: 14,
+                    fontWeight: '500',
+                  }}
+                >
+                  {p.name}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Person selector */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
-            Plan a date with
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              {persons.map((p) => (
-                <Pressable
-                  key={p.id}
-                  onPress={() => {
-                    console.log('[DatePlan] Person selected:', p.id, p.name);
-                    setSelectedPersonId(p.id);
-                  }}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 20,
-                    backgroundColor: selectedPersonId === p.id ? COLORS.accent : COLORS.surface,
-                    borderWidth: 1,
-                    borderColor: selectedPersonId === p.id ? COLORS.accent : COLORS.border,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: selectedPersonId === p.id ? '#000' : COLORS.textSecondary,
-                      fontSize: 14,
-                      fontWeight: '500',
-                    }}
-                  >
-                    {p.name}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-
         {/* Location */}
         <View style={{ zIndex: 10 }}>
           <AddressAutocomplete
