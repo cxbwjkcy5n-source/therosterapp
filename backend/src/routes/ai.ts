@@ -5,6 +5,7 @@ import { gateway } from '@specific-dev/framework';
 import { generateText } from 'ai';
 import { OpenAI } from 'openai';
 import * as schema from '../db/schema/schema.js';
+import { desc } from 'drizzle-orm';
 
 let openai: OpenAI | null = null;
 
@@ -298,7 +299,22 @@ export function registerAIRoutes(app: App) {
           messages,
         });
 
+        // Save user message to chat history
+        await app.db.insert(schema.chatMessages).values({
+          userId: session.user.id,
+          role: 'user',
+          content: message,
+        });
+
+        // Save assistant message to chat history
+        await app.db.insert(schema.chatMessages).values({
+          userId: session.user.id,
+          role: 'assistant',
+          content: text,
+        });
+
         app.logger.info({ userId: session.user.id }, 'AI chat response generated');
+        app.logger.info({ userId: session.user.id }, 'Chat messages saved to history');
         return { reply: text };
       } catch (error) {
         app.logger.error({ err: error, userId: session.user.id }, 'Failed to get AI response');

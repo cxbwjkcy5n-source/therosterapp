@@ -120,6 +120,7 @@ export function registerProfilesRoutes(app: App) {
   app.fastify.put(
     '/api/profile',
     {
+      bodyLimit: 10485760, // 10MB
       schema: {
         description: 'Update the authenticated user profile',
         tags: ['profile'],
