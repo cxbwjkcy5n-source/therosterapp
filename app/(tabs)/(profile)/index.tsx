@@ -90,8 +90,6 @@ interface UserProfile {
   twitter_x?: string;
   favorite_foods?: string[];
   hobbies?: string[];
-  green_flags?: string[];
-  red_flags?: string[];
   photo_url?: string;
 }
 
@@ -273,11 +271,17 @@ export default function ProfileScreen() {
     try {
       let dataToSave = { ...editData };
 
-      if (newPhotoBase64) {
-        dataToSave.photo_url = `data:image/jpeg;base64,${newPhotoBase64}`;
-      }
+      // Strip photo_url from the main PUT — send it separately if it's a new base64 photo
+      const photoToSave = newPhotoBase64 ? `data:image/jpeg;base64,${newPhotoBase64}` : null;
+      delete (dataToSave as any).photo_url;
 
       await apiPut('/api/profile', dataToSave);
+
+      // Save photo separately only if a new one was picked
+      if (photoToSave) {
+        await apiPut('/api/profile', { photo_url: photoToSave });
+      }
+
       console.log('[Profile] PUT succeeded, re-fetching profile');
       const res = await apiGet<any>('/api/profile');
       const saved: UserProfile = (res as any).profile ?? res;
@@ -698,22 +702,7 @@ export default function ProfileScreen() {
               color={COLORS.primary}
               editing={editing}
             />
-            <TagInput
-              label="🟢 Green Flags"
-              tags={displayData.green_flags || []}
-              onAdd={(t) => update('green_flags', [...(editData.green_flags || []), t])}
-              onRemove={(t) => update('green_flags', (editData.green_flags || []).filter((f) => f !== t))}
-              color={COLORS.success}
-              editing={editing}
-            />
-            <TagInput
-              label="🔴 Red Flags"
-              tags={displayData.red_flags || []}
-              onAdd={(t) => update('red_flags', [...(editData.red_flags || []), t])}
-              onRemove={(t) => update('red_flags', (editData.red_flags || []).filter((f) => f !== t))}
-              color={COLORS.danger}
-              editing={editing}
-            />
+
           </View>
 
           {/* Settings */}

@@ -189,49 +189,25 @@ export default function AuthScreen() {
           </Text>
         </View>
 
-        {/* Sign In button */}
-        <AnimatedPressable
-          onPress={() => {
-            console.log('[Auth] Switched to sign in mode');
-            setMode('signin');
-            setError(null);
-          }}
-          style={{
-            backgroundColor: isSignIn ? COLORS.primary : COLORS.surface,
-            borderRadius: 14,
-            paddingVertical: 16,
-            alignItems: 'center',
-            marginBottom: 10,
-            borderWidth: 1,
-            borderColor: isSignIn ? COLORS.primary : COLORS.border,
-          }}
-        >
-          <Text style={{ color: isSignIn ? '#fff' : COLORS.textSecondary, fontWeight: '700', fontSize: 15 }}>
-            Sign In
-          </Text>
-        </AnimatedPressable>
-
-        {/* Create Account button */}
-        <AnimatedPressable
-          onPress={() => {
-            console.log('[Auth] Switched to create account mode');
-            setMode('signup');
-            setError(null);
-          }}
-          style={{
-            backgroundColor: !isSignIn ? COLORS.primary : COLORS.surface,
-            borderRadius: 14,
-            paddingVertical: 16,
-            alignItems: 'center',
-            marginBottom: 32,
-            borderWidth: 1,
-            borderColor: !isSignIn ? COLORS.primary : COLORS.border,
-          }}
-        >
-          <Text style={{ color: !isSignIn ? '#fff' : COLORS.textSecondary, fontWeight: '700', fontSize: 15 }}>
-            Create Account
-          </Text>
-        </AnimatedPressable>
+        {/* Mode selector tabs */}
+        <View style={{ flexDirection: 'row', marginBottom: 28, gap: 0 }}>
+          <AnimatedPressable
+            onPress={() => { console.log('[Auth] Switched to sign in mode'); setMode('signin'); setError(null); }}
+            style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: isSignIn ? COLORS.primary : COLORS.border }}
+          >
+            <Text style={{ color: isSignIn ? COLORS.primary : COLORS.textSecondary, fontWeight: isSignIn ? '700' : '500', fontSize: 15 }}>
+              Sign In
+            </Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            onPress={() => { console.log('[Auth] Switched to create account mode'); setMode('signup'); setError(null); }}
+            style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 2, borderBottomColor: !isSignIn ? COLORS.primary : COLORS.border }}
+          >
+            <Text style={{ color: !isSignIn ? COLORS.primary : COLORS.textSecondary, fontWeight: !isSignIn ? '700' : '500', fontSize: 15 }}>
+              Create Account
+            </Text>
+          </AnimatedPressable>
+        </View>
 
         {/* Form */}
         <View style={{ gap: 14, marginBottom: 20 }}>
