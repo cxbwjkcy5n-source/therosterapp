@@ -15,9 +15,10 @@ export function registerStorageRoutes(app: App) {
         body: {
           type: 'object',
           required: ['base64', 'person_id'],
+          additionalProperties: true,
           properties: {
             base64: { type: 'string' },
-            person_id: { type: 'string', format: 'uuid' },
+            person_id: { type: ['string', 'integer'] },
           },
         },
         response: {
@@ -32,11 +33,15 @@ export function registerStorageRoutes(app: App) {
         },
       },
     },
-    async (request: FastifyRequest<{ Body: { base64: string; person_id: string } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: { base64: string; person_id: string | number } }>, reply: FastifyReply) => {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
-      const { base64, person_id } = request.body;
+      const { base64, person_id: rawPersonId } = request.body;
+
+      // Ensure person_id is a string for UUID query
+      const person_id = typeof rawPersonId === 'number' ? String(rawPersonId) : rawPersonId;
+
       app.logger.info({ userId: session.user.id, personId: person_id }, 'Uploading photo');
 
       // Construct the data URI
