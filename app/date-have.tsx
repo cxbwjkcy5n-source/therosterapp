@@ -163,20 +163,17 @@ export default function DateHaveScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      {/* Person selector — fixed between header and scroll content */}
-      <View
-        style={{
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.border,
-        }}
+      <ScrollView
+        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
-          Who's the date with?
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+        {/* Person selector */}
+        <View>
+          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+            Who's the date with?
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {persons.map((p) => (
               <Pressable
                 key={p.id}
@@ -228,15 +225,9 @@ export default function DateHaveScreen() {
                 </Text>
               </Pressable>
             ))}
-          </View>
-        </ScrollView>
-      </View>
+          </ScrollView>
+        </View>
 
-      <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
         {/* Selected person avatar */}
         {selectedPerson && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
