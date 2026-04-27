@@ -7,6 +7,7 @@ describe("API Integration Tests", () => {
   let personId: string;
   let personId2: string;
   let dateId: string;
+  let dateIdForDeletion: string;
   let reviewDateId: string;
   let interactionId: string;
   let noteId: string;
@@ -479,11 +480,38 @@ describe("API Integration Tests", () => {
     expect(data.id).toBeDefined();
   });
 
+  test("Create date for deletion testing", async () => {
+    const res = await authenticatedApi("/api/dates", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        title: "Date to delete",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    dateIdForDeletion = data.id;
+    expect(data.id).toBeDefined();
+  });
+
   test("Create date fails without required person_id", async () => {
     const res = await authenticatedApi("/api/dates", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        title: "Invalid date",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Create date with invalid person_id format returns 400", async () => {
+    const res = await authenticatedApi("/api/dates", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: "invalid-uuid",
         title: "Invalid date",
       }),
     });
@@ -516,6 +544,28 @@ describe("API Integration Tests", () => {
       (d: any) => d.person_id === personId
     );
     expect(dateWithOurPerson).toBeDefined();
+  });
+
+  test("List dates filtered by person_id", async () => {
+    const res = await authenticatedApi(
+      `/api/dates?person_id=${personId}`,
+      authToken
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.dates).toBeDefined();
+    expect(Array.isArray(data.dates)).toBe(true);
+    // All dates should be for this person
+    const allForPerson = data.dates.every((d: any) => d.person_id === personId);
+    expect(allForPerson).toBe(true);
+  });
+
+  test("List dates with invalid person_id format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/dates?person_id=invalid-uuid",
+      authToken
+    );
+    await expectStatus(res, 400);
   });
 
   test("Get a date by ID", async () => {
@@ -682,12 +732,24 @@ describe("API Integration Tests", () => {
   });
 
   test("Delete a date", async () => {
-    const res = await authenticatedApi(`/api/dates/${dateId}`, authToken, {
-      method: "DELETE",
-    });
+    const res = await authenticatedApi(
+      `/api/dates/${dateIdForDeletion}`,
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
     await expectStatus(res, 200);
     const data = await res.json();
     expect(data.success).toBe(true);
+  });
+
+  test("Verify deleted date returns 404", async () => {
+    const res = await authenticatedApi(
+      `/api/dates/${dateIdForDeletion}`,
+      authToken
+    );
+    await expectStatus(res, 404);
   });
 
   test("Delete date with invalid ID format returns 400", async () => {
@@ -942,7 +1004,7 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 400);
   });
 
-  test("Upload photo without person_id fails", async () => {
+  test("Upload photo without person_id succeeds", async () => {
     const base64Png =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
@@ -953,7 +1015,10 @@ describe("API Integration Tests", () => {
         base64: base64Png,
       }),
     });
-    await expectStatus(res, 400);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.photo_url).toBeDefined();
+    expect(data.photo_url).toContain("data:image/jpeg;base64,");
   });
 
   test("Upload photo with nonexistent person returns 404", async () => {
@@ -1061,6 +1126,20 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 400);
   });
 
+  test("Create interaction with invalid person_id format returns 400", async () => {
+    const res = await authenticatedApi("/api/interactions", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: "invalid-uuid",
+        type: "call",
+        title: "Phone call",
+        occurred_at: "2026-04-22T15:00:00Z",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
   test("Create interaction with nonexistent person returns 404", async () => {
     const res = await authenticatedApi("/api/interactions", authToken, {
       method: "POST",
@@ -1076,7 +1155,10 @@ describe("API Integration Tests", () => {
   });
 
   test("List interactions for a person", async () => {
-    const res = await authenticatedApi(`/api/interactions?person_id=${personId}`, authToken);
+    const res = await authenticatedApi(
+      `/api/interactions?person_id=${personId}`,
+      authToken
+    );
     await expectStatus(res, 200);
     const data = await res.json();
     expect(data.interactions).toBeDefined();
@@ -1093,14 +1175,21 @@ describe("API Integration Tests", () => {
   });
 
   test("Get interactions with invalid person_id format returns 400", async () => {
-    const res = await authenticatedApi("/api/interactions?person_id=invalid-uuid", authToken);
+    const res = await authenticatedApi(
+      "/api/interactions?person_id=invalid-uuid",
+      authToken
+    );
     await expectStatus(res, 400);
   });
 
   test("Delete an interaction", async () => {
-    const res = await authenticatedApi(`/api/interactions/${interactionId}`, authToken, {
-      method: "DELETE",
-    });
+    const res = await authenticatedApi(
+      `/api/interactions/${interactionId}`,
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
     await expectStatus(res, 204);
   });
 
@@ -1183,6 +1272,18 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 400);
   });
 
+  test("Create note with invalid person_id format returns 400", async () => {
+    const res = await authenticatedApi("/api/notes", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: "invalid-uuid",
+        content: "Invalid person",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
   test("Create note for nonexistent person returns 404", async () => {
     const res = await authenticatedApi("/api/notes", authToken, {
       method: "POST",
@@ -1196,7 +1297,10 @@ describe("API Integration Tests", () => {
   });
 
   test("List notes for a person", async () => {
-    const res = await authenticatedApi(`/api/notes?person_id=${personId}`, authToken);
+    const res = await authenticatedApi(
+      `/api/notes?person_id=${personId}`,
+      authToken
+    );
     await expectStatus(res, 200);
     const data = await res.json();
     expect(Array.isArray(data.notes)).toBe(true);
@@ -1216,7 +1320,10 @@ describe("API Integration Tests", () => {
   });
 
   test("List notes with invalid person_id format returns 400", async () => {
-    const res = await authenticatedApi(`/api/notes?person_id=invalid-uuid`, authToken);
+    const res = await authenticatedApi(
+      `/api/notes?person_id=invalid-uuid`,
+      authToken
+    );
     await expectStatus(res, 400);
   });
 
@@ -1330,8 +1437,24 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 400);
   });
 
+  test("Create reminder with invalid person_id format returns 400", async () => {
+    const res = await authenticatedApi("/api/reminders", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: "invalid-uuid",
+        text: "Invalid person",
+        remind_at: "2026-04-25T10:00:00Z",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
   test("List reminders for a person", async () => {
-    const res = await authenticatedApi(`/api/reminders?person_id=${personId}`, authToken);
+    const res = await authenticatedApi(
+      `/api/reminders?person_id=${personId}`,
+      authToken
+    );
     await expectStatus(res, 200);
     const data = await res.json();
     expect(Array.isArray(data)).toBe(true);
@@ -1352,7 +1475,10 @@ describe("API Integration Tests", () => {
   });
 
   test("List reminders with invalid person_id format returns 400", async () => {
-    const res = await authenticatedApi(`/api/reminders?person_id=invalid-uuid`, authToken);
+    const res = await authenticatedApi(
+      `/api/reminders?person_id=invalid-uuid`,
+      authToken
+    );
     await expectStatus(res, 400);
   });
 
@@ -1398,7 +1524,10 @@ describe("API Integration Tests", () => {
 
   // ========== Places Autocomplete Tests ==========
   test("Get place autocomplete suggestions with input", async () => {
-    const res = await authenticatedApi("/api/places/autocomplete?input=New%20York", authToken);
+    const res = await authenticatedApi(
+      "/api/places/autocomplete?input=New%20York",
+      authToken
+    );
     await expectStatus(res, 200);
     const data = await res.json();
     expect(data.predictions).toBeDefined();
@@ -1417,7 +1546,10 @@ describe("API Integration Tests", () => {
   });
 
   test("Get place autocomplete without input returns 400", async () => {
-    const res = await authenticatedApi("/api/places/autocomplete", authToken);
+    const res = await authenticatedApi(
+      "/api/places/autocomplete",
+      authToken
+    );
     await expectStatus(res, 400);
   });
 

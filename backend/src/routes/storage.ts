@@ -14,7 +14,7 @@ export function registerStorageRoutes(app: App) {
         tags: ['storage'],
         body: {
           type: 'object',
-          required: ['base64', 'person_id'],
+          required: ['base64'],
           additionalProperties: true,
           properties: {
             base64: { type: 'string' },
@@ -33,36 +33,41 @@ export function registerStorageRoutes(app: App) {
         },
       },
     },
-    async (request: FastifyRequest<{ Body: { base64: string; person_id: string | number } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: { base64: string; person_id?: string | number } }>, reply: FastifyReply) => {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
       const { base64, person_id: rawPersonId } = request.body;
 
-      // Ensure person_id is a string for UUID query
-      const person_id = typeof rawPersonId === 'number' ? String(rawPersonId) : rawPersonId;
-
-      app.logger.info({ userId: session.user.id, personId: person_id }, 'Uploading photo');
+      app.logger.info({ userId: session.user.id, personId: rawPersonId }, 'Uploading photo');
 
       // Construct the data URI
       const photoUrl = 'data:image/jpeg;base64,' + base64;
 
-      // Update the persons table with the photo URL
-      const [updated] = await app.db
-        .update(schema.persons)
-        .set({
-          photoUrl: photoUrl,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(schema.persons.id, person_id), eq(schema.persons.userId, session.user.id)))
-        .returning();
+      // If person_id is provided, update the persons table with the photo URL
+      if (rawPersonId !== undefined) {
+        // Ensure person_id is a string for UUID query
+        const person_id = typeof rawPersonId === 'number' ? String(rawPersonId) : rawPersonId;
 
-      if (!updated) {
-        app.logger.warn({ userId: session.user.id, personId: person_id }, 'Person not found');
-        return reply.status(404).send({ error: 'Person not found' });
+        const [updated] = await app.db
+          .update(schema.persons)
+          .set({
+            photoUrl: photoUrl,
+            updatedAt: new Date(),
+          })
+          .where(and(eq(schema.persons.id, person_id), eq(schema.persons.userId, session.user.id)))
+          .returning();
+
+        if (!updated) {
+          app.logger.warn({ userId: session.user.id, personId: person_id }, 'Person not found');
+          return reply.status(404).send({ error: 'Person not found' });
+        }
+
+        app.logger.info({ userId: session.user.id, personId: person_id }, 'Photo uploaded successfully');
+      } else {
+        app.logger.info({ userId: session.user.id }, 'Photo uploaded without person association');
       }
 
-      app.logger.info({ userId: session.user.id, personId: person_id }, 'Photo uploaded successfully');
       return { photo_url: photoUrl };
     }
   );
