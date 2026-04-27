@@ -120,59 +120,55 @@ export default function DateSafetyScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      {/* SCROLLABLE CONTENT with sticky person chips at index 0 */}
+      {/* Block 2: Person chips — fixed, never scrolls */}
+      <View
+        style={{
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+          paddingVertical: 12,
+        }}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+        >
+          {persons.map((p) => {
+            const isSelected = selectedPersonId === p.id;
+            const chipBg = isSelected ? COLORS.success : COLORS.surface;
+            const chipBorder = isSelected ? COLORS.success : COLORS.border;
+            const nameColor = isSelected ? '#fff' : COLORS.textSecondary;
+            return (
+              <Pressable
+                key={p.id}
+                onPress={() => {
+                  console.log('[DateSafety] Person selected:', p.id, p.name);
+                  setSelectedPersonId(p.id);
+                }}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 20,
+                  backgroundColor: chipBg,
+                  borderWidth: 1,
+                  borderColor: chipBorder,
+                }}
+              >
+                <Text style={{ color: nameColor, fontSize: 14, fontWeight: '500' }}>
+                  {p.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Block 3: Form content — scrolls */}
       <ScrollView
-        stickyHeaderIndices={[0]}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Sticky section 0: Person chips */}
-        <View
-          style={{
-            backgroundColor: COLORS.background,
-            paddingVertical: 12,
-            borderBottomWidth: 1,
-            borderBottomColor: COLORS.border,
-          }}
-        >
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
-          >
-            {persons.map((p) => {
-              const isSelected = selectedPersonId === p.id;
-              const chipBg = isSelected ? COLORS.success : COLORS.surface;
-              const chipBorder = isSelected ? COLORS.success : COLORS.border;
-              const nameColor = isSelected ? '#fff' : COLORS.textSecondary;
-              return (
-                <Pressable
-                  key={p.id}
-                  onPress={() => {
-                    console.log('[DateSafety] Person selected:', p.id, p.name);
-                    setSelectedPersonId(p.id);
-                  }}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 20,
-                    backgroundColor: chipBg,
-                    borderWidth: 1,
-                    borderColor: chipBorder,
-                  }}
-                >
-                  <Text style={{ color: nameColor, fontSize: 14, fontWeight: '500' }}>
-                    {p.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Form content */}
-        <View style={{ padding: 20, gap: 20 }}>
           {/* Info banner */}
           <View
             style={{
@@ -314,7 +310,6 @@ export default function DateSafetyScreen() {
               Select a person, enter location, and add at least one contact
             </Text>
           )}
-        </View>
       </ScrollView>
     </View>
   );

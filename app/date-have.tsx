@@ -148,86 +148,82 @@ export default function DateHaveScreen() {
         <View style={{ width: 36 }} />
       </View>
 
-      {/* SCROLLABLE CONTENT with sticky person chips at index 0 */}
+      {/* Block 2: Person chips — fixed, never scrolls */}
+      <View
+        style={{
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+          paddingVertical: 12,
+        }}
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+        >
+          {persons.map((p) => {
+            const isSelected = selectedPersonId === p.id;
+            const chipBg = isSelected ? COLORS.primary : COLORS.surface;
+            const chipBorder = isSelected ? COLORS.primary : COLORS.border;
+            const avatarBg = isSelected ? 'rgba(255,255,255,0.3)' : (COLORS.primaryMuted || '#fde8ea');
+            const avatarTextColor = isSelected ? '#fff' : COLORS.primary;
+            const nameColor = isSelected ? '#fff' : COLORS.textSecondary;
+            const initial = p.name.charAt(0).toUpperCase();
+            return (
+              <Pressable
+                key={p.id}
+                onPress={() => {
+                  console.log('[DateHave] Person selected:', p.id, p.name);
+                  setSelectedPersonId(p.id);
+                }}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 20,
+                  backgroundColor: chipBg,
+                  borderWidth: 1,
+                  borderColor: chipBorder,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                {p.photo_url ? (
+                  <Image
+                    source={resolveImageSource(p.photo_url)}
+                    style={{ width: 24, height: 24, borderRadius: 12 }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor: avatarBg,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: avatarTextColor, fontSize: 11, fontWeight: '700' }}>
+                      {initial}
+                    </Text>
+                  </View>
+                )}
+                <Text style={{ color: nameColor, fontSize: 14, fontWeight: '500' }}>
+                  {p.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Block 3: Form content — scrolls */}
       <ScrollView
-        stickyHeaderIndices={[0]}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Sticky section 0: Person chips */}
-        <View
-          style={{
-            backgroundColor: COLORS.background,
-            paddingVertical: 12,
-            borderBottomWidth: 1,
-            borderBottomColor: COLORS.border,
-          }}
-        >
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
-          >
-            {persons.map((p) => {
-              const isSelected = selectedPersonId === p.id;
-              const chipBg = isSelected ? COLORS.primary : COLORS.surface;
-              const chipBorder = isSelected ? COLORS.primary : COLORS.border;
-              const avatarBg = isSelected ? 'rgba(255,255,255,0.3)' : (COLORS.primaryMuted || '#fde8ea');
-              const avatarTextColor = isSelected ? '#fff' : COLORS.primary;
-              const nameColor = isSelected ? '#fff' : COLORS.textSecondary;
-              const initial = p.name.charAt(0).toUpperCase();
-              return (
-                <Pressable
-                  key={p.id}
-                  onPress={() => {
-                    console.log('[DateHave] Person selected:', p.id, p.name);
-                    setSelectedPersonId(p.id);
-                  }}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: 20,
-                    backgroundColor: chipBg,
-                    borderWidth: 1,
-                    borderColor: chipBorder,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  {p.photo_url ? (
-                    <Image
-                      source={resolveImageSource(p.photo_url)}
-                      style={{ width: 24, height: 24, borderRadius: 12 }}
-                    />
-                  ) : (
-                    <View
-                      style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 12,
-                        backgroundColor: avatarBg,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text style={{ color: avatarTextColor, fontSize: 11, fontWeight: '700' }}>
-                        {initial}
-                      </Text>
-                    </View>
-                  )}
-                  <Text style={{ color: nameColor, fontSize: 14, fontWeight: '500' }}>
-                    {p.name}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* Form content */}
-        <View style={{ padding: 20, gap: 20 }}>
           {/* Location */}
           <View style={{ zIndex: 10 }}>
             <AddressAutocomplete
@@ -415,7 +411,6 @@ export default function DateHaveScreen() {
               </Text>
             )}
           </AnimatedPressable>
-        </View>
       </ScrollView>
     </View>
   );
