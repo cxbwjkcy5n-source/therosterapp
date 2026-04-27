@@ -194,7 +194,8 @@ export default function AuthScreen() {
             flexDirection: 'row',
             backgroundColor: COLORS.surface,
             borderRadius: 12,
-            padding: 4,
+            padding: 3,
+            gap: 2,
             marginBottom: 32,
             borderWidth: 1,
             borderColor: COLORS.border,
@@ -210,7 +211,7 @@ export default function AuthScreen() {
             style={{
               flex: 1,
               paddingVertical: 11,
-              borderRadius: 10,
+              borderRadius: 9,
               alignItems: 'center',
               backgroundColor: isSignIn ? COLORS.primary : 'transparent',
             }}
@@ -234,7 +235,7 @@ export default function AuthScreen() {
             style={{
               flex: 1,
               paddingVertical: 11,
-              borderRadius: 10,
+              borderRadius: 9,
               alignItems: 'center',
               backgroundColor: !isSignIn ? COLORS.primary : 'transparent',
             }}
