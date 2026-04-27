@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Platform,
   Image,
-  Share,
   ImageSourcePropType,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -116,292 +115,307 @@ export default function DateHaveScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      {/* STATIC HEADER */}
-      <View style={{ borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
-        {/* Row 1: Close + Title + Spacer */}
-        <View
+      {/* FIXED HEADER — title only, never scrolls */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 20,
+          paddingTop: 20,
+          paddingBottom: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+        }}
+      >
+        <AnimatedPressable
+          onPress={() => {
+            console.log('[DateHave] Close pressed');
+            router.back();
+          }}
           style={{
-            flexDirection: 'row',
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: COLORS.surface,
             alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: 20,
-            paddingTop: 20,
-            paddingBottom: 14,
+            justifyContent: 'center',
           }}
         >
-          <AnimatedPressable
-            onPress={() => {
-              console.log('[DateHave] Close pressed');
-              router.back();
-            }}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: COLORS.surface,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={COLORS.textSecondary} />
-          </AnimatedPressable>
-          <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: '700' }}>I Have a Date! 🎉</Text>
-          <View style={{ width: 36 }} />
-        </View>
-
-        {/* Row 2: Person chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, gap: 8 }}
-        >
-          {persons.map((p) => (
-            <Pressable
-              key={p.id}
-              onPress={() => {
-                console.log('[DateHave] Person selected:', p.id, p.name);
-                setSelectedPersonId(p.id);
-              }}
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 20,
-                backgroundColor: selectedPersonId === p.id ? COLORS.primary : COLORS.surface,
-                borderWidth: 1,
-                borderColor: selectedPersonId === p.id ? COLORS.primary : COLORS.border,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              {p.photo_url ? (
-                <Image
-                  source={resolveImageSource(p.photo_url)}
-                  style={{ width: 24, height: 24, borderRadius: 12 }}
-                />
-              ) : (
-                <View
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 12,
-                    backgroundColor: selectedPersonId === p.id ? 'rgba(255,255,255,0.3)' : COLORS.primaryMuted || '#fde8ea',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ color: selectedPersonId === p.id ? '#fff' : COLORS.primary, fontSize: 11, fontWeight: '700' }}>
-                    {p.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-              )}
-              <Text
-                style={{
-                  color: selectedPersonId === p.id ? '#fff' : COLORS.textSecondary,
-                  fontSize: 14,
-                  fontWeight: '500',
-                }}
-              >
-                {p.name}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+          <X size={18} color={COLORS.textSecondary} />
+        </AnimatedPressable>
+        <Text style={{ color: COLORS.text, fontSize: 17, fontWeight: '700' }}>I Have a Date! 🎉</Text>
+        <View style={{ width: 36 }} />
       </View>
 
-      {/* SCROLLABLE CONTENT */}
+      {/* SCROLLABLE CONTENT with sticky person chips at index 0 */}
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
+        stickyHeaderIndices={[0]}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Location */}
-        <View style={{ zIndex: 10 }}>
-          <AddressAutocomplete
-            label="Location"
-            value={location}
-            onChangeText={setLocation}
-            onSelect={(addr) => {
-              console.log('[DateHave] Location selected from autocomplete:', addr);
-              setLocation(addr);
-            }}
-            placeholder="Restaurant, park, coffee shop..."
-          />
+        {/* Sticky section 0: Person chips */}
+        <View
+          style={{
+            backgroundColor: COLORS.background,
+            paddingVertical: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: COLORS.border,
+          }}
+        >
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+          >
+            {persons.map((p) => {
+              const isSelected = selectedPersonId === p.id;
+              const chipBg = isSelected ? COLORS.primary : COLORS.surface;
+              const chipBorder = isSelected ? COLORS.primary : COLORS.border;
+              const avatarBg = isSelected ? 'rgba(255,255,255,0.3)' : (COLORS.primaryMuted || '#fde8ea');
+              const avatarTextColor = isSelected ? '#fff' : COLORS.primary;
+              const nameColor = isSelected ? '#fff' : COLORS.textSecondary;
+              const initial = p.name.charAt(0).toUpperCase();
+              return (
+                <Pressable
+                  key={p.id}
+                  onPress={() => {
+                    console.log('[DateHave] Person selected:', p.id, p.name);
+                    setSelectedPersonId(p.id);
+                  }}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 20,
+                    backgroundColor: chipBg,
+                    borderWidth: 1,
+                    borderColor: chipBorder,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  {p.photo_url ? (
+                    <Image
+                      source={resolveImageSource(p.photo_url)}
+                      style={{ width: 24, height: 24, borderRadius: 12 }}
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        backgroundColor: avatarBg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ color: avatarTextColor, fontSize: 11, fontWeight: '700' }}>
+                        {initial}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={{ color: nameColor, fontSize: 14, fontWeight: '500' }}>
+                    {p.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
 
-        {/* Date & Time */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
-            Date & Time
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <AnimatedPressable
-              onPress={() => {
-                console.log('[DateHave] Date picker opened');
-                setShowDatePicker(true);
+        {/* Form content */}
+        <View style={{ padding: 20, gap: 20 }}>
+          {/* Location */}
+          <View style={{ zIndex: 10 }}>
+            <AddressAutocomplete
+              label="Location"
+              value={location}
+              onChangeText={setLocation}
+              onSelect={(addr) => {
+                console.log('[DateHave] Location selected from autocomplete:', addr);
+                setLocation(addr);
               }}
-              style={{ flex: 1 }}
-            >
-              <View
-                style={{
-                  backgroundColor: COLORS.surface,
-                  borderRadius: 12,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: COLORS.border,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 8,
-                }}
-              >
-                <Calendar size={16} color={COLORS.primary} />
-                <Text style={{ color: COLORS.text, fontSize: 14 }}>{dateLabel}</Text>
-              </View>
-            </AnimatedPressable>
-            <AnimatedPressable
-              onPress={() => {
-                console.log('[DateHave] Time picker opened');
-                setShowTimePicker(true);
-              }}
-              style={{ flex: 1 }}
-            >
-              <View
-                style={{
-                  backgroundColor: COLORS.surface,
-                  borderRadius: 12,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: COLORS.border,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{ color: COLORS.text, fontSize: 14 }}>{timeLabel}</Text>
-              </View>
-            </AnimatedPressable>
+              placeholder="Restaurant, park, coffee shop..."
+            />
           </View>
-          {showDatePicker && (
-            <DateTimePicker
-              value={dateTime}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={(_, date) => {
-                setShowDatePicker(false);
-                if (date) {
-                  console.log('[DateHave] Date selected:', date);
-                  setDateTime(date);
-                }
-              }}
-              minimumDate={new Date()}
-            />
-          )}
-          {showTimePicker && (
-            <DateTimePicker
-              value={dateTime}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={(_, date) => {
-                setShowTimePicker(false);
-                if (date) {
-                  console.log('[DateHave] Time selected:', date);
-                  setDateTime(date);
-                }
-              }}
-            />
-          )}
-        </View>
 
-        {/* Reminders */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
-            Reminders
-          </Text>
-          <View style={{ gap: 8 }}>
-            {[
-              { label: '3 days before', value: reminder3Days, onChange: setReminder3Days },
-              { label: '1 day before', value: reminder1Day, onChange: setReminder1Day },
-              { label: '1 hour before', value: reminder1Hour, onChange: setReminder1Hour },
-            ].map((r) => (
-              <Pressable
-                key={r.label}
+          {/* Date & Time */}
+          <View>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+              Date & Time
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <AnimatedPressable
                 onPress={() => {
-                  console.log('[DateHave] Reminder toggled:', r.label, !r.value);
-                  r.onChange(!r.value);
+                  console.log('[DateHave] Date picker opened');
+                  setShowDatePicker(true);
                 }}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  backgroundColor: COLORS.surface,
-                  borderRadius: 12,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: r.value ? COLORS.primary : COLORS.border,
-                }}
+                style={{ flex: 1 }}
               >
                 <View
                   style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 6,
-                    backgroundColor: r.value ? COLORS.primary : COLORS.surfaceSecondary,
+                    backgroundColor: COLORS.surface,
+                    borderRadius: 12,
+                    padding: 14,
                     borderWidth: 1,
-                    borderColor: r.value ? COLORS.primary : COLORS.border,
+                    borderColor: COLORS.border,
+                    flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'center',
+                    gap: 8,
                   }}
                 >
-                  {r.value && <Check size={14} color="#fff" />}
+                  <Calendar size={16} color={COLORS.primary} />
+                  <Text style={{ color: COLORS.text, fontSize: 14 }}>{dateLabel}</Text>
                 </View>
-                <Text style={{ color: r.value ? COLORS.text : COLORS.textSecondary, fontSize: 14 }}>
-                  {r.label}
-                </Text>
-              </Pressable>
-            ))}
+              </AnimatedPressable>
+              <AnimatedPressable
+                onPress={() => {
+                  console.log('[DateHave] Time picker opened');
+                  setShowTimePicker(true);
+                }}
+                style={{ flex: 1 }}
+              >
+                <View
+                  style={{
+                    backgroundColor: COLORS.surface,
+                    borderRadius: 12,
+                    padding: 14,
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: COLORS.text, fontSize: 14 }}>{timeLabel}</Text>
+                </View>
+              </AnimatedPressable>
+            </View>
+            {showDatePicker && (
+              <DateTimePicker
+                value={dateTime}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(_, date) => {
+                  setShowDatePicker(false);
+                  if (date) {
+                    console.log('[DateHave] Date selected:', date);
+                    setDateTime(date);
+                  }
+                }}
+                minimumDate={new Date()}
+              />
+            )}
+            {showTimePicker && (
+              <DateTimePicker
+                value={dateTime}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(_, date) => {
+                  setShowTimePicker(false);
+                  if (date) {
+                    console.log('[DateHave] Time selected:', date);
+                    setDateTime(date);
+                  }
+                }}
+              />
+            )}
           </View>
-        </View>
 
-        {/* Notes */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
-            Notes (optional)
-          </Text>
-          <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Any notes about the date..."
-            placeholderTextColor={COLORS.textTertiary}
-            multiline
-            style={{
-              backgroundColor: COLORS.surfaceSecondary,
-              borderRadius: 12,
-              padding: 14,
-              color: COLORS.text,
-              fontSize: 15,
-              borderWidth: 1,
-              borderColor: COLORS.border,
-              minHeight: 80,
-            }}
-          />
-        </View>
-
-        <AnimatedPressable
-          onPress={handleSave}
-          disabled={!canSave || saving}
-          style={{
-            backgroundColor: canSave ? COLORS.primary : COLORS.surfaceSecondary,
-            borderRadius: 14,
-            paddingVertical: 16,
-            alignItems: 'center',
-          }}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={{ color: canSave ? '#fff' : COLORS.textTertiary, fontSize: 16, fontWeight: '700' }}>
-              Save Date
+          {/* Reminders */}
+          <View>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+              Reminders
             </Text>
-          )}
-        </AnimatedPressable>
+            <View style={{ gap: 8 }}>
+              {[
+                { label: '3 days before', value: reminder3Days, onChange: setReminder3Days },
+                { label: '1 day before', value: reminder1Day, onChange: setReminder1Day },
+                { label: '1 hour before', value: reminder1Hour, onChange: setReminder1Hour },
+              ].map((r) => (
+                <Pressable
+                  key={r.label}
+                  onPress={() => {
+                    console.log('[DateHave] Reminder toggled:', r.label, !r.value);
+                    r.onChange(!r.value);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    backgroundColor: COLORS.surface,
+                    borderRadius: 12,
+                    padding: 14,
+                    borderWidth: 1,
+                    borderColor: r.value ? COLORS.primary : COLORS.border,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      backgroundColor: r.value ? COLORS.primary : COLORS.surfaceSecondary,
+                      borderWidth: 1,
+                      borderColor: r.value ? COLORS.primary : COLORS.border,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {r.value && <Check size={14} color="#fff" />}
+                  </View>
+                  <Text style={{ color: r.value ? COLORS.text : COLORS.textSecondary, fontSize: 14 }}>
+                    {r.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          {/* Notes */}
+          <View>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+              Notes (optional)
+            </Text>
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Any notes about the date..."
+              placeholderTextColor={COLORS.textTertiary}
+              multiline
+              style={{
+                backgroundColor: COLORS.surfaceSecondary,
+                borderRadius: 12,
+                padding: 14,
+                color: COLORS.text,
+                fontSize: 15,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                minHeight: 80,
+              }}
+            />
+          </View>
+
+          <AnimatedPressable
+            onPress={handleSave}
+            disabled={!canSave || saving}
+            style={{
+              backgroundColor: canSave ? COLORS.primary : COLORS.surfaceSecondary,
+              borderRadius: 14,
+              paddingVertical: 16,
+              alignItems: 'center',
+            }}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={{ color: canSave ? '#fff' : COLORS.textTertiary, fontSize: 16, fontWeight: '700' }}>
+                Save Date
+              </Text>
+            )}
+          </AnimatedPressable>
+        </View>
       </ScrollView>
     </View>
   );

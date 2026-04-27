@@ -94,233 +94,245 @@ export default function DatePlanScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      {/* STATIC HEADER */}
-      <View style={{ borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
-        {/* Row 1: Close + Title + Spacer */}
-        <View
+      {/* FIXED HEADER — title only, never scrolls */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 20,
+          paddingTop: 20,
+          paddingBottom: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+        }}
+      >
+        <AnimatedPressable
+          onPress={() => {
+            console.log('[DatePlan] Close pressed');
+            router.back();
+          }}
           style={{
-            flexDirection: 'row',
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: COLORS.surface,
             alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: 20,
-            paddingTop: 20,
-            paddingBottom: 14,
+            justifyContent: 'center',
           }}
         >
-          <AnimatedPressable
-            onPress={() => {
-              console.log('[DatePlan] Close pressed');
-              router.back();
-            }}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: COLORS.surface,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={COLORS.textSecondary} />
-          </AnimatedPressable>
-          <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: '700' }}>Plan a Date ✨</Text>
-          <View style={{ width: 36 }} />
-        </View>
-
-        {/* Row 2: Person chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, gap: 8 }}
-        >
-          {persons.map((p) => (
-            <Pressable
-              key={p.id}
-              onPress={() => {
-                console.log('[DatePlan] Person selected:', p.id, p.name);
-                setSelectedPersonId(p.id);
-              }}
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 20,
-                backgroundColor: selectedPersonId === p.id ? COLORS.accent : COLORS.surface,
-                borderWidth: 1,
-                borderColor: selectedPersonId === p.id ? COLORS.accent : COLORS.border,
-              }}
-            >
-              <Text
-                style={{
-                  color: selectedPersonId === p.id ? '#000' : COLORS.textSecondary,
-                  fontSize: 14,
-                  fontWeight: '500',
-                }}
-              >
-                {p.name}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+          <X size={18} color={COLORS.textSecondary} />
+        </AnimatedPressable>
+        <Text style={{ color: COLORS.text, fontSize: 17, fontWeight: '700' }}>Plan a Date ✨</Text>
+        <View style={{ width: 36 }} />
       </View>
 
-      {/* SCROLLABLE CONTENT */}
+      {/* SCROLLABLE CONTENT with sticky person chips at index 0 */}
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
+        stickyHeaderIndices={[0]}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Location */}
-        <View style={{ zIndex: 10 }}>
-          <AddressAutocomplete
-            label="Location (optional)"
-            value={location}
-            onChangeText={setLocation}
-            onSelect={(addr) => {
-              console.log('[DatePlan] Location selected from autocomplete:', addr);
-              setLocation(addr);
-            }}
-            placeholder="City or neighborhood..."
-          />
-        </View>
-
-        {/* Budget */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
-            Budget
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {BUDGETS.map((b) => (
-              <Pressable
-                key={b.value}
-                onPress={() => {
-                  console.log('[DatePlan] Budget selected:', b.label, b.value);
-                  setBudget(b.value);
-                }}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  backgroundColor: budget === b.value ? COLORS.accentMuted : COLORS.surface,
-                  borderWidth: 1,
-                  borderColor: budget === b.value ? COLORS.accent : COLORS.border,
-                  alignItems: 'center',
-                }}
-              >
-                <Text
-                  style={{
-                    color: budget === b.value ? COLORS.accent : COLORS.textSecondary,
-                    fontSize: 16,
-                    fontWeight: '700',
-                  }}
-                >
-                  {b.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* Get Ideas button */}
-        <AnimatedPressable
-          onPress={handleGetIdeas}
-          disabled={!selectedPersonId || loading}
+        {/* Sticky section 0: Person chips */}
+        <View
           style={{
-            backgroundColor: COLORS.accent,
-            borderRadius: 14,
-            paddingVertical: 16,
-            alignItems: 'center',
-            flexDirection: 'row',
-            justifyContent: 'center',
-            gap: 8,
+            backgroundColor: COLORS.background,
+            paddingVertical: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: COLORS.border,
           }}
         >
-          {loading ? (
-            <>
-              <Animated.View style={{ opacity: sparkleOpacity }}>
-                <Sparkles size={20} color="#000" />
-              </Animated.View>
-              <Text style={{ color: '#000', fontSize: 16, fontWeight: '700' }}>
-                Finding perfect date ideas...
-              </Text>
-            </>
-          ) : (
-            <>
-              <Sparkles size={20} color="#000" />
-              <Text style={{ color: '#000', fontSize: 16, fontWeight: '700' }}>Get Ideas</Text>
-            </>
-          )}
-        </AnimatedPressable>
-
-        {/* Results */}
-        {ideas.length > 0 && (
-          <View style={{ gap: 12 }}>
-            <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700' }}>
-              Date Ideas ✨
-            </Text>
-            {ideas.map((idea, index) => (
-              <View
-                key={index}
-                style={{
-                  backgroundColor: COLORS.surface,
-                  borderRadius: 16,
-                  padding: 16,
-                  borderWidth: 1,
-                  borderColor: COLORS.border,
-                  gap: 8,
-                }}
-              >
-                {idea.category && (
-                  <View
-                    style={{
-                      alignSelf: 'flex-start',
-                      backgroundColor: COLORS.accentMuted,
-                      borderRadius: 6,
-                      paddingHorizontal: 8,
-                      paddingVertical: 3,
-                    }}
-                  >
-                    <Text style={{ color: COLORS.accent, fontSize: 11, fontWeight: '600' }}>
-                      {idea.category}
-                    </Text>
-                  </View>
-                )}
-                <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700' }}>{idea.title}</Text>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 14, lineHeight: 20 }}>
-                  {idea.description}
-                </Text>
-                {idea.estimated_cost && (
-                  <Text style={{ color: COLORS.accent, fontSize: 13, fontWeight: '600' }}>
-                    Est. cost: {idea.estimated_cost}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+          >
+            {persons.map((p) => {
+              const isSelected = selectedPersonId === p.id;
+              const chipBg = isSelected ? COLORS.accent : COLORS.surface;
+              const chipBorder = isSelected ? COLORS.accent : COLORS.border;
+              const nameColor = isSelected ? '#000' : COLORS.textSecondary;
+              return (
+                <Pressable
+                  key={p.id}
+                  onPress={() => {
+                    console.log('[DatePlan] Person selected:', p.id, p.name);
+                    setSelectedPersonId(p.id);
+                  }}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 20,
+                    backgroundColor: chipBg,
+                    borderWidth: 1,
+                    borderColor: chipBorder,
+                  }}
+                >
+                  <Text style={{ color: nameColor, fontSize: 14, fontWeight: '500' }}>
+                    {p.name}
                   </Text>
-                )}
-                {idea.search_url && (
-                  <AnimatedPressable
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Form content */}
+        <View style={{ padding: 20, gap: 20 }}>
+          {/* Location */}
+          <View style={{ zIndex: 10 }}>
+            <AddressAutocomplete
+              label="Location (optional)"
+              value={location}
+              onChangeText={setLocation}
+              onSelect={(addr) => {
+                console.log('[DatePlan] Location selected from autocomplete:', addr);
+                setLocation(addr);
+              }}
+              placeholder="City or neighborhood..."
+            />
+          </View>
+
+          {/* Budget */}
+          <View>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+              Budget
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {BUDGETS.map((b) => {
+                const isSelected = budget === b.value;
+                const btnBg = isSelected ? COLORS.accentMuted : COLORS.surface;
+                const btnBorder = isSelected ? COLORS.accent : COLORS.border;
+                const labelColor = isSelected ? COLORS.accent : COLORS.textSecondary;
+                return (
+                  <Pressable
+                    key={b.value}
                     onPress={() => {
-                      console.log('[DatePlan] Explore pressed for:', idea.title);
-                      Linking.openURL(idea.search_url!).catch((e) =>
-                        console.error('[DatePlan] Failed to open URL:', e)
-                      );
+                      console.log('[DatePlan] Budget selected:', b.label, b.value);
+                      setBudget(b.value);
                     }}
                     style={{
-                      flexDirection: 'row',
+                      flex: 1,
+                      paddingVertical: 12,
+                      borderRadius: 12,
+                      backgroundColor: btnBg,
+                      borderWidth: 1,
+                      borderColor: btnBorder,
                       alignItems: 'center',
-                      gap: 6,
-                      alignSelf: 'flex-start',
-                      backgroundColor: COLORS.accentMuted,
-                      borderRadius: 8,
-                      paddingHorizontal: 12,
-                      paddingVertical: 7,
-                      marginTop: 4,
                     }}
                   >
-                    <ExternalLink size={14} color={COLORS.accent} />
-                    <Text style={{ color: COLORS.accent, fontSize: 13, fontWeight: '600' }}>Explore</Text>
-                  </AnimatedPressable>
-                )}
-              </View>
-            ))}
+                    <Text style={{ color: labelColor, fontSize: 16, fontWeight: '700' }}>
+                      {b.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
-        )}
+
+          {/* Get Ideas button */}
+          <AnimatedPressable
+            onPress={handleGetIdeas}
+            disabled={!selectedPersonId || loading}
+            style={{
+              backgroundColor: COLORS.accent,
+              borderRadius: 14,
+              paddingVertical: 16,
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            {loading ? (
+              <>
+                <Animated.View style={{ opacity: sparkleOpacity }}>
+                  <Sparkles size={20} color="#000" />
+                </Animated.View>
+                <Text style={{ color: '#000', fontSize: 16, fontWeight: '700' }}>
+                  Finding perfect date ideas...
+                </Text>
+              </>
+            ) : (
+              <>
+                <Sparkles size={20} color="#000" />
+                <Text style={{ color: '#000', fontSize: 16, fontWeight: '700' }}>Get Ideas</Text>
+              </>
+            )}
+          </AnimatedPressable>
+
+          {/* Results */}
+          {ideas.length > 0 && (
+            <View style={{ gap: 12 }}>
+              <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700' }}>
+                Date Ideas ✨
+              </Text>
+              {ideas.map((idea, index) => (
+                <View
+                  key={index}
+                  style={{
+                    backgroundColor: COLORS.surface,
+                    borderRadius: 16,
+                    padding: 16,
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                    gap: 8,
+                  }}
+                >
+                  {idea.category && (
+                    <View
+                      style={{
+                        alignSelf: 'flex-start',
+                        backgroundColor: COLORS.accentMuted,
+                        borderRadius: 6,
+                        paddingHorizontal: 8,
+                        paddingVertical: 3,
+                      }}
+                    >
+                      <Text style={{ color: COLORS.accent, fontSize: 11, fontWeight: '600' }}>
+                        {idea.category}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700' }}>{idea.title}</Text>
+                  <Text style={{ color: COLORS.textSecondary, fontSize: 14, lineHeight: 20 }}>
+                    {idea.description}
+                  </Text>
+                  {idea.estimated_cost && (
+                    <Text style={{ color: COLORS.accent, fontSize: 13, fontWeight: '600' }}>
+                      Est. cost: {idea.estimated_cost}
+                    </Text>
+                  )}
+                  {idea.search_url && (
+                    <AnimatedPressable
+                      onPress={() => {
+                        console.log('[DatePlan] Explore pressed for:', idea.title);
+                        Linking.openURL(idea.search_url!).catch((e) =>
+                          console.error('[DatePlan] Failed to open URL:', e)
+                        );
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        alignSelf: 'flex-start',
+                        backgroundColor: COLORS.accentMuted,
+                        borderRadius: 8,
+                        paddingHorizontal: 12,
+                        paddingVertical: 7,
+                        marginTop: 4,
+                      }}
+                    >
+                      <ExternalLink size={14} color={COLORS.accent} />
+                      <Text style={{ color: COLORS.accent, fontSize: 13, fontWeight: '600' }}>Explore</Text>
+                    </AnimatedPressable>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
       </ScrollView>
     </View>
   );

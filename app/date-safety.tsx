@@ -87,222 +87,234 @@ export default function DateSafetyScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      {/* STATIC HEADER */}
-      <View style={{ borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
-        {/* Row 1: Close + Title + Spacer */}
-        <View
+      {/* FIXED HEADER — title only, never scrolls */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 20,
+          paddingTop: 20,
+          paddingBottom: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: COLORS.border,
+        }}
+      >
+        <AnimatedPressable
+          onPress={() => {
+            console.log('[DateSafety] Close pressed');
+            router.back();
+          }}
           style={{
-            flexDirection: 'row',
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: COLORS.surface,
             alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: 20,
-            paddingTop: 20,
-            paddingBottom: 14,
+            justifyContent: 'center',
           }}
         >
-          <AnimatedPressable
-            onPress={() => {
-              console.log('[DateSafety] Close pressed');
-              router.back();
-            }}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 18,
-              backgroundColor: COLORS.surface,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <X size={18} color={COLORS.textSecondary} />
-          </AnimatedPressable>
-          <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: '700' }}>Safety Check-In 🛡️</Text>
-          <View style={{ width: 36 }} />
-        </View>
-
-        {/* Row 2: Person chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, gap: 8 }}
-        >
-          {persons.map((p) => (
-            <Pressable
-              key={p.id}
-              onPress={() => {
-                console.log('[DateSafety] Person selected:', p.id, p.name);
-                setSelectedPersonId(p.id);
-              }}
-              style={{
-                paddingHorizontal: 16,
-                paddingVertical: 10,
-                borderRadius: 20,
-                backgroundColor: selectedPersonId === p.id ? COLORS.success : COLORS.surface,
-                borderWidth: 1,
-                borderColor: selectedPersonId === p.id ? COLORS.success : COLORS.border,
-              }}
-            >
-              <Text
-                style={{
-                  color: selectedPersonId === p.id ? '#fff' : COLORS.textSecondary,
-                  fontSize: 14,
-                  fontWeight: '500',
-                }}
-              >
-                {p.name}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+          <X size={18} color={COLORS.textSecondary} />
+        </AnimatedPressable>
+        <Text style={{ color: COLORS.text, fontSize: 17, fontWeight: '700' }}>Safety Check-In 🛡️</Text>
+        <View style={{ width: 36 }} />
       </View>
 
-      {/* SCROLLABLE CONTENT */}
+      {/* SCROLLABLE CONTENT with sticky person chips at index 0 */}
       <ScrollView
-        contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
+        stickyHeaderIndices={[0]}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Info banner */}
+        {/* Sticky section 0: Person chips */}
         <View
           style={{
-            backgroundColor: COLORS.successMuted,
-            borderRadius: 12,
-            padding: 14,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
+            backgroundColor: COLORS.background,
+            paddingVertical: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: COLORS.border,
           }}
         >
-          <Shield size={20} color={COLORS.success} />
-          <Text style={{ color: COLORS.success, fontSize: 13, flex: 1, lineHeight: 18 }}>
-            Share your date details with trusted contacts for safety
-          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+          >
+            {persons.map((p) => {
+              const isSelected = selectedPersonId === p.id;
+              const chipBg = isSelected ? COLORS.success : COLORS.surface;
+              const chipBorder = isSelected ? COLORS.success : COLORS.border;
+              const nameColor = isSelected ? '#fff' : COLORS.textSecondary;
+              return (
+                <Pressable
+                  key={p.id}
+                  onPress={() => {
+                    console.log('[DateSafety] Person selected:', p.id, p.name);
+                    setSelectedPersonId(p.id);
+                  }}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
+                    borderRadius: 20,
+                    backgroundColor: chipBg,
+                    borderWidth: 1,
+                    borderColor: chipBorder,
+                  }}
+                >
+                  <Text style={{ color: nameColor, fontSize: 14, fontWeight: '500' }}>
+                    {p.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
 
-        {/* Location */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
-            Where are you?
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <MapPin size={16} color={COLORS.textTertiary} />
+        {/* Form content */}
+        <View style={{ padding: 20, gap: 20 }}>
+          {/* Info banner */}
+          <View
+            style={{
+              backgroundColor: COLORS.successMuted,
+              borderRadius: 12,
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <Shield size={20} color={COLORS.success} />
+            <Text style={{ color: COLORS.success, fontSize: 13, flex: 1, lineHeight: 18 }}>
+              Share your date details with trusted contacts for safety
+            </Text>
+          </View>
+
+          {/* Location */}
+          <View>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+              Where are you?
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <MapPin size={16} color={COLORS.textTertiary} />
+              <TextInput
+                value={location}
+                onChangeText={setLocation}
+                placeholder="Address or venue name"
+                placeholderTextColor={COLORS.textTertiary}
+                style={{
+                  flex: 1,
+                  backgroundColor: COLORS.surfaceSecondary,
+                  borderRadius: 12,
+                  paddingHorizontal: 14,
+                  paddingVertical: 13,
+                  color: COLORS.text,
+                  fontSize: 15,
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
+                }}
+              />
+            </View>
+          </View>
+
+          {/* Appearance */}
+          <View>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+              What are they wearing / driving? (optional)
+            </Text>
             <TextInput
-              value={location}
-              onChangeText={setLocation}
-              placeholder="Address or venue name"
+              value={appearance}
+              onChangeText={setAppearance}
+              placeholder="e.g. Blue jacket, drives a red Honda..."
               placeholderTextColor={COLORS.textTertiary}
+              multiline
               style={{
-                flex: 1,
                 backgroundColor: COLORS.surfaceSecondary,
                 borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 13,
+                padding: 14,
                 color: COLORS.text,
                 fontSize: 15,
                 borderWidth: 1,
                 borderColor: COLORS.border,
+                minHeight: 80,
               }}
             />
           </View>
-        </View>
 
-        {/* Appearance */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
-            What are they wearing / driving? (optional)
-          </Text>
-          <TextInput
-            value={appearance}
-            onChangeText={setAppearance}
-            placeholder="e.g. Blue jacket, drives a red Honda..."
-            placeholderTextColor={COLORS.textTertiary}
-            multiline
-            style={{
-              backgroundColor: COLORS.surfaceSecondary,
-              borderRadius: 12,
-              padding: 14,
-              color: COLORS.text,
-              fontSize: 15,
-              borderWidth: 1,
-              borderColor: COLORS.border,
-              minHeight: 80,
-            }}
-          />
-        </View>
-
-        {/* Emergency contacts */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
-            Emergency Contacts (up to 3)
-          </Text>
-          <View style={{ gap: 8 }}>
-            {contacts.map((contact, index) => (
-              <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: COLORS.successMuted,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ color: COLORS.success, fontSize: 12, fontWeight: '700' }}>{index + 1}</Text>
+          {/* Emergency contacts */}
+          <View>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+              Emergency Contacts (up to 3)
+            </Text>
+            <View style={{ gap: 8 }}>
+              {contacts.map((contact, index) => (
+                <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: COLORS.successMuted,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: COLORS.success, fontSize: 12, fontWeight: '700' }}>{index + 1}</Text>
+                  </View>
+                  <TextInput
+                    value={contact}
+                    onChangeText={(v) => updateContact(index, v)}
+                    placeholder={`Phone number ${index + 1}`}
+                    placeholderTextColor={COLORS.textTertiary}
+                    keyboardType="phone-pad"
+                    style={{
+                      flex: 1,
+                      backgroundColor: COLORS.surfaceSecondary,
+                      borderRadius: 12,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      color: COLORS.text,
+                      fontSize: 15,
+                      borderWidth: 1,
+                      borderColor: COLORS.border,
+                    }}
+                  />
                 </View>
-                <TextInput
-                  value={contact}
-                  onChangeText={(v) => updateContact(index, v)}
-                  placeholder={`Phone number ${index + 1}`}
-                  placeholderTextColor={COLORS.textTertiary}
-                  keyboardType="phone-pad"
-                  style={{
-                    flex: 1,
-                    backgroundColor: COLORS.surfaceSecondary,
-                    borderRadius: 12,
-                    paddingHorizontal: 14,
-                    paddingVertical: 12,
-                    color: COLORS.text,
-                    fontSize: 15,
-                    borderWidth: 1,
-                    borderColor: COLORS.border,
-                  }}
-                />
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
-        </View>
 
-        <AnimatedPressable
-          onPress={handleShare}
-          disabled={!canShare || saving}
-          style={{
-            backgroundColor: canShare ? COLORS.success : COLORS.surfaceSecondary,
-            borderRadius: 14,
-            paddingVertical: 16,
-            alignItems: 'center',
-            flexDirection: 'row',
-            justifyContent: 'center',
-            gap: 8,
-          }}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Share2 size={18} color={canShare ? '#fff' : COLORS.textTertiary} />
-              <Text style={{ color: canShare ? '#fff' : COLORS.textTertiary, fontSize: 16, fontWeight: '700' }}>
-                Share My Location
-              </Text>
-            </>
+          <AnimatedPressable
+            onPress={handleShare}
+            disabled={!canShare || saving}
+            style={{
+              backgroundColor: canShare ? COLORS.success : COLORS.surfaceSecondary,
+              borderRadius: 14,
+              paddingVertical: 16,
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Share2 size={18} color={canShare ? '#fff' : COLORS.textTertiary} />
+                <Text style={{ color: canShare ? '#fff' : COLORS.textTertiary, fontSize: 16, fontWeight: '700' }}>
+                  Share My Location
+                </Text>
+              </>
+            )}
+          </AnimatedPressable>
+
+          {!canShare && (
+            <Text style={{ color: COLORS.textTertiary, fontSize: 12, textAlign: 'center' }}>
+              Select a person, enter location, and add at least one contact
+            </Text>
           )}
-        </AnimatedPressable>
-
-        {!canShare && (
-          <Text style={{ color: COLORS.textTertiary, fontSize: 12, textAlign: 'center' }}>
-            Select a person, enter location, and add at least one contact
-          </Text>
-        )}
+        </View>
       </ScrollView>
     </View>
   );
