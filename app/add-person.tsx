@@ -234,6 +234,7 @@ export default function AddPersonScreen() {
   const [age, setAge] = useState('');
   const [birthday, setBirthday] = useState('');
   const [zodiac, setZodiac] = useState('');
+  const [occupation, setOccupation] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [instagram, setInstagram] = useState('');
   const [tiktok, setTiktok] = useState('');
@@ -309,6 +310,7 @@ export default function AddPersonScreen() {
       if (twitterX) payload.twitter_x = twitterX;
       if (connectionType) payload.connection_type = connectionType;
       if (connectionType === 'other' && connectionTypeCustom) payload.connection_type_custom = connectionTypeCustom;
+      if (occupation) payload.occupation = occupation;
 
       console.log('[AddPerson] POST /api/persons');
       const created = await apiPost<{ person: { id: string } }>('/api/persons', payload);
@@ -523,33 +525,36 @@ export default function AddPersonScreen() {
             />
           </View>
 
-          <View>
-            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 8 }}>Zodiac</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
-                {ZODIAC_SIGNS.map((z) => (
-                  <Pressable
-                    key={z.value}
-                    onPress={() => {
-                      console.log('[AddPerson] Zodiac selected:', z.value);
-                      setZodiac(z.value);
-                    }}
-                    style={{
-                      paddingHorizontal: 12,
-                      paddingVertical: 7,
-                      borderRadius: 16,
-                      backgroundColor: zodiac === z.value ? COLORS.accentMuted : COLORS.surfaceSecondary,
-                      borderWidth: 1,
-                      borderColor: zodiac === z.value ? COLORS.accent : COLORS.border,
-                    }}
-                  >
-                    <Text style={{ color: zodiac === z.value ? COLORS.accent : COLORS.textSecondary, fontSize: 12 }}>
-                      {z.label}
-                    </Text>
-                  </Pressable>
-                ))}
+          {zodiac ? (
+            <View style={{ marginTop: 8 }}>
+              <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 4 }}>Zodiac (auto)</Text>
+              <View style={{ backgroundColor: COLORS.accentMuted, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignSelf: 'flex-start' }}>
+                <Text style={{ color: COLORS.accent, fontSize: 13, fontWeight: '600' }}>
+                  {ZODIAC_SIGNS.find(z => z.value === zodiac)?.label || zodiac}
+                </Text>
               </View>
-            </ScrollView>
+            </View>
+          ) : null}
+
+          <View>
+            <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>Occupation</Text>
+            <TextInput
+              value={occupation}
+              onChangeText={setOccupation}
+              placeholder="What do they do?"
+              placeholderTextColor={COLORS.textTertiary}
+              autoCapitalize="words"
+              style={{
+                backgroundColor: COLORS.surfaceSecondary,
+                borderRadius: 10,
+                paddingHorizontal: 12,
+                paddingVertical: 11,
+                color: COLORS.text,
+                fontSize: 14,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+              }}
+            />
           </View>
         </View>
 

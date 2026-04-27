@@ -1294,7 +1294,11 @@ export default function PersonDetailScreen() {
               <Text style={{ color: '#999999', fontSize: 14, textAlign: 'center' }}>No dates yet</Text>
             </View>
           ) : (
-            <View>
+            <ScrollView
+              style={{ maxHeight: 300 }}
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+            >
               {timelineItems.map((item, index) => {
                 const isLast = index === timelineItems.length - 1;
                 if (item.kind === 'date') {
@@ -1356,7 +1360,7 @@ export default function PersonDetailScreen() {
                   );
                 }
               })}
-            </View>
+            </ScrollView>
           )}
         </View>
 

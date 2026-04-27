@@ -90,6 +90,8 @@ interface UserProfile {
   twitter_x?: string;
   favorite_foods?: string[];
   hobbies?: string[];
+  green_flags?: string[];
+  red_flags?: string[];
   photo_url?: string;
 }
 
@@ -562,34 +564,16 @@ export default function ProfileScreen() {
                     />
                   </View>
                 </View>
-                <View style={{ marginBottom: 14 }}>
-                  <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>Zodiac</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={{ flexDirection: 'row', gap: 6 }}>
-                      {ZODIAC_SIGNS.map((z) => (
-                        <Pressable
-                          key={z.value}
-                          onPress={() => {
-                            console.log('[Profile] Zodiac selected:', z.value);
-                            update('zodiac', z.value);
-                          }}
-                          style={{
-                            paddingHorizontal: 10,
-                            paddingVertical: 6,
-                            borderRadius: 14,
-                            backgroundColor: editData.zodiac === z.value ? COLORS.primaryMuted : COLORS.surfaceSecondary,
-                            borderWidth: 1,
-                            borderColor: editData.zodiac === z.value ? COLORS.primary : COLORS.border,
-                          }}
-                        >
-                          <Text style={{ color: editData.zodiac === z.value ? COLORS.primary : COLORS.textSecondary, fontSize: 11 }}>
-                            {z.label}
-                          </Text>
-                        </Pressable>
-                      ))}
+                {editData.zodiac ? (
+                  <View style={{ marginBottom: 14 }}>
+                    <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 6 }}>Zodiac (auto)</Text>
+                    <View style={{ backgroundColor: COLORS.primaryMuted, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignSelf: 'flex-start' }}>
+                      <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '600' }}>
+                        {ZODIAC_SIGNS.find(z => z.value === editData.zodiac)?.label || editData.zodiac}
+                      </Text>
                     </View>
-                  </ScrollView>
-                </View>
+                  </View>
+                ) : null}
                 <FormField label="Location" value={editData.location || ''} onChangeText={(v) => update('location', v)} placeholder="City, neighborhood..." />
                 <FormField label="Occupation" value={editData.occupation || ''} onChangeText={(v) => update('occupation', v)} placeholder="What do you do?" />
               </>
@@ -697,7 +681,7 @@ export default function ProfileScreen() {
               shadowRadius: 12,
             }}
           >
-            <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>Interests</Text>
+            <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>Interests & Flags</Text>
             <TagInput
               label="Favorite Foods"
               tags={displayData.favorite_foods || []}
@@ -712,6 +696,22 @@ export default function ProfileScreen() {
               onAdd={(t) => update('hobbies', [...(editData.hobbies || []), t])}
               onRemove={(t) => update('hobbies', (editData.hobbies || []).filter((h) => h !== t))}
               color={COLORS.primary}
+              editing={editing}
+            />
+            <TagInput
+              label="🟢 Green Flags"
+              tags={displayData.green_flags || []}
+              onAdd={(t) => update('green_flags', [...(editData.green_flags || []), t])}
+              onRemove={(t) => update('green_flags', (editData.green_flags || []).filter((f) => f !== t))}
+              color={COLORS.success}
+              editing={editing}
+            />
+            <TagInput
+              label="🔴 Red Flags"
+              tags={displayData.red_flags || []}
+              onAdd={(t) => update('red_flags', [...(editData.red_flags || []), t])}
+              onRemove={(t) => update('red_flags', (editData.red_flags || []).filter((f) => f !== t))}
+              color={COLORS.danger}
               editing={editing}
             />
           </View>
