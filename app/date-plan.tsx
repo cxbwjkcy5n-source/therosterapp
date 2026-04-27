@@ -10,7 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import { router } from 'expo-router';
-import { X, MapPin, Sparkles, ExternalLink } from 'lucide-react-native';
+import { X, Sparkles, ExternalLink } from 'lucide-react-native';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
@@ -94,81 +94,81 @@ export default function DatePlanScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 16,
-          paddingTop: 20,
-          paddingBottom: 12,
-          marginTop: 0,
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.border,
-        }}
-      >
-        <AnimatedPressable
-          onPress={() => {
-            console.log('[DatePlan] Close pressed');
-            router.back();
-          }}
+      {/* STATIC HEADER */}
+      <View style={{ borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
+        {/* Row 1: Close + Title + Spacer */}
+        <View
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: COLORS.surface,
+            flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 20,
+            paddingTop: 20,
+            paddingBottom: 14,
           }}
         >
-          <X size={18} color={COLORS.textSecondary} />
-        </AnimatedPressable>
-        <Text style={{ color: COLORS.text, fontSize: 17, fontWeight: '700' }}>Plan a Date ✨</Text>
-        <View style={{ width: 36 }} />
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[DatePlan] Close pressed');
+              router.back();
+            }}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: COLORS.surface,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <X size={18} color={COLORS.textSecondary} />
+          </AnimatedPressable>
+          <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: '700' }}>Plan a Date ✨</Text>
+          <View style={{ width: 36 }} />
+        </View>
+
+        {/* Row 2: Person chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, gap: 8 }}
+        >
+          {persons.map((p) => (
+            <Pressable
+              key={p.id}
+              onPress={() => {
+                console.log('[DatePlan] Person selected:', p.id, p.name);
+                setSelectedPersonId(p.id);
+              }}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 20,
+                backgroundColor: selectedPersonId === p.id ? COLORS.accent : COLORS.surface,
+                borderWidth: 1,
+                borderColor: selectedPersonId === p.id ? COLORS.accent : COLORS.border,
+              }}
+            >
+              <Text
+                style={{
+                  color: selectedPersonId === p.id ? '#000' : COLORS.textSecondary,
+                  fontSize: 14,
+                  fontWeight: '500',
+                }}
+              >
+                {p.name}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
       </View>
 
+      {/* SCROLLABLE CONTENT */}
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Person selector */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
-            Plan a date with
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {persons.map((p) => (
-              <Pressable
-                key={p.id}
-                onPress={() => {
-                  console.log('[DatePlan] Person selected:', p.id, p.name);
-                  setSelectedPersonId(p.id);
-                }}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 20,
-                  backgroundColor: selectedPersonId === p.id ? COLORS.accent : COLORS.surface,
-                  borderWidth: 1,
-                  borderColor: selectedPersonId === p.id ? COLORS.accent : COLORS.border,
-                }}
-              >
-                <Text
-                  style={{
-                    color: selectedPersonId === p.id ? '#000' : COLORS.textSecondary,
-                    fontSize: 14,
-                    fontWeight: '500',
-                  }}
-                >
-                  {p.name}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-
         {/* Location */}
         <View style={{ zIndex: 10 }}>
           <AddressAutocomplete

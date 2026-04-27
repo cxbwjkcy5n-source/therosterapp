@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { router } from 'expo-router';
-import { X, MapPin, Shield, Plus, Trash2, Share2 } from 'lucide-react-native';
+import { X, MapPin, Shield, Share2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet, apiPost } from '@/utils/api';
@@ -87,82 +87,82 @@ export default function DateSafetyScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 16,
-          paddingTop: 20,
-          paddingBottom: 12,
-          marginTop: 0,
-          borderBottomWidth: 1,
-          borderBottomColor: COLORS.border,
-        }}
-      >
-        <AnimatedPressable
-          onPress={() => {
-            console.log('[DateSafety] Close pressed');
-            router.back();
-          }}
+      {/* STATIC HEADER */}
+      <View style={{ borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
+        {/* Row 1: Close + Title + Spacer */}
+        <View
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: COLORS.surface,
+            flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 20,
+            paddingTop: 20,
+            paddingBottom: 14,
           }}
         >
-          <X size={18} color={COLORS.textSecondary} />
-        </AnimatedPressable>
-        <Text style={{ color: COLORS.text, fontSize: 17, fontWeight: '700' }}>Safety Check-In 🛡️</Text>
-        <View style={{ width: 36 }} />
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[DateSafety] Close pressed');
+              router.back();
+            }}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: COLORS.surface,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <X size={18} color={COLORS.textSecondary} />
+          </AnimatedPressable>
+          <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: '700' }}>Safety Check-In 🛡️</Text>
+          <View style={{ width: 36 }} />
+        </View>
+
+        {/* Row 2: Person chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 14, gap: 8 }}
+        >
+          {persons.map((p) => (
+            <Pressable
+              key={p.id}
+              onPress={() => {
+                console.log('[DateSafety] Person selected:', p.id, p.name);
+                setSelectedPersonId(p.id);
+              }}
+              style={{
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                borderRadius: 20,
+                backgroundColor: selectedPersonId === p.id ? COLORS.success : COLORS.surface,
+                borderWidth: 1,
+                borderColor: selectedPersonId === p.id ? COLORS.success : COLORS.border,
+              }}
+            >
+              <Text
+                style={{
+                  color: selectedPersonId === p.id ? '#fff' : COLORS.textSecondary,
+                  fontSize: 14,
+                  fontWeight: '500',
+                }}
+              >
+                {p.name}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
       </View>
 
+      {/* SCROLLABLE CONTENT */}
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 20 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Person selector */}
-        <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
-            Who are you on a date with?
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {persons.map((p) => (
-              <Pressable
-                key={p.id}
-                onPress={() => {
-                  console.log('[DateSafety] Person selected:', p.id, p.name);
-                  setSelectedPersonId(p.id);
-                }}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 20,
-                  backgroundColor: selectedPersonId === p.id ? COLORS.success : COLORS.surface,
-                  borderWidth: 1,
-                  borderColor: selectedPersonId === p.id ? COLORS.success : COLORS.border,
-                }}
-              >
-                <Text
-                  style={{
-                    color: selectedPersonId === p.id ? '#fff' : COLORS.textSecondary,
-                    fontSize: 14,
-                    fontWeight: '500',
-                  }}
-                >
-                  {p.name}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Subtitle */}
+        {/* Info banner */}
         <View
           style={{
             backgroundColor: COLORS.successMuted,
