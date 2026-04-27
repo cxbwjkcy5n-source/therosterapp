@@ -34,7 +34,7 @@ import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiGet, apiPut, apiPost } from '@/utils/api';
+import { apiGet, apiPut } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
 import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
@@ -231,7 +231,6 @@ export default function ProfileScreen() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
   const [newPhotoBase64, setNewPhotoBase64] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -272,16 +271,8 @@ export default function ProfileScreen() {
     try {
       let dataToSave = { ...editData };
 
-      // Upload photo if a new one was selected
-      if (newPhotoUri && newPhotoBase64) {
-        try {
-          const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64: newPhotoBase64 });
-          if (uploadResult?.photo_url) {
-            dataToSave.photo_url = uploadResult.photo_url;
-          }
-        } catch (photoErr) {
-          console.error('[Profile] Photo upload failed (non-fatal):', photoErr);
-        }
+      if (newPhotoBase64) {
+        dataToSave.photo_url = `data:image/jpeg;base64,${newPhotoBase64}`;
       }
 
       await apiPut('/api/profile', dataToSave);
@@ -292,7 +283,6 @@ export default function ProfileScreen() {
       setProfile(saved);
       setEditData(saved);
       setEditing(false);
-      setNewPhotoUri(null);
       setNewPhotoBase64(null);
     } catch (e: any) {
       console.error('[Profile] Save failed:', e);
@@ -306,7 +296,6 @@ export default function ProfileScreen() {
     console.log('[Profile] Edit cancelled');
     setEditData({ ...profile });
     setEditing(false);
-    setNewPhotoUri(null);
     setNewPhotoBase64(null);
   };
 
@@ -321,9 +310,9 @@ export default function ProfileScreen() {
     });
     if (!result.canceled && result.assets[0]) {
       console.log('[Profile] New photo selected');
-      setNewPhotoUri(result.assets[0].uri);
       setNewPhotoBase64(result.assets[0].base64 ?? null);
-      setEditData((prev) => ({ ...prev, photo_url: result.assets[0].uri }));
+      // Preview using base64 data URI so it works immediately
+      setEditData((prev) => ({ ...prev, photo_url: `data:image/jpeg;base64,${result.assets[0].base64}` }));
     }
   };
 
@@ -352,7 +341,7 @@ export default function ProfileScreen() {
     setEditData((prev) => ({ ...prev, [key]: value }));
 
   const displayData = editing ? editData : profile;
-  const photoSource = newPhotoUri || displayData.photo_url;
+  const photoSource = displayData.photo_url || null;
   const initials = getInitials(displayData.display_name || user?.name);
   const totalActive = analytics.total_active ?? 0;
   const totalBenched = analytics.total_benched ?? 0;
