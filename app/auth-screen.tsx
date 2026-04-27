@@ -196,6 +196,7 @@ export default function AuthScreen() {
             style={{
               flex: 1,
               paddingVertical: 18,
+              paddingHorizontal: 24,
               borderRadius: 14,
               alignItems: 'center',
               backgroundColor: isSignIn ? COLORS.primary : COLORS.surface,
@@ -216,6 +217,7 @@ export default function AuthScreen() {
             style={{
               flex: 1,
               paddingVertical: 18,
+              paddingHorizontal: 24,
               borderRadius: 14,
               alignItems: 'center',
               backgroundColor: !isSignIn ? COLORS.primary : COLORS.surface,
