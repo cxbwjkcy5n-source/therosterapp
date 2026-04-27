@@ -1113,7 +1113,7 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 400);
   });
 
-  test("Create interaction fails without required occurred_at", async () => {
+  test("Create interaction without occurred_at uses current time", async () => {
     const res = await authenticatedApi("/api/interactions", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1123,7 +1123,14 @@ describe("API Integration Tests", () => {
         title: "Phone call",
       }),
     });
-    await expectStatus(res, 400);
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.interaction).toBeDefined();
+    expect(data.interaction.occurredAt).toBeDefined();
+    // Should be approximately now (within a few seconds)
+    const occurredTime = new Date(data.interaction.occurredAt).getTime();
+    const now = new Date().getTime();
+    expect(Math.abs(now - occurredTime)).toBeLessThan(5000);
   });
 
   test("Create interaction with invalid person_id format returns 400", async () => {
@@ -1642,6 +1649,18 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 401);
   });
 
+  test("Unauthenticated POST /api/dates returns 401", async () => {
+    const res = await api("/api/dates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: "00000000-0000-0000-0000-000000000000",
+        title: "Test date",
+      }),
+    });
+    await expectStatus(res, 401);
+  });
+
   test("Unauthenticated GET /api/dates/{id} returns 401", async () => {
     const res = await api("/api/dates/00000000-0000-0000-0000-000000000000");
     await expectStatus(res, 401);
@@ -1649,6 +1668,18 @@ describe("API Integration Tests", () => {
 
   test("Unauthenticated GET /api/analytics returns 401", async () => {
     const res = await api("/api/analytics");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/date-plan returns 401", async () => {
+    const res = await api("/api/date-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: "00000000-0000-0000-0000-000000000000",
+        budget: 100,
+      }),
+    });
     await expectStatus(res, 401);
   });
 
@@ -1769,6 +1800,19 @@ describe("API Integration Tests", () => {
 
   test("Unauthenticated GET /api/reminders/feed returns 401", async () => {
     const res = await api("/api/reminders/feed");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/safety-checkins returns 401", async () => {
+    const res = await api("/api/safety-checkins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        date_location: "Park",
+        person_description: "Test",
+      }),
+    });
     await expectStatus(res, 401);
   });
 

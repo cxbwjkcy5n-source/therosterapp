@@ -8,7 +8,7 @@ interface InteractionInput {
   type: string;
   title: string;
   notes?: string;
-  occurred_at: string;
+  occurred_at?: string;
 }
 
 export function registerInteractionsRoutes(app: App) {
@@ -88,7 +88,7 @@ export function registerInteractionsRoutes(app: App) {
         tags: ['interactions'],
         body: {
           type: 'object',
-          required: ['person_id', 'type', 'title', 'occurred_at'],
+          required: ['person_id', 'type', 'title'],
           properties: {
             person_id: { type: 'string', format: 'uuid' },
             type: { type: 'string', enum: ['date', 'text', 'call', 'other'] },
@@ -127,7 +127,7 @@ export function registerInteractionsRoutes(app: App) {
       if (!session) return;
 
       const { person_id, type, title, notes, occurred_at } = request.body;
-      app.logger.info({ userId: session.user.id, body: request.body }, 'Creating interaction');
+      app.logger.info({ userId: session.user.id, personId: person_id, type }, 'Logging interaction');
 
       // Verify the person exists and belongs to the authenticated user
       const person = await app.db.query.persons.findFirst({
@@ -152,11 +152,11 @@ export function registerInteractionsRoutes(app: App) {
           type: type as any,
           title,
           notes: notes || null,
-          occurredAt: new Date(occurred_at),
+          occurredAt: occurred_at ? new Date(occurred_at) : new Date(),
         })
         .returning();
 
-      app.logger.info({ userId: session.user.id, interactionId: interaction.id }, 'Interaction created');
+      app.logger.info({ userId: session.user.id, interactionId: interaction.id }, 'Interaction logged');
       reply.status(201);
       return { interaction };
     }

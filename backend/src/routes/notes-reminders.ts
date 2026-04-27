@@ -478,7 +478,7 @@ export function registerNotesRemindersRoutes(app: App) {
           )
           .orderBy(schema.dates.dateTime);
 
-        // Get all active persons with interest_level >= 6
+        // Get all active persons (not benched)
         const activePersons = await app.db
           .select({
             id: schema.persons.id,
@@ -490,20 +490,23 @@ export function registerNotesRemindersRoutes(app: App) {
           .where(
             and(
               eq(schema.persons.userId, userId),
-              eq(schema.persons.isBenched, false),
-              isNotNull(schema.persons.interestLevel),
-              gte(schema.persons.interestLevel, 6)
+              eq(schema.persons.isBenched, false)
             )
           );
 
-        // Get nudges for active persons
-        const nudges = [];
+        // Get nudges for active persons - including "no contact" nudges
+        const nudgesMap = new Map<string, any>();
+        const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+
         for (const person of activePersons) {
-          // Get most recent date for this person
+          // Get most recent date for this person (where date_time is not null)
           const recentDate = await app.db
             .select({ dateTime: max(schema.dates.dateTime) })
             .from(schema.dates)
-            .where(eq(schema.dates.personId, person.id));
+            .where(and(
+              eq(schema.dates.personId, person.id),
+              isNotNull(schema.dates.dateTime)
+            ));
 
           // Get most recent interaction for this person
           const recentInteraction = await app.db
@@ -514,7 +517,7 @@ export function registerNotesRemindersRoutes(app: App) {
           const lastDatetime = recentDate[0]?.dateTime ? new Date(recentDate[0].dateTime) : null;
           const lastInteractionTime = recentInteraction[0]?.occurredAt ? new Date(recentInteraction[0].occurredAt) : null;
 
-          // Determine last_contact
+          // Determine most recent contact
           let lastContact: Date | null = null;
           if (lastDatetime && lastInteractionTime) {
             lastContact = lastDatetime > lastInteractionTime ? lastDatetime : lastInteractionTime;
@@ -524,36 +527,72 @@ export function registerNotesRemindersRoutes(app: App) {
             lastContact = lastInteractionTime;
           }
 
-          // Check if should be included as nudge
-          const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-          const shouldInclude = lastContact === null || lastContact < fourteenDaysAgo;
+          // Check for "no contact" nudge (more than 3 days since last contact)
+          let noContactNudge: any = null;
+          if (lastContact === null) {
+            // Never had contact
+            noContactNudge = {
+              person_id: person.id,
+              person_name: person.name,
+              person_photo_url: person.photoUrl,
+              message: `You haven't contacted ${person.name} yet. Reach out!`,
+              days_since_contact: null,
+            };
+          } else if (lastContact < threeDaysAgo) {
+            // More than 3 days since last contact
+            const daysDiff = Math.floor((now.getTime() - lastContact.getTime()) / (24 * 60 * 60 * 1000));
+            noContactNudge = {
+              person_id: person.id,
+              person_name: person.name,
+              person_photo_url: person.photoUrl,
+              message: `You haven't reached out to ${person.name} in ${daysDiff} days. Send them a message!`,
+              days_since_contact: daysDiff,
+            };
+          }
 
-          if (shouldInclude) {
+          // Check for interest_level nudge (interest_level >= 6)
+          let interestNudge: any = null;
+          if (person.interestLevel !== null && person.interestLevel >= 6) {
+            // Determine which message to use for interest nudge
             let daysSinceContact: number;
-            let message: string;
+            let interestMessage: string;
 
             if (lastContact === null) {
               daysSinceContact = 9999;
-              message = `You've never had a date or interaction with ${person.name} — time to make a move!`;
+              interestMessage = `You've never had a date or interaction with ${person.name} — time to make a move!`;
             } else {
               const daysDiff = Math.floor((now.getTime() - lastContact.getTime()) / (24 * 60 * 60 * 1000));
               daysSinceContact = daysDiff;
-              message = `You haven't reached out to ${person.name} in ${daysDiff} days — they're a ${person.interestLevel}/10 match!`;
+              interestMessage = `You haven't reached out to ${person.name} in ${daysDiff} days — they're a ${person.interestLevel}/10 match!`;
             }
 
-            nudges.push({
+            interestNudge = {
               person_id: person.id,
               person_name: person.name,
               person_photo_url: person.photoUrl,
               interest_level: person.interestLevel,
               days_since_contact: daysSinceContact,
-              message,
-            });
+              message: interestMessage,
+            };
+          }
+
+          // Prefer "no contact" nudge over interest_level nudge
+          if (noContactNudge) {
+            nudgesMap.set(person.id, noContactNudge);
+          } else if (interestNudge) {
+            nudgesMap.set(person.id, interestNudge);
           }
         }
 
-        // Sort nudges by days_since_contact descending (least recent first)
-        nudges.sort((a, b) => b.days_since_contact - a.days_since_contact);
+        // Convert map to array
+        const nudges = Array.from(nudgesMap.values());
+
+        // Sort nudges by days_since_contact descending (least recent first), handling null values
+        nudges.sort((a, b) => {
+          const aDays = a.days_since_contact ?? -1;
+          const bDays = b.days_since_contact ?? -1;
+          return bDays - aDays;
+        });
 
         app.logger.info({ userId, upcoming_dates_count: upcomingDates.length, nudges_count: nudges.length }, 'Feed retrieved');
         return {
