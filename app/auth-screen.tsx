@@ -190,12 +190,12 @@ export default function AuthScreen() {
         </View>
 
         {/* Mode selector tabs */}
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 32 }}>
+        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 32 }}>
           <AnimatedPressable
             onPress={() => { console.log('[Auth] Switched to sign in mode'); setMode('signin'); setError(null); }}
             style={{
               flex: 1,
-              paddingVertical: 14,
+              paddingVertical: 18,
               borderRadius: 14,
               alignItems: 'center',
               backgroundColor: isSignIn ? COLORS.primary : COLORS.surface,
@@ -207,7 +207,7 @@ export default function AuthScreen() {
               shadowOffset: { width: 0, height: 3 },
             }}
           >
-            <Text style={{ color: isSignIn ? '#fff' : COLORS.textSecondary, fontWeight: '700', fontSize: 15 }}>
+            <Text style={{ color: isSignIn ? '#fff' : COLORS.textSecondary, fontWeight: '700', fontSize: 16 }}>
               Sign In
             </Text>
           </AnimatedPressable>
@@ -215,7 +215,7 @@ export default function AuthScreen() {
             onPress={() => { console.log('[Auth] Switched to create account mode'); setMode('signup'); setError(null); }}
             style={{
               flex: 1,
-              paddingVertical: 14,
+              paddingVertical: 18,
               borderRadius: 14,
               alignItems: 'center',
               backgroundColor: !isSignIn ? COLORS.primary : COLORS.surface,
@@ -227,7 +227,7 @@ export default function AuthScreen() {
               shadowOffset: { width: 0, height: 3 },
             }}
           >
-            <Text style={{ color: !isSignIn ? '#fff' : COLORS.textSecondary, fontWeight: '700', fontSize: 15 }}>
+            <Text style={{ color: !isSignIn ? '#fff' : COLORS.textSecondary, fontWeight: '700', fontSize: 16 }}>
               Create Account
             </Text>
           </AnimatedPressable>
