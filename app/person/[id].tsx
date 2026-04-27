@@ -946,7 +946,7 @@ export default function PersonDetailScreen() {
       }
       if (newPhotoUri && newPhotoBase64) {
         try {
-          const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64: newPhotoBase64, person_id: id });
+          const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64: newPhotoBase64, person_id: Number(id) });
           if (uploadResult?.photo_url) {
             await apiPut(`/api/persons/${id}`, { photo_url: uploadResult.photo_url });
           }
