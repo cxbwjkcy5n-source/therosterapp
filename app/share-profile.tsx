@@ -92,8 +92,14 @@ export default function ShareProfileScreen() {
             <>
               <Barcode
                 value={token}
-                options={{ format: 'CODE128', background: '#FFFFFF', lineColor: '#1A1A1A', width: 2.5, height: 100 }}
-                style={{ width: '100%' }}
+                options={{
+                  format: 'CODE128',
+                  lineColor: '#1A1A1A',
+                  background: '#FFFFFF',
+                  width: 2.5,
+                  height: 100,
+                  displayValue: false,
+                }}
               />
               <Text style={{ fontSize: 22, fontWeight: '800', color: COLORS.text, letterSpacing: 6 }}>{token}</Text>
               {expiryText ? <Text style={{ fontSize: 12, color: COLORS.textTertiary }}>{expiryText}</Text> : null}

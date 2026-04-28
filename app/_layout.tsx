@@ -1,5 +1,5 @@
 import 'react-native-reanimated';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Stack, router, useSegments } from 'expo-router';
@@ -74,11 +74,13 @@ const PHRASES = [
 function CustomSplash({ onDone }: { onDone: () => void }) {
   const phrase = useRef(PHRASES[Math.floor(Math.random() * PHRASES.length)]).current;
 
-  // Animation values
+  // Animation values — stable refs, safe to omit from deps
   const screenOpacity = useRef(new Animated.Value(0)).current;
   const logoScale = useRef(new Animated.Value(0.8)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const phraseOpacity = useRef(new Animated.Value(0)).current;
+
+  const stableOnDone = useCallback(onDone, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
@@ -119,9 +121,9 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onDone();
+      stableOnDone();
     });
-  }, []);
+  }, [stableOnDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Animated.View style={[styles.splashContainer, { opacity: screenOpacity }]}>
