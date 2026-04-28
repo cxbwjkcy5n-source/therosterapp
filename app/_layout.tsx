@@ -38,20 +38,82 @@ const AppLightTheme = {
 // Auth-exempt routes — these are accessible without being logged in
 const PUBLIC_ROUTES = ['auth-screen', 'auth-popup', 'auth-callback'];
 
+const PHRASES = [
+  "Keeping up with everyone shouldn't be this hard.",
+  "Because remembering everything isn't realistic.",
+  "Stay organized without overthinking it.",
+  "Your dating life, without the confusion.",
+  "Because details matter—and they add up.",
+  "Keep track without the stress.",
+  "Everything you need to remember, in one place.",
+  'Because "wait, what did we talk about?" happens too often.',
+  "Stay on top of it all, effortlessly.",
+  "Because mixing things up is not the move.",
+  "Stay in control of your dating life.",
+  "Move with intention, not confusion.",
+  "Know where you stand—every time.",
+  "Be clear about what you want.",
+  "Keep your standards high and your details straight.",
+  "Make better decisions with better clarity.",
+  "Stay organized. Stay intentional.",
+  "You're allowed to keep things simple.",
+  "Clarity changes everything.",
+  "Date smarter, not harder.",
+  "Don't get your stories crossed.",
+  "Keep your options clear.",
+  "Confusion is a choice.",
+  "Stop guessing—know what's going on.",
+  "Not everyone deserves a callback.",
+  "If you're juggling, at least do it right.",
+  "Keep it together—or it gets messy.",
+  "Details matter… especially the ones you forget.",
+  "Stay sharp or get played.",
+  "Know the difference between interest and convenience.",
+];
+
 function CustomSplash({ onDone }: { onDone: () => void }) {
-  const opacity = useRef(new Animated.Value(0)).current;
+  const phrase = useRef(PHRASES[Math.floor(Math.random() * PHRASES.length)]).current;
+
+  // Animation values
+  const screenOpacity = useRef(new Animated.Value(0)).current;
+  const logoScale = useRef(new Animated.Value(0.8)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const phraseOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
-    // Fade in over 500ms, hold 800ms, fade out over 500ms
+
     Animated.sequence([
-      Animated.timing(opacity, {
+      // 1. Fade in the red screen
+      Animated.timing(screenOpacity, {
         toValue: 1,
-        duration: 500,
+        duration: 400,
         useNativeDriver: true,
       }),
-      Animated.delay(800),
-      Animated.timing(opacity, {
+      // 2. Logo scales up + fades in simultaneously
+      Animated.parallel([
+        Animated.spring(logoScale, {
+          toValue: 1,
+          friction: 6,
+          tension: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]),
+      // 3. Phrase fades in
+      Animated.timing(phraseOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      // 4. Hold for 1.8s
+      Animated.delay(1800),
+      // 5. Fade everything out
+      Animated.timing(screenOpacity, {
         toValue: 0,
         duration: 500,
         useNativeDriver: true,
@@ -59,16 +121,19 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
     ]).start(() => {
       onDone();
     });
-  }, [opacity, onDone]);
+  }, []);
 
   return (
-    <Animated.View style={[styles.splashContainer, { opacity }]}>
+    <Animated.View style={[styles.splashContainer, { opacity: screenOpacity }]}>
       <Animated.Image
-        source={require('../assets/images/e3a34f91-42cb-494c-a1c0-3dffd2f0d0fe.jpeg')}
-        style={styles.splashLogo}
-        resizeMode="cover"
+        source={require('../assets/images/dc34b019-a8ac-4275-9753-e1726a517bc0.jpeg')}
+        style={[styles.splashLogo, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
+        resizeMode="contain"
       />
       <Text style={styles.splashTitle}>The Roster</Text>
+      <Animated.Text style={[styles.splashPhrase, { opacity: phraseOpacity }]}>
+        {phrase}
+      </Animated.Text>
     </Animated.View>
   );
 }
@@ -271,20 +336,30 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   splashContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#E53935',
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 24,
+    paddingHorizontal: 40,
+    gap: 20,
     zIndex: 999,
   },
   splashLogo: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 120,
+    height: 120,
+    borderRadius: 24,
   },
   splashTitle: {
-    fontSize: 48,
-    fontWeight: 'bold',
+    fontSize: 42,
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  splashPhrase: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+    textAlign: 'center',
+    lineHeight: 26,
+    marginTop: 8,
   },
 });
