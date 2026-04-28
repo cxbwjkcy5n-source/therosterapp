@@ -2,6 +2,7 @@ import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { eq } from 'drizzle-orm';
 import * as schema from '../db/schema/schema.js';
+import { session as sessionTable, account as accountTable, user as userTable } from '../db/schema/auth-schema.js';
 
 interface ProfileUpdateInput {
   display_name?: string;
@@ -266,6 +267,71 @@ export function registerProfilesRoutes(app: App) {
 
       app.logger.info({ userId }, 'User profile updated');
       return profile;
+    }
+  );
+
+  // DELETE /api/account - Delete user account and all associated data
+  app.fastify.delete(
+    '/api/account',
+    {
+      schema: {
+        description: 'Permanently delete the authenticated user account and all associated data',
+        tags: ['account'],
+        response: {
+          200: {
+            description: 'Account deleted successfully',
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+            },
+          },
+          401: {
+            description: 'Unauthorized',
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+            },
+          },
+          500: {
+            description: 'Failed to delete account',
+            type: 'object',
+            properties: {
+              error: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply): Promise<{ success: boolean } | void> => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const userId = session.user.id;
+      app.logger.info({ userId }, 'Deleting user account and all associated data');
+
+      try {
+        await app.db.transaction(async (tx) => {
+          // Delete in order to avoid foreign key violations
+          await tx.delete(schema.shareTokens).where(eq(schema.shareTokens.userId, userId));
+          await tx.delete(schema.safetyCheckins).where(eq(schema.safetyCheckins.userId, userId));
+          await tx.delete(schema.reminders).where(eq(schema.reminders.userId, userId));
+          await tx.delete(schema.interactions).where(eq(schema.interactions.userId, userId));
+          await tx.delete(schema.notes).where(eq(schema.notes.userId, userId));
+          await tx.delete(schema.dates).where(eq(schema.dates.userId, userId));
+          await tx.delete(schema.persons).where(eq(schema.persons.userId, userId));
+          await tx.delete(schema.chatMessages).where(eq(schema.chatMessages.userId, userId));
+          await tx.delete(schema.userProfiles).where(eq(schema.userProfiles.userId, userId));
+          await tx.delete(sessionTable).where(eq(sessionTable.userId, userId));
+          await tx.delete(accountTable).where(eq(accountTable.userId, userId));
+          await tx.delete(userTable).where(eq(userTable.id, userId));
+        });
+
+        app.logger.info({ userId }, 'Account and associated data deleted successfully');
+        return { success: true };
+      } catch (error) {
+        app.logger.error({ err: error, userId }, 'Failed to delete account');
+        return reply.status(500).send({ error: 'Failed to delete account' });
+      }
     }
   );
 }

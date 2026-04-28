@@ -13,6 +13,7 @@ describe("API Integration Tests", () => {
   let noteId: string;
   let reminderId: string;
   let shareToken: string;
+  let deleteAccountToken: string;
 
   // ========== Auth Setup ==========
   test("Sign up test user", async () => {
@@ -21,6 +22,12 @@ describe("API Integration Tests", () => {
     userId = user.id;
     expect(authToken).toBeDefined();
     expect(userId).toBeDefined();
+  });
+
+  test("Sign up user for account deletion test", async () => {
+    const { token } = await signUpTestUser();
+    deleteAccountToken = token;
+    expect(deleteAccountToken).toBeDefined();
   });
 
   // ========== Persons CRUD Tests ==========
@@ -1644,6 +1651,21 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 404);
   });
 
+  // ========== Account Deletion Tests ==========
+  test("Delete authenticated user account", async () => {
+    const res = await authenticatedApi("/api/account", deleteAccountToken, {
+      method: "DELETE",
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test("Verify deleted account cannot authenticate", async () => {
+    const res = await authenticatedApi("/api/persons", deleteAccountToken);
+    await expectStatus(res, 401);
+  });
+
   // ========== Unauthenticated Request Tests ==========
   test("Unauthenticated GET /api/persons returns 401", async () => {
     const res = await api("/api/persons");
@@ -1870,6 +1892,13 @@ describe("API Integration Tests", () => {
   test("Unauthenticated POST /api/share/generate returns 401", async () => {
     const res = await api("/api/share/generate", {
       method: "POST",
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated DELETE /api/account returns 401", async () => {
+    const res = await api("/api/account", {
+      method: "DELETE",
     });
     await expectStatus(res, 401);
   });
