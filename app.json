@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "The Roster",
+    "slug": "roster",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/Roster App Icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/Roster App Icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.whywiley.therosterapp",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Used to scan profile barcodes to add people to your roster.",
+        "NSPhotoLibraryUsageDescription": "Used to add a photo to your profile or a person's card."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/Roster App Icon.png",
+        "backgroundColor": "#000000"
+      },
+      "package": "com.whywiley.therosterapp",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/final_quest_240x240.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      "expo-web-browser",
+      "expo-secure-store",
+      "expo-camera",
+      "expo-image-picker"
+    ],
+    "scheme": "roster",
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "backendUrl": "https://yc4fa775cdfwsjk84352fx3r79cnejz4.app.specular.dev"
+    }
+  }
+}

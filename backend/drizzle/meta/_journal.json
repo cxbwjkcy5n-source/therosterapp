@@ -1,0 +1,69 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1776815238695,
+      "tag": "20260421234718_sweet_ultimatum",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776815466686,
+      "tag": "20260421235106_robust_karnak",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776818968600,
+      "tag": "20260422004928_grey_shen",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776878389487,
+      "tag": "20260422171949_giant_random",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776896741664,
+      "tag": "20260422222541_mighty_jack_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776903918518,
+      "tag": "20260423002518_dear_pride",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1776908673472,
+      "tag": "20260423014433_cute_silk_fever",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777038891817,
+      "tag": "20260424135451_parallel_mandrill",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777414523730,
+      "tag": "20260428221523_happy_miss_america",
+      "breakpoints": true
+    }
+  ]
+}
