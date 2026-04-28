@@ -167,7 +167,7 @@ export default function AuthScreen() {
             The Roster
           </Text>
           <Text style={{ fontSize: 15, color: COLORS.textSecondary, letterSpacing: 0.2 }}>
-            Because keeping up with everyone shouldn't feel like a full-time job
+            Your dating life, organized.
           </Text>
         </View>
 
