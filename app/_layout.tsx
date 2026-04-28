@@ -275,6 +275,8 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerBackTitle: '',
               }}
             />
+            <Stack.Screen name="share-profile" options={{ headerShown: false }} />
+            <Stack.Screen name="scan-code" options={{ headerShown: false }} />
             <Stack.Screen
               name="privacy"
               options={{

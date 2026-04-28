@@ -8,8 +8,8 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Camera, Plus, X } from 'lucide-react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Camera, Plus, X, ScanLine } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
@@ -226,19 +226,30 @@ function TagInput({ label, tags, onAdd, onRemove, color = COLORS.primary }: {
 
 export default function AddPersonScreen() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{
+    prefill_name?: string;
+    prefill_photo_url?: string;
+    prefill_age?: string;
+    prefill_occupation?: string;
+    prefill_location?: string;
+    prefill_instagram?: string;
+    prefill_tiktok?: string;
+    prefill_twitter_x?: string;
+    prefill_phone_number?: string;
+  }>();
   const [saving, setSaving] = useState(false);
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoUri, setPhotoUri] = useState<string | null>(params.prefill_photo_url || null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [location, setLocation] = useState('');
-  const [age, setAge] = useState('');
+  const [name, setName] = useState(params.prefill_name || '');
+  const [location, setLocation] = useState(params.prefill_location || '');
+  const [age, setAge] = useState(params.prefill_age || '');
   const [birthday, setBirthday] = useState('');
   const [zodiac, setZodiac] = useState('');
-  const [occupation, setOccupation] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [tiktok, setTiktok] = useState('');
-  const [twitterX, setTwitterX] = useState('');
+  const [occupation, setOccupation] = useState(params.prefill_occupation || '');
+  const [phoneNumber, setPhoneNumber] = useState(params.prefill_phone_number || '');
+  const [instagram, setInstagram] = useState(params.prefill_instagram || '');
+  const [tiktok, setTiktok] = useState(params.prefill_tiktok || '');
+  const [twitterX, setTwitterX] = useState(params.prefill_twitter_x || '');
   const [connectionType, setConnectionType] = useState('');
   const [connectionTypeCustom, setConnectionTypeCustom] = useState('');
   const [interestLevel, setInterestLevel] = useState(5);
@@ -350,6 +361,15 @@ export default function AddPersonScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Scan code shortcut */}
+        <AnimatedPressable
+          onPress={() => { console.log('[AddPerson] Scan their code pressed'); router.push('/scan-code'); }}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: COLORS.surface, borderRadius: 14, paddingVertical: 14, borderWidth: 1.5, borderColor: COLORS.primary, marginBottom: 20 }}
+        >
+          <ScanLine size={20} color={COLORS.primary} />
+          <Text style={{ color: COLORS.primary, fontSize: 15, fontWeight: '700' }}>Scan Their Code</Text>
+        </AnimatedPressable>
+
         {/* Photo */}
         <View style={{ alignItems: 'center', marginBottom: 24 }}>
           <AnimatedPressable onPress={pickPhoto}>

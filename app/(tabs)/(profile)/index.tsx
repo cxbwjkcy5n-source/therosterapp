@@ -28,6 +28,7 @@ import {
   MapPin,
   Briefcase,
   Phone,
+  Share2,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
@@ -786,6 +787,16 @@ export default function ProfileScreen() {
                   <BarChart2 size={18} color={COLORS.success} />
                 </View>
                 <Text style={{ flex: 1, color: COLORS.text, fontSize: 15 }}>Insights</Text>
+                <ChevronRight size={18} color={COLORS.textTertiary} />
+              </View>
+            </AnimatedPressable>
+
+            <AnimatedPressable onPress={() => { console.log('[Profile] Share profile pressed'); router.push('/share-profile'); }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.divider }}>
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Share2 size={18} color={COLORS.primary} />
+                </View>
+                <Text style={{ flex: 1, color: COLORS.text, fontSize: 15 }}>My Share Code</Text>
                 <ChevronRight size={18} color={COLORS.textTertiary} />
               </View>
             </AnimatedPressable>
