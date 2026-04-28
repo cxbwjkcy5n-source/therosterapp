@@ -13,7 +13,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.rostercollective.therosterapp",
+      "bundleIdentifier": "com.whywiley.therosterapp",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Used to scan profile barcodes to add people to your roster.",
@@ -26,7 +26,7 @@
         "foregroundImage": "./assets/images/Roster App Icon.png",
         "backgroundColor": "#000000"
       },
-      "package": "com.rostercollective.therosterapp",
+      "package": "com.whywiley.therosterapp",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
