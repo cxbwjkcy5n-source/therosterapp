@@ -29,13 +29,14 @@ import {
   Briefcase,
   Phone,
   Share2,
+  Trash2,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiGet, apiPut } from '@/utils/api';
+import { apiGet, apiPut, authenticatedDelete } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
 import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
@@ -318,6 +319,32 @@ export default function ProfileScreen() {
       // Preview using base64 data URI so it works immediately
       setEditData((prev) => ({ ...prev, photo_url: `data:image/jpeg;base64,${result.assets[0].base64}` }));
     }
+  };
+
+  const handleDeleteAccount = () => {
+    console.log('[Profile] Delete account pressed');
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all your data — your roster, dates, notes, and everything else. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete My Account',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('[Profile] Confirming account deletion');
+              await authenticatedDelete('/api/account');
+              await signOut();
+            } catch (e) {
+              console.error('[Profile] Account deletion error:', e);
+            } finally {
+              router.replace('/auth-screen');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSignOut = () => {
@@ -846,6 +873,25 @@ export default function ProfileScreen() {
             >
               <LogOut size={18} color={COLORS.primary} />
               <Text style={{ color: COLORS.primary, fontSize: 15, fontWeight: '600' }}>Sign out</Text>
+            </View>
+          </AnimatedPressable>
+
+          <AnimatedPressable onPress={handleDeleteAccount} style={{ marginTop: 4, marginBottom: 8 }}>
+            <View
+              style={{
+                backgroundColor: COLORS.surface,
+                borderRadius: 16,
+                padding: 16,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(232,25,44,0.15)',
+                gap: 10,
+              }}
+            >
+              <Trash2 size={16} color={COLORS.textTertiary} />
+              <Text style={{ color: COLORS.textTertiary, fontSize: 14, fontWeight: '500' }}>Delete Account</Text>
             </View>
           </AnimatedPressable>
         </View>
