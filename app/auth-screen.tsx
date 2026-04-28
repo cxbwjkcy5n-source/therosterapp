@@ -9,7 +9,6 @@ import {
   Pressable,
   ActivityIndicator,
   Image,
-  Alert,
 } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
@@ -251,7 +250,7 @@ export default function AuthScreen() {
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="you@example.com"
+              placeholder="your@email.com"
               placeholderTextColor={COLORS.textTertiary}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -315,17 +314,6 @@ export default function AuthScreen() {
             </View>
           </View>
 
-          {isSignIn && (
-            <Pressable
-              onPress={() => {
-                console.log('[Auth] Forgot password pressed');
-                Alert.alert('Forgot Password', 'Password reset coming soon.');
-              }}
-              style={{ alignSelf: 'flex-end', marginTop: 4, marginBottom: 4 }}
-            >
-              <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '500' }}>Forgot your password?</Text>
-            </Pressable>
-          )}
         </View>
 
         {error ? (
@@ -429,6 +417,18 @@ export default function AuthScreen() {
               </>
             )}
           </AnimatedPressable>
+        </View>
+
+        {/* Terms & Privacy */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 4, marginTop: 16, paddingBottom: 8 }}>
+          <Text style={{ color: COLORS.textTertiary, fontSize: 12 }}>By continuing you agree to our</Text>
+          <Pressable onPress={() => router.push('/legal')}>
+            <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '600' }}>Terms of Service</Text>
+          </Pressable>
+          <Text style={{ color: COLORS.textTertiary, fontSize: 12 }}>and</Text>
+          <Pressable onPress={() => router.push('/privacy')}>
+            <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '600' }}>Privacy Policy</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

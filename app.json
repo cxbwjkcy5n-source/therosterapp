@@ -17,8 +17,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Used to scan profile barcodes to add people to your roster.",
-        "NSPhotoLibraryUsageDescription": "Used to add a photo to your profile or a person's card.",
-        "NSLocationWhenInUseUsageDescription": "Used to suggest locations when adding a person to your roster."
+        "NSPhotoLibraryUsageDescription": "Used to add a photo to your profile or a person's card."
       }
     },
     "android": {
