@@ -6,7 +6,7 @@ import {
   Share,
 } from 'react-native';
 import { Stack } from 'expo-router';
-import { Barcode } from 'expo-barcode-generator';
+import Barcode from 'react-native-barcode-svg';
 import { Share2, RefreshCw } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
@@ -92,14 +92,12 @@ export default function ShareProfileScreen() {
             <>
               <Barcode
                 value={token}
-                options={{
-                  format: 'CODE128',
-                  lineColor: '#1A1A1A',
-                  background: '#FFFFFF',
-                  width: 2.5,
-                  height: 100,
-                  displayValue: false,
-                }}
+                format="CODE128"
+                lineColor="#1A1A1A"
+                backgroundColor="#FFFFFF"
+                singleBarWidth={2.5}
+                height={100}
+                maxWidth={280}
               />
               <Text style={{ fontSize: 22, fontWeight: '800', color: COLORS.text, letterSpacing: 6 }}>{token}</Text>
               {expiryText ? <Text style={{ fontSize: 12, color: COLORS.textTertiary }}>{expiryText}</Text> : null}
