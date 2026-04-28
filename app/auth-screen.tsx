@@ -190,11 +190,11 @@ export default function AuthScreen() {
         </View>
 
         {/* Mode selector tabs */}
-        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 32 }}>
+        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 32, justifyContent: 'center' }}>
           <AnimatedPressable
             onPress={() => { console.log('[Auth] Switched to sign in mode'); setMode('signin'); setError(null); }}
             style={{
-              flex: 1,
+              minWidth: 140,
               paddingVertical: 18,
               paddingHorizontal: 24,
               borderRadius: 14,
@@ -215,7 +215,7 @@ export default function AuthScreen() {
           <AnimatedPressable
             onPress={() => { console.log('[Auth] Switched to create account mode'); setMode('signup'); setError(null); }}
             style={{
-              flex: 1,
+              minWidth: 140,
               paddingVertical: 18,
               paddingHorizontal: 24,
               borderRadius: 14,
