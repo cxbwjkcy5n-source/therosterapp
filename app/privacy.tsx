@@ -10,7 +10,7 @@ const SECTIONS = [
   },
   {
     heading: 'How We Use Your Information',
-    body: 'Your information is used to provide and improve the Roster app, personalize your experience, send reminders and nudges you configure, and ensure the security of your account. We do not sell your personal data to third parties.',
+    body: 'Your information is used to provide and improve The Roster app, personalize your experience, send reminders and nudges you configure, and ensure the security of your account. We do not sell your personal data to third parties.',
   },
   {
     heading: 'Data Storage & Security',
@@ -34,7 +34,7 @@ const SECTIONS = [
   },
   {
     heading: "Children's Privacy",
-    body: 'Roster is intended for users 18 years and older. We do not knowingly collect data from minors. If you believe a minor has created an account, please contact us immediately.',
+    body: 'The Roster is intended for users 18 years and older. We do not knowingly collect data from minors. If you believe a minor has created an account, please contact us immediately.',
   },
   {
     heading: 'Changes to This Policy',

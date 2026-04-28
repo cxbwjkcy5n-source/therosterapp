@@ -237,7 +237,7 @@ export default function LegalScreen() {
         {/* Title block */}
         <View style={{ marginBottom: 28 }}>
           <Text style={{ fontSize: 20, fontWeight: '800', color: '#1A1A1A', marginBottom: 4, letterSpacing: -0.4 }}>
-            Terms of Service – Roster
+            Terms of Service – The Roster
           </Text>
           <Text style={{ fontSize: 13, color: '#999999' }}>Last Updated: 3/28/2026</Text>
         </View>
