@@ -13,6 +13,7 @@ import { registerProfilesRoutes } from './routes/profiles.js';
 import { registerPlacesRoutes } from './routes/places.js';
 import { registerNotesRemindersRoutes } from './routes/notes-reminders.js';
 import { registerSafetyCheckinsRoutes } from './routes/safety-checkins.js';
+import { registerShareRoutes } from './routes/share.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -40,6 +41,7 @@ registerProfilesRoutes(app);
 registerPlacesRoutes(app);
 registerNotesRemindersRoutes(app);
 registerSafetyCheckinsRoutes(app);
+registerShareRoutes(app);
 
 await app.run();
 app.logger.info('Application running');

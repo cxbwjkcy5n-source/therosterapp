@@ -12,6 +12,7 @@ describe("API Integration Tests", () => {
   let interactionId: string;
   let noteId: string;
   let reminderId: string;
+  let shareToken: string;
 
   // ========== Auth Setup ==========
   test("Sign up test user", async () => {
@@ -1612,6 +1613,37 @@ describe("API Integration Tests", () => {
     expect(data.id !== undefined || data.userId !== undefined).toBe(true);
   });
 
+  // ========== Share Tests ==========
+  test("Generate a profile share token", async () => {
+    const res = await authenticatedApi("/api/share/generate", authToken, {
+      method: "POST",
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.token).toBeDefined();
+    expect(typeof data.token).toBe("string");
+    expect(data.expires_at).toBeDefined();
+    shareToken = data.token;
+  });
+
+  test("Resolve a valid share token", async () => {
+    const res = await api(`/api/share/resolve/${shareToken}`);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    // Should have some profile fields defined
+    expect(
+      data.name !== undefined ||
+      data.age !== undefined ||
+      data.photo_url !== undefined ||
+      data.location !== undefined
+    ).toBe(true);
+  });
+
+  test("Resolve an invalid share token returns 404", async () => {
+    const res = await api("/api/share/resolve/invalid-token-xyz");
+    await expectStatus(res, 404);
+  });
+
   // ========== Unauthenticated Request Tests ==========
   test("Unauthenticated GET /api/persons returns 401", async () => {
     const res = await api("/api/persons");
@@ -1831,6 +1863,13 @@ describe("API Integration Tests", () => {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ display_name: "Test" }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/share/generate returns 401", async () => {
+    const res = await api("/api/share/generate", {
+      method: "POST",
     });
     await expectStatus(res, 401);
   });
