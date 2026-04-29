@@ -21,8 +21,8 @@ import { apiPost, apiPut } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
 
-function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
-  if (!source) return { uri: '' };
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
+  if (!source) return null;
   if (typeof source === 'string') return { uri: source };
   return source as ImageSourcePropType;
 }
@@ -386,8 +386,8 @@ export default function AddPersonScreen() {
                 overflow: 'hidden',
               }}
             >
-              {photoUri ? (
-                <Image source={resolveImageSource(photoUri)} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+              {photoUri && resolveImageSource(photoUri) ? (
+                <Image source={resolveImageSource(photoUri)!} style={{ width: '100%', height: '100%' }} contentFit="cover" />
               ) : (
                 <View style={{ alignItems: 'center', gap: 4 }}>
                   <Camera size={24} color={COLORS.primary} />

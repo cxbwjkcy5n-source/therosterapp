@@ -4,10 +4,11 @@ import {
   Text,
   ActivityIndicator,
   Share,
+  Pressable,
 } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import Barcode from 'react-native-barcode-svg';
-import { Share2, RefreshCw } from 'lucide-react-native';
+import { Share2, RefreshCw, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { authenticatedPost } from '@/utils/api';
@@ -61,11 +62,17 @@ export default function ShareProfileScreen() {
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
       <Stack.Screen
         options={{
+          headerShown: true,
           title: 'My Share Code',
           headerStyle: { backgroundColor: COLORS.background },
           headerTintColor: COLORS.text,
           headerShadowVisible: false,
           headerBackTitle: '',
+          headerLeft: () => (
+            <Pressable onPress={() => { console.log('[ShareProfile] Close button pressed'); router.back(); }} style={{ paddingRight: 8 }}>
+              <X size={22} color={COLORS.text} />
+            </Pressable>
+          ),
         }}
       />
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingBottom: insets.bottom + 24, gap: 28 }}>

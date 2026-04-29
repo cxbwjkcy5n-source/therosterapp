@@ -41,8 +41,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
 import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
 
-function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
-  if (!source) return { uri: '' };
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
+  if (!source) return null;
   if (typeof source === 'string') return { uri: source };
   return source as ImageSourcePropType;
 }
@@ -319,8 +319,8 @@ export default function ProfileScreen() {
     if (!result.canceled && result.assets[0]) {
       console.log('[Profile] New photo selected');
       setNewPhotoBase64(result.assets[0].base64 ?? null);
-      // Preview using base64 data URI so it works immediately
-      setEditData((prev) => ({ ...prev, photo_url: `data:image/jpeg;base64,${result.assets[0].base64}` }));
+      // Preview using local file URI for immediate display
+      setEditData((prev) => ({ ...prev, photo_url: result.assets[0].uri }));
     }
   };
 
@@ -450,7 +450,7 @@ export default function ProfileScreen() {
 
       <Animated.ScrollView
         style={{ opacity: loadingProfile ? 1 : fadeAnim }}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 180 }}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -476,8 +476,8 @@ export default function ProfileScreen() {
                 shadowOffset: { width: 0, height: 4 },
               }}
             >
-              {photoSource ? (
-                <Image source={resolveImageSource(photoSource)} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+              {photoSource && resolveImageSource(photoSource) ? (
+                <Image source={resolveImageSource(photoSource)!} style={{ width: '100%', height: '100%' }} contentFit="cover" />
               ) : (
                 <Text style={{ fontSize: 34, fontWeight: '700', color: COLORS.primary }}>{initials}</Text>
               )}
