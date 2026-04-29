@@ -22,6 +22,7 @@
       "bundleIdentifier": "com.whywiley.the-roster-application"
     },
     "android": {
+      "package": "com.whywiley.the-roster-application",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/Roster App Icon.png",
         "backgroundColor": "#000000"
@@ -50,7 +51,7 @@
     },
     "extra": {
       "router": {},
-      "backendUrl": "https://6bz926emjyxpts6ba6j8qxa98wkrczjv.app.specular.dev"
+      "backendUrl": "https://my6jvt38h8p6qebc6nzd5ddkwe2x2v6d.app.specular.dev"
     }
   }
 }
