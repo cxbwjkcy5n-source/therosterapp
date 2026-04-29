@@ -336,10 +336,10 @@ export default function ProfileScreen() {
               console.log('[Profile] Confirming account deletion');
               await authenticatedDelete('/api/account');
               await signOut();
-            } catch (e) {
-              console.error('[Profile] Account deletion error:', e);
-            } finally {
               router.replace('/auth-screen');
+            } catch (e: any) {
+              console.error('[Profile] Account deletion error:', e);
+              Alert.alert('Could not delete account', e?.message || 'Please try again.');
             }
           },
         },
