@@ -19,10 +19,8 @@
         "NSPhotoLibraryUsageDescription": "Used to add a photo to your profile or a person's card.",
         "NSPhotoLibraryAddUsageDescription": "Used to save photos to your library."
       },
-      "bundleIdentifier": "com.d62de040124e438994b5a60819342428.app.OneSignalNotificationServiceExtension"
     },
     "android": {
-      "package": "com.d62de040124e438994b5a60819342428.app.OneSignalNotificationServiceExtension",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/Roster App Icon.png",
         "backgroundColor": "#000000"
@@ -51,7 +49,7 @@
     },
     "extra": {
       "router": {},
-      "backendUrl": "https://cx8nuaubur38pduzs7uxn5zvj4bcgzdy.app.specular.dev"
+      "backendUrl": "https://kkyh7hgw5z9k9kxk549x3rehamjuzdjx.app.specular.dev"
     }
   }
 }
