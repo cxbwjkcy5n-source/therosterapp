@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       const { error } = await authClient.signIn.social({
         provider,
-        callbackURL: "/auth-callback",
+        callbackURL: "roster://auth-callback",
       });
       if (error) {
         throw new Error(error.message || "Social sign in failed");
