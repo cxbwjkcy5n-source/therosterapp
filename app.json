@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "The Roster",
+    "name": "Roster",
     "slug": "roster",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,7 +13,6 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.whywiley.therosterapp",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Used to scan profile barcodes to add people to your roster.",
@@ -25,7 +24,6 @@
         "foregroundImage": "./assets/images/Roster App Icon.png",
         "backgroundColor": "#000000"
       },
-      "package": "com.whywiley.therosterapp",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
