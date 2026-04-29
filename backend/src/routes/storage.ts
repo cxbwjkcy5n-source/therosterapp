@@ -9,6 +9,7 @@ export function registerStorageRoutes(app: App) {
   app.fastify.post(
     '/api/upload-photo',
     {
+      bodyLimit: 10 * 1024 * 1024, // 10MB
       schema: {
         description: 'Upload a photo (base64 or data URI) and optionally update a person or profile record',
         tags: ['storage'],
@@ -76,6 +77,7 @@ export function registerStorageRoutes(app: App) {
         }
 
         app.logger.info({ userId, personId: person_id }, 'Person photo uploaded successfully');
+        console.log('Photo uploaded for user:', userId, 'person_id:', person_id);
       } else {
         // UPSERT into user_profiles
         const existing = await app.db.query.userProfiles.findFirst({
@@ -100,6 +102,7 @@ export function registerStorageRoutes(app: App) {
         }
 
         app.logger.info({ userId }, 'Profile photo uploaded successfully');
+        console.log('Photo uploaded for user:', userId, 'person_id:', 'self');
       }
 
       return { photo_url: photoUrl };
