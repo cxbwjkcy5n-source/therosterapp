@@ -6,7 +6,7 @@ import { Platform } from "react-native";
 // Must be a plain string — never a URL object — iOS NSURLSession requires it
 const API_URL = "https://8htnbe8hhaxgg4d9hg2h4rd5r8ds3wgj.app.specular.dev";
 
-export const BEARER_TOKEN_KEY = "rosterscout_bearer_token";
+export const BEARER_TOKEN_KEY = "roster_bearer_token";
 
 // Platform-specific storage: localStorage for web, SecureStore for native
 const storage = Platform.OS === "web"
@@ -31,8 +31,8 @@ export const authClient = createAuthClient({
   baseURL: API_URL,
   plugins: [
     expoClient({
-      scheme: "rosterscout",
-      storagePrefix: "rosterscout",
+      scheme: "roster",
+      storagePrefix: "roster",
       storage,
     }),
   ],
