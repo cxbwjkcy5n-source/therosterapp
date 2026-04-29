@@ -281,8 +281,28 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerBackTitle: '',
               }}
             />
-            <Stack.Screen name="share-profile" options={{ headerShown: false }} />
-            <Stack.Screen name="scan-code" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="share-profile"
+              options={{
+                headerShown: true,
+                headerStyle: { backgroundColor: COLORS.background },
+                headerTintColor: COLORS.text,
+                headerShadowVisible: false,
+                title: 'My Share Code',
+                headerBackTitle: '',
+              }}
+            />
+            <Stack.Screen
+              name="scan-code"
+              options={{
+                headerShown: true,
+                headerStyle: { backgroundColor: COLORS.background },
+                headerTintColor: COLORS.text,
+                headerShadowVisible: false,
+                title: 'Scan Code',
+                headerBackTitle: '',
+              }}
+            />
             <Stack.Screen
               name="privacy"
               options={{

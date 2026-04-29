@@ -66,8 +66,8 @@ function getZodiacFromBirthday(mmdd: string): string {
   return 'capricorn';
 }
 
-function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
-  if (!source) return { uri: '' };
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
+  if (!source) return null;
   if (typeof source === 'string') return { uri: source };
   return source as ImageSourcePropType;
 }

@@ -36,7 +36,7 @@ import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiGet, apiPut, authenticatedDelete } from '@/utils/api';
+import { apiGet, apiPut, apiPost, authenticatedDelete } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
 import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
@@ -276,10 +276,17 @@ export default function ProfileScreen() {
     try {
       const dataToSave = { ...editData };
 
-      // Include base64 photo directly in the main PUT payload
+      // Upload photo first, then include the returned URL in the PUT payload
       if (newPhotoBase64) {
-        dataToSave.photo_url = `data:image/jpeg;base64,${newPhotoBase64}`;
-        console.log('[Profile] Including new photo in save payload');
+        console.log('[Profile] Uploading photo via POST /api/upload-photo');
+        try {
+          const uploadRes = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64: newPhotoBase64 });
+          console.log('[Profile] Photo upload succeeded, url:', uploadRes.photo_url);
+          dataToSave.photo_url = uploadRes.photo_url;
+        } catch (uploadErr: any) {
+          console.error('[Profile] Photo upload failed:', uploadErr?.message);
+          Alert.alert('Photo upload failed', uploadErr?.message || 'Could not upload photo. Other profile changes will still be saved.');
+        }
       }
 
       await apiPut('/api/profile', dataToSave);
