@@ -22,6 +22,7 @@
       "bundleIdentifier": "com.whywiley.the-roster-application"
     },
     "android": {
+      "package": "com.whywiley.the-roster-application",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/Roster App Icon.png",
         "backgroundColor": "#000000"
