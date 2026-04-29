@@ -17,8 +17,8 @@ import { apiPatch, apiGet } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
 
-function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
-  if (!source) return { uri: '' };
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
+  if (!source) return null;
   if (typeof source === 'string') return { uri: source };
   return source as ImageSourcePropType;
 }
@@ -74,7 +74,8 @@ export default function DateReviewScreen() {
 
   const displayName = personName || 'Unknown';
   const initials = getInitials(displayName);
-  const hasPhoto = !!personPhoto;
+  const photoSource = resolveImageSource(personPhoto);
+  const hasPhoto = !!personPhoto && !!photoSource;
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -132,9 +133,9 @@ export default function DateReviewScreen() {
               marginBottom: 12,
             }}
           >
-            {hasPhoto ? (
+            {hasPhoto && photoSource ? (
               <Image
-                source={resolveImageSource(personPhoto)}
+                source={photoSource}
                 style={{ width: '100%', height: '100%' }}
                 contentFit="cover"
               />

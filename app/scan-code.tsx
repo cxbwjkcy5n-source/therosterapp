@@ -81,7 +81,7 @@ export default function ScanCodeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>
-      <Stack.Screen options={{ headerShown: false }} />
+      <Stack.Screen options={{ headerShown: false, title: 'Scan Code' }} />
       <CameraView
         style={StyleSheet.absoluteFillObject}
         facing="back"

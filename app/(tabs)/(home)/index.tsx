@@ -321,6 +321,7 @@ export default function RosterScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('Newest');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const filterHeight = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
@@ -347,7 +348,20 @@ export default function RosterScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [loadData])
+      if (user) {
+        console.log('[Roster] Fetching profile photo from /api/profile');
+        apiGet<any>('/api/profile')
+          .then((res) => {
+            const profileData = res?.profile ?? res;
+            const photoUrl = profileData?.photo_url ?? null;
+            console.log('[Roster] Profile photo_url:', photoUrl);
+            setProfilePhotoUrl(photoUrl);
+          })
+          .catch((e) => {
+            console.error('[Roster] Failed to fetch profile photo:', e);
+          });
+      }
+    }, [loadData, user])
   );
 
   useEffect(() => {
@@ -438,7 +452,13 @@ export default function RosterScreen() {
               borderColor: 'rgba(255,255,255,0.6)',
             }}
           >
-            {user?.image && resolveImageSource(user.image) ? (
+            {profilePhotoUrl && resolveImageSource(profilePhotoUrl) ? (
+              <Image
+                source={resolveImageSource(profilePhotoUrl)!}
+                style={{ width: 56, height: 56 }}
+                contentFit="cover"
+              />
+            ) : user?.image && resolveImageSource(user.image) ? (
               <Image
                 source={resolveImageSource(user.image)!}
                 style={{ width: 56, height: 56 }}

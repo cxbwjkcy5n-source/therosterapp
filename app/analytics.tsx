@@ -21,8 +21,8 @@ const HALF_CARD_WIDTH = (SCREEN_WIDTH - H_PAD * 2 - CARD_GAP) / 2;
 
 // ─── Image helper ─────────────────────────────────────────────────────────────
 
-function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
-  if (!source) return { uri: '' };
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
+  if (!source) return null;
   if (typeof source === 'string') return { uri: source };
   return source as ImageSourcePropType;
 }
@@ -227,7 +227,7 @@ function computeDateStats(dates: DateEntry[], persons: Person[]): DateStats {
   const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
 
   const wantAnotherTotal = completed.length;
-  const wantAnotherCount = completed.filter((d) => d.want_another_date === true).length;
+  const wantAnotherCount = completed.filter((d) => d.want_another_date === true || (d.want_another_date as any) === 1).length;
 
   const locations = dates.map((d) => d.location).filter((l): l is string => !!l && l.trim() !== '');
   const mostVisitedLocation = topN(locations, 1)[0]?.label || '—';
@@ -368,10 +368,11 @@ function BarChart({ data }: { data: { label: string; count: number }[] }) {
 
 function Avatar({ uri, name, size = 28 }: { uri?: string; name: string; size?: number }) {
   const initial = name && name !== '—' ? name.charAt(0).toUpperCase() : '?';
-  if (uri) {
+  const imgSource = resolveImageSource(uri);
+  if (uri && imgSource) {
     return (
       <Image
-        source={resolveImageSource(uri)}
+        source={imgSource}
         style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: COLORS.surface }}
       />
     );

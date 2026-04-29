@@ -467,7 +467,7 @@ export default function ProfileScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Avatar + info */}
-        <View style={{ alignItems: 'center', paddingTop: 56, paddingBottom: 24, paddingHorizontal: 24 }}>
+        <View style={{ alignItems: 'center', paddingTop: 24, paddingBottom: 24, paddingHorizontal: 24 }}>
           <AnimatedPressable onPress={editing ? pickPhoto : undefined}>
             <View
               style={{
