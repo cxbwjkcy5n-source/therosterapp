@@ -1620,6 +1620,54 @@ describe("API Integration Tests", () => {
     expect(data.id !== undefined || data.userId !== undefined).toBe(true);
   });
 
+  // ========== Preferences Tests ==========
+  test("Get user preferences", async () => {
+    const res = await authenticatedApi("/api/preferences", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.notifications_enabled).toBeDefined();
+    expect(data.dark_mode_enabled).toBeDefined();
+    expect(typeof data.notifications_enabled).toBe("boolean");
+    expect(typeof data.dark_mode_enabled).toBe("boolean");
+  });
+
+  test("Update user preferences with both fields", async () => {
+    const res = await authenticatedApi("/api/preferences", authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        notifications_enabled: false,
+        dark_mode_enabled: true,
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.notifications_enabled).toBe(false);
+    expect(data.dark_mode_enabled).toBe(true);
+  });
+
+  test("Update user preferences with partial data", async () => {
+    const res = await authenticatedApi("/api/preferences", authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        notifications_enabled: true,
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.notifications_enabled).toBe(true);
+  });
+
+  test("Update user preferences with empty body", async () => {
+    const res = await authenticatedApi("/api/preferences", authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    await expectStatus(res, 200);
+  });
+
   // ========== Share Tests ==========
   test("Generate a profile share token", async () => {
     const res = await authenticatedApi("/api/share/generate", authToken, {
@@ -1885,6 +1933,23 @@ describe("API Integration Tests", () => {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ display_name: "Test" }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/preferences returns 401", async () => {
+    const res = await api("/api/preferences");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated PUT /api/preferences returns 401", async () => {
+    const res = await api("/api/preferences", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        notifications_enabled: true,
+        dark_mode_enabled: false,
+      }),
     });
     await expectStatus(res, 401);
   });
