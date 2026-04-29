@@ -147,34 +147,21 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
   // Show red placeholder while splash is playing OR while auth is still loading
   const showPlaceholder = showSplash || loading;
 
-  const hasRedirectedToHome = useRef(false);
-
   // Once auth resolves, redirect unauthenticated users to auth and authenticated users away from public routes
   useEffect(() => {
     if (loading || showSplash) return;
 
-    if (user) {
-      if (!hasRedirectedToHome.current) {
-        hasRedirectedToHome.current = true;
-        // Only redirect if we're currently on a public route (e.g. auth screen)
-        const currentRoute = segments[0] ?? '';
-        const isPublicRoute = PUBLIC_ROUTES.includes(currentRoute);
-        if (isPublicRoute) {
-          console.log('[AppContent] User logged in on public route, redirecting to home');
-          router.replace('/(tabs)/(home)');
-        }
-      }
-    } else {
-      // User logged out — reset flag and redirect away from protected routes
-      hasRedirectedToHome.current = false;
-      const currentRoute = segments[0] ?? '';
-      const isPublicRoute = PUBLIC_ROUTES.includes(currentRoute);
-      if (!isPublicRoute) {
-        console.log('[AppContent] No user on protected route, redirecting to auth-screen');
-        router.replace('/auth-screen');
-      }
+    const currentRoute = segments[0] ?? '';
+    const isPublicRoute = PUBLIC_ROUTES.includes(currentRoute);
+
+    if (user && isPublicRoute) {
+      console.log('[AppContent] User authenticated on public route, redirecting to home');
+      router.replace('/(tabs)/(home)');
+    } else if (!user && !isPublicRoute) {
+      console.log('[AppContent] No user on protected route, redirecting to auth-screen');
+      router.replace('/auth-screen');
     }
-  }, [user, loading, showSplash]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, loading, showSplash]); // segments intentionally excluded from deps
 
   return (
     <>
