@@ -182,3 +182,12 @@ export const shareTokens = pgTable('share_tokens', {
   used: boolean('used').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const userPreferences = pgTable('user_preferences', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
+  notificationsEnabled: boolean('notifications_enabled').default(true).notNull(),
+  darkModeEnabled: boolean('dark_mode_enabled').default(false).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});

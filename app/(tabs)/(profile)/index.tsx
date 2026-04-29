@@ -239,7 +239,7 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!user) return;
-      console.log('[Profile] Loading profile and analytics');
+      console.log('[Profile] Loading profile, analytics, and preferences');
       Promise.all([
         apiGet<any>('/api/profile').catch((e) => {
           console.error('[Profile] Failed to load profile:', e);
@@ -249,12 +249,15 @@ export default function ProfileScreen() {
           console.error('[Profile] Failed to load analytics:', e);
           return {} as Analytics;
         }),
-      ]).then(([res, analyticsData]) => {
+        apiGet<{ notifications_enabled: boolean; dark_mode_enabled: boolean }>('/api/preferences').catch(() => ({ notifications_enabled: true, dark_mode_enabled: false })),
+      ]).then(([res, analyticsData, prefs]) => {
         const profileData: UserProfile = (res as any).profile ?? res;
-        console.log('[Profile] Profile and analytics loaded');
+        console.log('[Profile] Profile, analytics, and preferences loaded');
         setProfile(profileData);
         setEditData(profileData);
         setAnalytics(analyticsData);
+        setNotifications(prefs.notifications_enabled);
+        setDarkMode(prefs.dark_mode_enabled);
         setLoadingProfile(false);
         Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
       });
@@ -773,6 +776,7 @@ export default function ProfileScreen() {
                 onValueChange={(v) => {
                   console.log('[Profile] Notifications toggled:', v);
                   setNotifications(v);
+                  apiPut('/api/preferences', { notifications_enabled: v }).catch((e: any) => console.error('[Profile] Failed to save notifications pref:', e));
                 }}
                 trackColor={{ false: COLORS.surfaceSecondary, true: COLORS.primary }}
                 thumbColor="#fff"
@@ -797,6 +801,7 @@ export default function ProfileScreen() {
                 onValueChange={(v) => {
                   console.log('[Profile] Dark mode toggled:', v);
                   setDarkMode(v);
+                  apiPut('/api/preferences', { dark_mode_enabled: v }).catch((e: any) => console.error('[Profile] Failed to save dark mode pref:', e));
                 }}
                 trackColor={{ false: COLORS.surfaceSecondary, true: COLORS.primary }}
                 thumbColor="#fff"
