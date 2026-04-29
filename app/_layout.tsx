@@ -147,33 +147,34 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
   // Show red placeholder while splash is playing OR while auth is still loading
   const showPlaceholder = showSplash || loading;
 
-  const prevUserRef = useRef<typeof user>(undefined);
+  const hasRedirectedToHome = useRef(false);
 
   // Once auth resolves, redirect unauthenticated users to auth and authenticated users away from public routes
   useEffect(() => {
     if (loading || showSplash) return;
 
-    const currentRoute = segments[0] ?? '';
-    const isPublicRoute = PUBLIC_ROUTES.includes(currentRoute);
-
-    // User just logged in (null/undefined -> user)
-    if (user && (isPublicRoute || prevUserRef.current === null || prevUserRef.current === undefined)) {
-      prevUserRef.current = user;
-      console.log('[AppContent] User logged in, redirecting to home');
-      router.replace('/(tabs)/(home)');
-      return;
+    if (user) {
+      if (!hasRedirectedToHome.current) {
+        hasRedirectedToHome.current = true;
+        // Only redirect if we're currently on a public route (e.g. auth screen)
+        const currentRoute = segments[0] ?? '';
+        const isPublicRoute = PUBLIC_ROUTES.includes(currentRoute);
+        if (isPublicRoute) {
+          console.log('[AppContent] User logged in on public route, redirecting to home');
+          router.replace('/(tabs)/(home)');
+        }
+      }
+    } else {
+      // User logged out — reset flag and redirect away from protected routes
+      hasRedirectedToHome.current = false;
+      const currentRoute = segments[0] ?? '';
+      const isPublicRoute = PUBLIC_ROUTES.includes(currentRoute);
+      if (!isPublicRoute) {
+        console.log('[AppContent] No user on protected route, redirecting to auth-screen');
+        router.replace('/auth-screen');
+      }
     }
-
-    // User logged out or not authenticated on protected route
-    if (!user && !isPublicRoute) {
-      prevUserRef.current = null;
-      console.log('[AppContent] No user on protected route, redirecting to auth-screen');
-      router.replace('/auth-screen');
-      return;
-    }
-
-    prevUserRef.current = user;
-  }, [user, loading, showSplash, segments]);
+  }, [user, loading, showSplash]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>

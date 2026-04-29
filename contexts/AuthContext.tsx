@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { Platform } from "react-native";
 import * as Linking from "expo-linking";
 import { authClient, setBearerToken, clearAuthTokens } from "@/lib/auth";
@@ -71,6 +71,7 @@ function openOAuthPopup(provider: string): Promise<string> {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
     fetchUser();
@@ -98,7 +99,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUser = async () => {
     try {
-      setLoading(true);
+      if (!hasInitialized.current) {
+        setLoading(true);
+      }
       const session = await authClient.getSession();
       if (session?.data?.user) {
         setUser(session.data.user as User);
@@ -113,7 +116,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Failed to fetch user:", error);
       setUser(null);
     } finally {
-      setLoading(false);
+      if (!hasInitialized.current) {
+        hasInitialized.current = true;
+        setLoading(false);
+      }
     }
   };
 
