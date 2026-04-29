@@ -88,7 +88,7 @@ export default function ScanCodeScreen() {
         barcodeScannerSettings={scannerSettings}
         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
       />
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+      <View style={[StyleSheet.absoluteFillObject, { pointerEvents: 'box-none' }]}>
         <View style={{ paddingTop: insets.top + 12, paddingHorizontal: 20, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Scan Code</Text>
           <AnimatedPressable onPress={() => { console.log('[ScanCode] Close pressed'); router.back(); }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>

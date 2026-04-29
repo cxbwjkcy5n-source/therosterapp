@@ -1,6 +1,6 @@
 import 'react-native-reanimated';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Stack, router, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -90,7 +90,7 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
       Animated.timing(screenOpacity, {
         toValue: 1,
         duration: 400,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       // 2. Logo scales up + fades in simultaneously
       Animated.parallel([
@@ -98,19 +98,19 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
           toValue: 1,
           friction: 6,
           tension: 80,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(logoOpacity, {
           toValue: 1,
           duration: 500,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ]),
       // 3. Phrase fades in
       Animated.timing(phraseOpacity, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       // 4. Hold for 1.8s
       Animated.delay(1800),
@@ -118,7 +118,7 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
       Animated.timing(screenOpacity, {
         toValue: 0,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start(() => {
       stableOnDone();
@@ -174,7 +174,7 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
             <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false, headerBackTitle: '', title: '' }} />
             <Stack.Screen
-              name="person/[id]"
+              name="person"
               options={{
                 headerShown: true,
                 headerStyle: { backgroundColor: COLORS.background },
