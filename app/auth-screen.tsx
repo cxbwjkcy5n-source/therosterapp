@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Image,
 } from 'react-native';
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,8 +48,6 @@ export default function AuthScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [socialLoading, setSocialLoading] = useState<'apple' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  if (user) return <Redirect href="/(tabs)/(home)" />;
 
   const handleEmailAuth = async () => {
     if (!email.trim() || !password.trim()) {
