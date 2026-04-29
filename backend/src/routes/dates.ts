@@ -435,17 +435,24 @@ export function registerDatesRoutes(app: App) {
         updateData.status = 'completed';
       }
 
-      await app.db
-        .update(schema.dates)
-        .set(updateData)
-        .where(eq(schema.dates.id, id));
+      try {
+        await app.db
+          .update(schema.dates)
+          .set(updateData)
+          .where(eq(schema.dates.id, id));
+
+        app.logger.info({ userId: session.user.id, dateId: id }, 'Date review updated');
+        console.log('Date review saved:', id, { rating: request.body.rating, want_another_date: request.body.want_another_date });
+      } catch (error) {
+        app.logger.error({ err: error, userId: session.user.id, dateId: id }, 'Failed to update date review');
+        console.error('Date review failed:', error);
+        return reply.status(500).send({ error: 'Failed to update date review' });
+      }
 
       // Fetch the updated record to ensure all fields are returned
       const updatedDate = await app.db.query.dates.findFirst({
         where: eq(schema.dates.id, id),
       });
-
-      app.logger.info({ userId: session.user.id, dateId: id }, 'Date review updated');
 
       // Convert camelCase to snake_case for response
       return {

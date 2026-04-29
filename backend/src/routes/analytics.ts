@@ -1,6 +1,6 @@
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { eq, count, and } from 'drizzle-orm';
+import { eq, count, and, sql } from 'drizzle-orm';
 import * as schema from '../db/schema/schema.js';
 
 export function registerAnalyticsRoutes(app: App) {
@@ -19,6 +19,8 @@ export function registerAnalyticsRoutes(app: App) {
               total_active: { type: 'integer' },
               total_benched: { type: 'integer' },
               total_dates: { type: 'integer' },
+              want_another_date_count: { type: 'integer' },
+              completed_dates_count: { type: 'integer' },
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -49,10 +51,24 @@ export function registerAnalyticsRoutes(app: App) {
         .from(schema.dates)
         .where(eq(schema.dates.userId, session.user.id));
 
+      // Count dates where want_another_date = true
+      const wantAnotherDateResult = await app.db
+        .select({ count: count() })
+        .from(schema.dates)
+        .where(and(eq(schema.dates.userId, session.user.id), eq(schema.dates.wantAnotherDate, true)));
+
+      // Count completed dates
+      const completedDatesResult = await app.db
+        .select({ count: count() })
+        .from(schema.dates)
+        .where(and(eq(schema.dates.userId, session.user.id), eq(schema.dates.status, 'completed')));
+
       const analytics = {
         total_active: activeResult[0]?.count || 0,
         total_benched: benchedResult[0]?.count || 0,
         total_dates: datesResult[0]?.count || 0,
+        want_another_date_count: wantAnotherDateResult[0]?.count || 0,
+        completed_dates_count: completedDatesResult[0]?.count || 0,
       };
 
       app.logger.info({ userId: session.user.id, analytics }, 'Analytics computed successfully');
