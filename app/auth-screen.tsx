@@ -49,13 +49,6 @@ export default function AuthScreen() {
   const [socialLoading, setSocialLoading] = useState<'apple' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      console.log('[Auth] User logged in, redirecting to home');
-      router.replace('/(tabs)/(home)');
-    }
-  }, [user]);
-
   if (user) return <Redirect href="/(tabs)/(home)" />;
 
   const handleEmailAuth = async () => {

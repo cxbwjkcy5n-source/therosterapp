@@ -147,7 +147,7 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
   // Show red placeholder while splash is playing OR while auth is still loading
   const showPlaceholder = showSplash || loading;
 
-  // Once auth resolves and we're on a protected route with no user, redirect
+  // Once auth resolves, redirect unauthenticated users to auth and authenticated users away from public routes
   useEffect(() => {
     if (loading || showSplash) return;
     const currentRoute = segments[0] ?? '';
@@ -155,6 +155,9 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
     if (!user && !isPublicRoute) {
       console.log('[AppContent] No user on protected route, redirecting to auth-screen');
       router.replace('/auth-screen');
+    } else if (user && isPublicRoute) {
+      console.log('[AppContent] User logged in on public route, redirecting to home');
+      router.replace('/(tabs)/(home)');
     }
   }, [user, loading, showSplash, segments]);
 
