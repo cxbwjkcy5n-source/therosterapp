@@ -393,6 +393,10 @@ export default function ProfileScreen() {
       <Stack.Screen
         options={{
           title: 'Profile',
+          headerShown: true,
+          headerStyle: { backgroundColor: COLORS.background },
+          headerTintColor: COLORS.text,
+          headerShadowVisible: false,
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {editing ? (
@@ -463,7 +467,7 @@ export default function ProfileScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Avatar + info */}
-        <View style={{ alignItems: 'center', paddingTop: 32, paddingBottom: 24, paddingHorizontal: 24 }}>
+        <View style={{ alignItems: 'center', paddingTop: 56, paddingBottom: 24, paddingHorizontal: 24 }}>
           <AnimatedPressable onPress={editing ? pickPhoto : undefined}>
             <View
               style={{

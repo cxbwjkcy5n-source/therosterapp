@@ -43,8 +43,8 @@ interface Person {
   category?: string;
 }
 
-function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
-  if (!source) return { uri: '' };
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
+  if (!source) return null;
   if (typeof source === 'string') return { uri: source };
   return source as ImageSourcePropType;
 }
@@ -245,9 +245,9 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
             marginRight: 12,
           }}
         >
-          {hasPhoto ? (
+          {hasPhoto && resolveImageSource(item.photo_url) ? (
             <Image
-              source={resolveImageSource(item.photo_url)}
+              source={resolveImageSource(item.photo_url)!}
               style={{ width: 60, height: 60, borderRadius: 30 }}
               contentFit="cover"
             />
@@ -324,7 +324,10 @@ export default function RosterScreen() {
   const filterHeight = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     try {
       console.log('[Roster] Loading persons from /api/persons');
       setLoading(true);
@@ -435,9 +438,9 @@ export default function RosterScreen() {
               borderColor: 'rgba(255,255,255,0.6)',
             }}
           >
-            {user?.image ? (
+            {user?.image && resolveImageSource(user.image) ? (
               <Image
-                source={resolveImageSource(user.image)}
+                source={resolveImageSource(user.image)!}
                 style={{ width: 56, height: 56 }}
                 contentFit="cover"
               />
