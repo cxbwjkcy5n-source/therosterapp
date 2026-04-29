@@ -127,14 +127,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithEmail = async (email: string, password: string) => {
     try {
       console.log("[Auth] Attempting email sign in");
-      await authClient.signIn.email({ email, password });
-      const u = await fetchUser();
-      if (u) {
-        console.log("[Auth] Sign in successful, navigating to home");
-        router.replace("/(tabs)/(home)");
-      } else {
-        throw new Error("Sign in succeeded but session could not be retrieved.");
+      const result = await authClient.signIn.email({ email, password });
+      if (result?.error?.message) {
+        throw new Error(result.error.message);
       }
+      // Navigate immediately — don't wait for getSession to confirm
+      console.log("[Auth] Sign in successful, navigating to home");
+      router.replace("/(tabs)/(home)");
+      // Hydrate user state in the background
+      fetchUser().catch(console.error);
     } catch (error) {
       console.error("Email sign in failed:", error);
       throw error;
@@ -144,14 +145,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUpWithEmail = async (email: string, password: string, name?: string) => {
     try {
       console.log("[Auth] Attempting email sign up");
-      await authClient.signUp.email({ email, password, name });
-      const u = await fetchUser();
-      if (u) {
-        console.log("[Auth] Sign up successful, navigating to home");
-        router.replace("/(tabs)/(home)");
-      } else {
-        throw new Error("Sign up succeeded but session could not be retrieved.");
+      const result = await authClient.signUp.email({ email, password, name });
+      if (result?.error?.message) {
+        throw new Error(result.error.message);
       }
+      console.log("[Auth] Sign up successful, navigating to home");
+      router.replace("/(tabs)/(home)");
+      fetchUser().catch(console.error);
     } catch (error) {
       console.error("Email sign up failed:", error);
       throw error;
@@ -192,11 +192,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         throw new Error(error.message || "Apple sign in failed");
       }
-      const u = await fetchUser();
-      if (u) {
-        console.log("[Auth] Apple sign in successful, navigating to home");
-        router.replace("/(tabs)/(home)");
-      }
+      console.log("[Auth] Apple sign in successful, navigating to home");
+      router.replace("/(tabs)/(home)");
+      fetchUser().catch(console.error);
     } else {
       // Web / Android: OAuth redirect flow
       await signInWithSocial("apple");
