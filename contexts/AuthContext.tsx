@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { Platform } from "react-native";
 import * as Linking from "expo-linking";
+import { router } from "expo-router";
 import { authClient, setBearerToken, clearAuthTokens } from "@/lib/auth";
 import { nativeAppleSignIn } from "@/lib/appleAuth";
 
@@ -14,12 +15,13 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isReady: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, name?: string) => Promise<void>;
   signInWithApple: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  fetchUser: () => Promise<void>;
+  fetchUser: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,10 +72,11 @@ function openOAuthPopup(provider: string): Promise<string> {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const hasInitialized = useRef(false);
+  const [loading, setLoading] = useState(true);   // true only during initial session check
+  const [isReady, setIsReady] = useState(false);  // true once initial check is done
 
   useEffect(() => {
+    // Initial session check on mount
     fetchUser();
 
     const subscription = Linking.addEventListener("url", (event) => {
@@ -82,8 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isAuthCallback) {
         console.log("[Auth] Auth callback deep link received, refreshing user session:", url);
         fetchUser();
-      } else {
-        console.log("[Auth] Deep link received (non-auth), skipping session refresh:", url);
       }
     });
 
@@ -97,36 +98,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const fetchUser = async () => {
+  const fetchUser = async (): Promise<User | null> => {
     try {
-      if (!hasInitialized.current) {
-        setLoading(true);
-      }
       const session = await authClient.getSession();
       if (session?.data?.user) {
-        setUser(session.data.user as User);
+        const u = session.data.user as User;
+        setUser(u);
         if (session.data.session?.token) {
           await setBearerToken(session.data.session.token);
         }
+        return u;
       } else {
         setUser(null);
         await clearAuthTokens();
+        return null;
       }
     } catch (error) {
       console.error("Failed to fetch user:", error);
       setUser(null);
+      return null;
     } finally {
-      if (!hasInitialized.current) {
-        hasInitialized.current = true;
-        setLoading(false);
-      }
+      // Always mark as ready and not loading after first call
+      setLoading(false);
+      setIsReady(true);
     }
   };
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
+      console.log("[Auth] Attempting email sign in");
       await authClient.signIn.email({ email, password });
-      await fetchUser();
+      const u = await fetchUser();
+      if (u) {
+        console.log("[Auth] Sign in successful, navigating to home");
+        router.replace("/(tabs)/(home)");
+      } else {
+        throw new Error("Sign in succeeded but session could not be retrieved.");
+      }
     } catch (error) {
       console.error("Email sign in failed:", error);
       throw error;
@@ -135,8 +143,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUpWithEmail = async (email: string, password: string, name?: string) => {
     try {
+      console.log("[Auth] Attempting email sign up");
       await authClient.signUp.email({ email, password, name });
-      await fetchUser();
+      const u = await fetchUser();
+      if (u) {
+        console.log("[Auth] Sign up successful, navigating to home");
+        router.replace("/(tabs)/(home)");
+      } else {
+        throw new Error("Sign up succeeded but session could not be retrieved.");
+      }
     } catch (error) {
       console.error("Email sign up failed:", error);
       throw error;
@@ -147,7 +162,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (Platform.OS === "web") {
       const token = await openOAuthPopup(provider);
       await setBearerToken(token);
-      await fetchUser();
+      const u = await fetchUser();
+      if (u) router.replace("/(tabs)/(home)");
     } else {
       const { error } = await authClient.signIn.social({
         provider,
@@ -156,7 +172,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         throw new Error(error.message || "Social sign in failed");
       }
-      await fetchUser();
+      // For native OAuth, the deep link listener will call fetchUser
+      // But also try immediately in case the session is already set
+      const u = await fetchUser();
+      if (u) router.replace("/(tabs)/(home)");
     }
   };
 
@@ -173,7 +192,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         throw new Error(error.message || "Apple sign in failed");
       }
-      await fetchUser();
+      const u = await fetchUser();
+      if (u) {
+        console.log("[Auth] Apple sign in successful, navigating to home");
+        router.replace("/(tabs)/(home)");
+      }
     } else {
       // Web / Android: OAuth redirect flow
       await signInWithSocial("apple");
@@ -181,6 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    console.log("[Auth] Signing out");
     try {
       await authClient.signOut();
     } catch (error) {
@@ -188,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       await clearAuthTokens();
+      router.replace("/auth-screen");
     }
   };
 
@@ -196,6 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         loading,
+        isReady,
         signInWithEmail,
         signUpWithEmail,
         signInWithApple,

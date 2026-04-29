@@ -141,27 +141,28 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
 }
 
 function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplashDone: () => void }) {
-  const { user, loading } = useAuth();
+  const { user, loading, isReady } = useAuth();
   const segments = useSegments();
 
   // Show red placeholder while splash is playing OR while auth is still loading
   const showPlaceholder = showSplash || loading;
 
-  // Once auth resolves, redirect unauthenticated users to auth and authenticated users away from public routes
+  // Safety net: only runs on initial load (when isReady first becomes true)
+  // Handles: already-logged-in user opening app, or unauthenticated user on protected route
   useEffect(() => {
-    if (loading || showSplash) return;
+    if (!isReady || showSplash) return;
 
     const currentRoute = segments[0] ?? '';
     const isPublicRoute = PUBLIC_ROUTES.includes(currentRoute);
 
     if (user && isPublicRoute) {
-      console.log('[AppContent] User authenticated on public route, redirecting to home');
+      console.log('[AppContent] Already logged in, redirecting to home');
       router.replace('/(tabs)/(home)');
     } else if (!user && !isPublicRoute) {
-      console.log('[AppContent] No user on protected route, redirecting to auth-screen');
+      console.log('[AppContent] No session on protected route, redirecting to auth');
       router.replace('/auth-screen');
     }
-  }, [user, loading, showSplash]); // segments intentionally excluded from deps
+  }, [isReady, showSplash]); // Only run when isReady or showSplash changes — NOT on user changes
 
   return (
     <>
