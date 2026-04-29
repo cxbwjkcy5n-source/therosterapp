@@ -4,7 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 // Must be a plain string — never a URL object — iOS NSURLSession requires it
-const API_URL = "https://9myrrmhqxu9vbzz3ryr5x5yxsyzdrn52.app.specular.dev";
+const API_URL = "https://6bz926emjyxpts6ba6j8qxa98wkrczjv.app.specular.dev";
 
 export const BEARER_TOKEN_KEY = "roster_bearer_token";
 
