@@ -166,9 +166,8 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
 
   return (
     <>
-      {!showPlaceholder && (
-        <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-          <Stack screenOptions={{ headerShown: false, headerBackTitle: '' }}>
+      <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+        <Stack screenOptions={{ headerShown: false, headerBackTitle: '' }}>
             <Stack.Screen name="auth-screen" options={{ headerShown: false }} />
             <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
             <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
@@ -326,10 +325,10 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
               }}
             />
           </Stack>
-        </View>
+      </View>
+      {showPlaceholder && (
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#E53935', zIndex: 998 }} />
       )}
-      {showPlaceholder && <View style={{ flex: 1, backgroundColor: '#E53935' }} />}
-
       {showSplash && (
         <CustomSplash onDone={onSplashDone} />
       )}
