@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Send, MessageCircle } from 'lucide-react-native';
+import { Stack } from 'expo-router';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet, apiPost } from '@/utils/api';
@@ -201,6 +202,14 @@ export default function CoachScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
+      <Stack.Screen options={{
+        title: 'Dating Coach',
+        headerShown: true,
+        headerStyle: { backgroundColor: COLORS.background },
+        headerTintColor: COLORS.text,
+        headerShadowVisible: false,
+        headerBackTitle: '',
+      }} />
       {initialLoading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={COLORS.primary} />

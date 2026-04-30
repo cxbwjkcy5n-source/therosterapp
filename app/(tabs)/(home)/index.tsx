@@ -356,7 +356,7 @@ export default function RosterScreen() {
         apiGet<any>('/api/profile')
           .then((res) => {
             const profileData = res?.profile ?? {};
-            const photoUrl = profileData?.photoUrl ?? null;
+            const photoUrl = profileData?.photoUrl ?? profileData?.photo_url ?? null;
             console.log('[Roster] Profile photoUrl length:', photoUrl?.length ?? 0);
             setProfilePhotoUrl(photoUrl);
           })

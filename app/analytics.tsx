@@ -9,6 +9,7 @@ import {
   ImageSourcePropType,
   Dimensions,
 } from 'react-native';
+import { Stack } from 'expo-router';
 import { COLORS } from '@/constants/Colors';
 import { apiGet } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -212,7 +213,7 @@ function computePeopleStats(persons: Person[]): PeopleStats {
   };
 }
 
-function computeDateStats(dates: DateEntry[], persons: Person[]): DateStats {
+function computeDateStats(dates: DateEntry[], persons: Person[], summary?: { want_another_date_count?: number; completed_dates_count?: number } | null): DateStats {
   const now = new Date();
   const upcoming = dates.filter((d) => {
     if (!d.date_time) return false;
@@ -225,8 +226,8 @@ function computeDateStats(dates: DateEntry[], persons: Person[]): DateStats {
   const ratings = completed.map((d) => Number(d.rating)).filter((r) => !isNaN(r) && r > 0);
   const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
 
-  const wantAnotherTotal = completed.length;
-  const wantAnotherCount = completed.filter((d) => {
+  const wantAnotherTotal = summary?.completed_dates_count ?? completed.length;
+  const wantAnotherCount = summary?.want_another_date_count ?? completed.filter((d) => {
     const val = (d as any).want_another_date;
     return val === true || val === 1 || val === 'true' || val === '1';
   }).length;
@@ -852,10 +853,17 @@ function DatingTab({ ds }: { ds: DateStats }) {
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
+interface AnalyticsSummary {
+  want_another_date_count: number;
+  completed_dates_count: number;
+  total_dates: number;
+}
+
 export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
   const [persons, setPersons] = useState<Person[]>([]);
   const [dates, setDates] = useState<DateEntry[]>([]);
+  const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'people' | 'dating'>('people');
@@ -864,21 +872,23 @@ export default function AnalyticsScreen() {
   const loadData = useCallback(() => {
     setLoading(true);
     setError(null);
-    console.log('[Analytics] Fetching /api/persons (active+benched) and /api/dates in parallel');
+    console.log('[Analytics] Fetching /api/persons (active+benched), /api/dates, and /api/analytics in parallel');
     Promise.all([
       apiGet<{ persons: Person[] }>('/api/persons'),
       apiGet<{ persons: Person[] }>('/api/persons?benched=true'),
       apiGet<{ dates: DateEntry[] }>('/api/dates'),
+      apiGet<any>('/api/analytics'),
     ])
-      .then(([activeRes, benchedRes, datesRes]) => {
+      .then(([activeRes, benchedRes, datesRes, analyticsRes]) => {
         const active = activeRes.persons || [];
         const benched = benchedRes.persons || [];
         const seen = new Set(active.map((p) => p.id));
         const allPersons = [...active, ...benched.filter((p) => !seen.has(p.id))];
         const d = datesRes.dates || [];
-        console.log('[Analytics] Data loaded — active:', active.length, 'benched:', benched.length, 'total:', allPersons.length, 'dates:', d.length);
+        console.log('[Analytics] Data loaded — active:', active.length, 'benched:', benched.length, 'total:', allPersons.length, 'dates:', d.length, 'summary:', analyticsRes);
         setPersons(allPersons);
         setDates(d);
+        setAnalyticsSummary(analyticsRes ?? null);
         fadeAnim.setValue(0);
         Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
       })
@@ -896,6 +906,14 @@ export default function AnalyticsScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+        <Stack.Screen options={{
+          title: 'Insights',
+          headerShown: true,
+          headerStyle: { backgroundColor: '#FFFFFF' },
+          headerTintColor: COLORS.text,
+          headerShadowVisible: false,
+          headerBackTitle: '',
+        }} />
         <ActivityIndicator color={COLORS.primary} size="large" />
       </View>
     );
@@ -904,6 +922,14 @@ export default function AnalyticsScreen() {
   if (error) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <Stack.Screen options={{
+          title: 'Insights',
+          headerShown: true,
+          headerStyle: { backgroundColor: '#FFFFFF' },
+          headerTintColor: COLORS.text,
+          headerShadowVisible: false,
+          headerBackTitle: '',
+        }} />
         <View
           style={{
             backgroundColor: COLORS.dangerMuted,
@@ -941,10 +967,18 @@ export default function AnalyticsScreen() {
   }
 
   const ps = computePeopleStats(persons);
-  const ds = computeDateStats(dates, persons);
+  const ds = computeDateStats(dates, persons, analyticsSummary);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      <Stack.Screen options={{
+        title: 'Insights',
+        headerShown: true,
+        headerStyle: { backgroundColor: '#FFFFFF' },
+        headerTintColor: COLORS.text,
+        headerShadowVisible: false,
+        headerBackTitle: '',
+      }} />
       {/* Tab pills */}
       <View style={{ backgroundColor: '#FFFFFF', paddingTop: 14 }}>
         <TabPills active={activeTab} onChange={setActiveTab} />
