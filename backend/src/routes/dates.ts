@@ -366,7 +366,7 @@ export function registerDatesRoutes(app: App) {
             rating: { type: 'integer', minimum: 1, maximum: 5 },
             went_well: { type: 'string' },
             went_poorly: { type: 'string' },
-            want_another_date: { type: 'boolean' },
+            want_another_date: { type: ['boolean', 'string'], description: 'Accept boolean or string "true"/"false"' },
             status: { type: 'string', enum: ['planned', 'confirmed', 'completed', 'cancelled'] },
           },
         },
@@ -396,7 +396,7 @@ export function registerDatesRoutes(app: App) {
           rating?: number;
           went_well?: string;
           went_poorly?: string;
-          want_another_date?: boolean;
+          want_another_date?: boolean | string;
           status?: string;
         };
       }>,
@@ -426,7 +426,14 @@ export function registerDatesRoutes(app: App) {
       if (request.body.rating !== undefined) updateData.rating = request.body.rating;
       if (request.body.went_well !== undefined) updateData.wentWell = request.body.went_well;
       if (request.body.went_poorly !== undefined) updateData.wentPoorly = request.body.went_poorly;
-      if (request.body.want_another_date !== undefined) updateData.wantAnotherDate = request.body.want_another_date;
+      if (request.body.want_another_date !== undefined) {
+        // Convert string boolean values to proper booleans
+        let boolValue: boolean = request.body.want_another_date as any;
+        if (typeof boolValue === 'string') {
+          boolValue = (boolValue as string).toLowerCase() === 'true';
+        }
+        updateData.wantAnotherDate = boolValue;
+      }
 
       // Set status to completed if not already set and review is being added
       if (request.body.status !== undefined) {
