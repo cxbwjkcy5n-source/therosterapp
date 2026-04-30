@@ -43,7 +43,10 @@ import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPick
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
   if (!source) return null;
-  if (typeof source === 'string') return { uri: source };
+  if (typeof source === 'string') {
+    if (source.length < 10) return null;
+    return { uri: source };
+  }
   return source as ImageSourcePropType;
 }
 
@@ -251,7 +254,7 @@ export default function ProfileScreen() {
         }),
         apiGet<{ notifications_enabled: boolean; dark_mode_enabled: boolean }>('/api/preferences').catch(() => ({ notifications_enabled: true, dark_mode_enabled: false })),
       ]).then(([res, analyticsData, prefs]) => {
-        const profileData: UserProfile = (res as any).profile ?? res;
+        const profileData: UserProfile = (res as any)?.profile ?? {};
         console.log('[Profile] Profile, analytics, and preferences loaded');
         setProfile(profileData);
         setEditData(profileData);
@@ -278,14 +281,16 @@ export default function ProfileScreen() {
 
       // Upload photo first, then include the returned URL in the PUT payload
       if (newPhotoBase64) {
-        console.log('[Profile] Uploading photo via POST /api/upload-photo');
+        console.log('[Profile] Uploading photo, base64 length:', newPhotoBase64.length);
         try {
           const uploadRes = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64: newPhotoBase64 });
-          console.log('[Profile] Photo upload succeeded, url:', uploadRes.photo_url);
+          console.log('[Profile] Upload succeeded, photo_url length:', uploadRes.photo_url?.length ?? 0);
           dataToSave.photo_url = uploadRes.photo_url;
         } catch (uploadErr: any) {
           console.error('[Profile] Photo upload failed:', uploadErr?.message);
-          Alert.alert('Photo upload failed', uploadErr?.message || 'Could not upload photo. Other profile changes will still be saved.');
+          Alert.alert('Photo upload failed', uploadErr?.message || 'Could not upload photo.');
+          setSaving(false);
+          return;
         }
       }
 
@@ -293,7 +298,7 @@ export default function ProfileScreen() {
 
       console.log('[Profile] PUT succeeded, re-fetching profile');
       const res = await apiGet<any>('/api/profile');
-      const saved: UserProfile = (res as any).profile ?? res;
+      const saved: UserProfile = (res as any)?.profile ?? {};
       console.log('[Profile] Profile saved and re-fetched successfully');
       setProfile(saved);
       setEditData(saved);
@@ -317,17 +322,17 @@ export default function ProfileScreen() {
   const pickPhoto = async () => {
     console.log('[Profile] Photo picker opened');
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.7,
       base64: true,
     });
     if (!result.canceled && result.assets[0]) {
-      console.log('[Profile] New photo selected');
-      setNewPhotoBase64(result.assets[0].base64 ?? null);
-      // Preview using local file URI for immediate display
-      setEditData((prev) => ({ ...prev, photo_url: result.assets[0].uri }));
+      const asset = result.assets[0];
+      console.log('[Profile] Photo selected, base64 length:', asset.base64?.length ?? 0, 'uri:', asset.uri);
+      setNewPhotoBase64(asset.base64 ?? null);
+      setEditData((prev) => ({ ...prev, photo_url: asset.uri }));
     }
   };
 

@@ -45,7 +45,10 @@ interface Person {
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
   if (!source) return null;
-  if (typeof source === 'string') return { uri: source };
+  if (typeof source === 'string') {
+    if (source.length < 10) return null;
+    return { uri: source };
+  }
   return source as ImageSourcePropType;
 }
 
@@ -352,9 +355,9 @@ export default function RosterScreen() {
         console.log('[Roster] Fetching profile photo from /api/profile');
         apiGet<any>('/api/profile')
           .then((res) => {
-            const profileData = res?.profile ?? res;
+            const profileData = res?.profile ?? {};
             const photoUrl = profileData?.photo_url ?? null;
-            console.log('[Roster] Profile photo_url:', photoUrl);
+            console.log('[Roster] Profile photo_url length:', photoUrl?.length ?? 0);
             setProfilePhotoUrl(photoUrl);
           })
           .catch((e) => {
