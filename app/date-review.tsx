@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
 import { Star } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
@@ -112,6 +112,14 @@ export default function DateReviewScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+      <Stack.Screen options={{
+        title: 'Review Date',
+        headerShown: true,
+        headerStyle: { backgroundColor: COLORS.background },
+        headerTintColor: COLORS.text,
+        headerShadowVisible: false,
+        headerBackTitle: '',
+      }} />
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}

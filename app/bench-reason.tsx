@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { X } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiPost } from '@/utils/api';
@@ -43,9 +44,27 @@ export default function BenchReasonScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      {/* Drag handle */}
-      <View style={{ alignItems: 'center', marginTop: 12, marginBottom: 4 }}>
-        <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CCCCCC' }} />
+      {/* Drag handle row with close button */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 4, paddingHorizontal: 16 }}>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CCCCCC' }} />
+        </View>
+        <AnimatedPressable
+          onPress={() => {
+            console.log('[BenchReason] Close pressed');
+            router.back();
+          }}
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: COLORS.surface,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <X size={18} color={COLORS.textSecondary} />
+        </AnimatedPressable>
       </View>
       <ScrollView
         contentContainerStyle={{ padding: 24, paddingBottom: 8 }}
