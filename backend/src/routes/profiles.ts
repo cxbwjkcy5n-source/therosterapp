@@ -7,6 +7,7 @@ import { session as sessionTable, account as accountTable, user as userTable } f
 interface ProfileUpdateInput {
   display_name?: string;
   photo_url?: string;
+  photoUrl?: string;
   age?: number;
   birthday?: string;
   zodiac?: string;
@@ -25,6 +26,37 @@ interface ProfileUpdateInput {
   red_flags?: string[];
   attractiveness_self?: number;
   communication_self?: number;
+}
+
+// Helper function to normalize profile to camelCase (Drizzle already returns camelCase)
+function convertProfileToCamelCase(profile: any) {
+  if (!profile) return null;
+  return {
+    id: profile.id,
+    userId: profile.userId,
+    displayName: profile.displayName,
+    photoUrl: profile.photoUrl,
+    age: profile.age,
+    birthday: profile.birthday,
+    zodiac: profile.zodiac,
+    location: profile.location,
+    occupation: profile.occupation,
+    bio: profile.bio,
+    favoriteFoods: profile.favoriteFoods,
+    hobbies: profile.hobbies,
+    whatIBring: profile.whatIBring,
+    thingsToWorkOn: profile.thingsToWorkOn,
+    greenFlags: profile.greenFlags,
+    redFlags: profile.redFlags,
+    attractivenessSelf: profile.attractivenessSelf,
+    communicationSelf: profile.communicationSelf,
+    instagram: profile.instagram,
+    tiktok: profile.tiktok,
+    twitterX: profile.twitterX,
+    phoneNumber: profile.phoneNumber,
+    createdAt: profile.createdAt,
+    updatedAt: profile.updatedAt,
+  };
 }
 
 export function registerProfilesRoutes(app: App) {
@@ -88,7 +120,7 @@ export function registerProfilesRoutes(app: App) {
         where: eq(schema.userProfiles.userId, userId),
       });
 
-      return { profile: userProfile || null };
+      return { profile: convertProfileToCamelCase(userProfile) };
     }
   );
 
@@ -187,6 +219,7 @@ export function registerProfilesRoutes(app: App) {
 
       if (request.body.display_name !== undefined) profileUpdateData.displayName = request.body.display_name;
       if (request.body.photo_url !== undefined) profileUpdateData.photoUrl = request.body.photo_url;
+      if (request.body.photoUrl !== undefined) profileUpdateData.photoUrl = request.body.photoUrl;
       if (request.body.age !== undefined) profileUpdateData.age = request.body.age;
       if (request.body.birthday !== undefined) profileUpdateData.birthday = request.body.birthday;
       if (request.body.zodiac !== undefined) profileUpdateData.zodiac = request.body.zodiac;
@@ -224,7 +257,7 @@ export function registerProfilesRoutes(app: App) {
         where: eq(schema.userProfiles.userId, userId),
       });
 
-      return { profile: userProfile };
+      return { profile: convertProfileToCamelCase(userProfile) };
     }
   );
 
