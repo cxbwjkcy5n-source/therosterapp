@@ -82,20 +82,26 @@ const ZODIAC_SIGNS = [
 ];
 
 interface UserProfile {
-  display_name?: string;
+  displayName?: string;
   age?: number;
   birthday?: string;
   zodiac?: string;
   location?: string;
   occupation?: string;
   bio?: string;
-  phone_number?: string;
+  phoneNumber?: string;
   instagram?: string;
   tiktok?: string;
-  twitter_x?: string;
-  favorite_foods?: string[];
+  twitterX?: string;
+  favoriteFoods?: string[];
   hobbies?: string[];
-  photo_url?: string;
+  photoUrl?: string;
+  whatIBring?: string[];
+  thingsToWorkOn?: string[];
+  greenFlags?: string[];
+  redFlags?: string[];
+  attractivenessSelf?: number;
+  communicationSelf?: number;
 }
 
 interface Analytics {
@@ -285,7 +291,7 @@ export default function ProfileScreen() {
         try {
           const uploadRes = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64: newPhotoBase64 });
           console.log('[Profile] Upload succeeded, photo_url length:', uploadRes.photo_url?.length ?? 0);
-          dataToSave.photo_url = uploadRes.photo_url;
+          dataToSave.photoUrl = uploadRes.photo_url;
         } catch (uploadErr: any) {
           console.error('[Profile] Photo upload failed:', uploadErr?.message);
           Alert.alert('Photo upload failed', uploadErr?.message || 'Could not upload photo.');
@@ -332,7 +338,7 @@ export default function ProfileScreen() {
       const asset = result.assets[0];
       console.log('[Profile] Photo selected, base64 length:', asset.base64?.length ?? 0, 'uri:', asset.uri);
       setNewPhotoBase64(asset.base64 ?? null);
-      setEditData((prev) => ({ ...prev, photo_url: asset.uri }));
+      setEditData((prev) => ({ ...prev, photoUrl: asset.uri }));
     }
   };
 
@@ -387,8 +393,8 @@ export default function ProfileScreen() {
     setEditData((prev) => ({ ...prev, [key]: value }));
 
   const displayData = editing ? editData : profile;
-  const photoSource = displayData.photo_url || null;
-  const initials = getInitials(displayData.display_name || user?.name);
+  const photoSource = displayData.photoUrl || null;
+  const initials = getInitials(displayData.displayName || user?.name);
   const totalActive = analytics.total_active ?? 0;
   const totalBenched = analytics.total_benched ?? 0;
   const totalDates = analytics.total_dates ?? 0;
@@ -517,8 +523,8 @@ export default function ProfileScreen() {
 
           {editing ? (
             <TextInput
-              value={editData.display_name || ''}
-              onChangeText={(v) => update('display_name', v)}
+              value={editData.displayName || ''}
+              onChangeText={(v) => update('displayName', v)}
               placeholder={user?.name || 'Display name'}
               placeholderTextColor={COLORS.textTertiary}
               style={{
@@ -538,7 +544,7 @@ export default function ProfileScreen() {
             />
           ) : (
             <Text style={{ fontSize: 22, fontWeight: '700', color: COLORS.text, marginBottom: 4 }}>
-              {displayData.display_name || user?.name || 'Anonymous'}
+              {displayData.displayName || user?.name || 'Anonymous'}
             </Text>
           )}
           <Text style={{ fontSize: 14, color: COLORS.textSecondary }}>{user?.email || ''}</Text>
@@ -678,17 +684,17 @@ export default function ProfileScreen() {
             <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>Contact & Social</Text>
             {editing ? (
               <>
-                <FormField label="Phone Number" value={editData.phone_number || ''} onChangeText={(v) => update('phone_number', v)} placeholder="+1 (555) 000-0000" keyboardType="phone-pad" autoCapitalize="none" />
+                <FormField label="Phone Number" value={editData.phoneNumber || ''} onChangeText={(v) => update('phoneNumber', v)} placeholder="+1 (555) 000-0000" keyboardType="phone-pad" autoCapitalize="none" />
                 <FormField label="Instagram" value={editData.instagram || ''} onChangeText={(v) => update('instagram', v)} placeholder="@handle" autoCapitalize="none" />
                 <FormField label="TikTok" value={editData.tiktok || ''} onChangeText={(v) => update('tiktok', v)} placeholder="@handle" autoCapitalize="none" />
-                <FormField label="X / Twitter" value={editData.twitter_x || ''} onChangeText={(v) => update('twitter_x', v)} placeholder="@handle" autoCapitalize="none" />
+                <FormField label="X / Twitter" value={editData.twitterX || ''} onChangeText={(v) => update('twitterX', v)} placeholder="@handle" autoCapitalize="none" />
               </>
             ) : (
               <View style={{ gap: 10 }}>
-                {displayData.phone_number ? (
+                {displayData.phoneNumber ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                     <Phone size={16} color={COLORS.textSecondary} />
-                    <Text style={{ color: COLORS.text, fontSize: 15 }}>{displayData.phone_number}</Text>
+                    <Text style={{ color: COLORS.text, fontSize: 15 }}>{displayData.phoneNumber}</Text>
                   </View>
                 ) : null}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -703,12 +709,12 @@ export default function ProfileScreen() {
                       <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>TikTok @{displayData.tiktok}</Text>
                     </View>
                   ) : null}
-                  {displayData.twitter_x ? (
+                  {displayData.twitterX ? (
                     <View style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: COLORS.border }}>
-                      <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>X @{displayData.twitter_x}</Text>
+                      <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>X @{displayData.twitterX}</Text>
                     </View>
                   ) : null}
-                  {!displayData.phone_number && !displayData.instagram && !displayData.tiktok && !displayData.twitter_x && (
+                  {!displayData.phoneNumber && !displayData.instagram && !displayData.tiktok && !displayData.twitterX && (
                     <Text style={{ color: COLORS.textTertiary, fontSize: 14, fontStyle: 'italic' }}>No contact info yet.</Text>
                   )}
                 </View>
@@ -732,9 +738,9 @@ export default function ProfileScreen() {
             <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>Interests & Flags</Text>
             <TagInput
               label="Favorite Foods"
-              tags={displayData.favorite_foods || []}
-              onAdd={(t) => update('favorite_foods', [...(editData.favorite_foods || []), t])}
-              onRemove={(t) => update('favorite_foods', (editData.favorite_foods || []).filter((f) => f !== t))}
+              tags={displayData.favoriteFoods || []}
+              onAdd={(t) => update('favoriteFoods', [...(editData.favoriteFoods || []), t])}
+              onRemove={(t) => update('favoriteFoods', (editData.favoriteFoods || []).filter((f) => f !== t))}
               color={COLORS.accent}
               editing={editing}
             />
