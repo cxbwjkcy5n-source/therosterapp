@@ -68,7 +68,10 @@ function getZodiacFromBirthday(mmdd: string): string {
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
   if (!source) return null;
-  if (typeof source === 'string') return { uri: source };
+  if (typeof source === 'string') {
+    if (source.length < 10) return null;
+    return { uri: source };
+  }
   return source as ImageSourcePropType;
 }
 
@@ -1026,7 +1029,7 @@ export default function PersonDetailScreen() {
   const pickPhoto = async () => {
     console.log('[PersonDetail] Photo picker opened');
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'] as any,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -2025,7 +2028,7 @@ export default function PersonDetailScreen() {
         {/* ── Profile Card ─────────────────────────────────────────────────── */}
         <View style={{
           backgroundColor: '#FFFFFF',
-          marginHorizontal: 16, marginTop: 16,
+          marginHorizontal: 16, marginTop: 8,
           borderRadius: 16, padding: 20,
           ...CARD_SHADOW,
         }}>
@@ -2038,9 +2041,9 @@ export default function PersonDetailScreen() {
               backgroundColor: RED,
               alignItems: 'center', justifyContent: 'center',
             }}>
-              {hasPhoto ? (
+              {hasPhoto && resolveImageSource(photoSource) ? (
                 <Image
-                  source={resolveImageSource(photoSource)}
+                  source={resolveImageSource(photoSource)!}
                   style={{ width: '100%', height: '100%' }}
                   contentFit="cover"
                 />
@@ -2274,43 +2277,47 @@ export default function PersonDetailScreen() {
         )}
 
         {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
-        <View style={{
-          backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 14,
-          borderRadius: 16, padding: 6, flexDirection: 'row', ...CARD_SHADOW,
-        }}>
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <Pressable
-                key={tab}
-                onPress={() => {
-                  console.log('[PersonDetail] Tab selected:', tab);
-                  setActiveTab(tab);
-                }}
-                style={{
-                  flex: 1, height: 44, borderRadius: 20,
-                  backgroundColor: isActive ? RED : 'transparent',
-                  alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <Text style={{
-                  color: isActive ? '#FFFFFF' : '#888888',
-                  fontSize: 14, fontWeight: isActive ? '600' : '400',
-                }}>
-                  {tab}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        {!editing && (
+          <View style={{
+            backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 14,
+            borderRadius: 16, padding: 6, flexDirection: 'row', ...CARD_SHADOW,
+          }}>
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <Pressable
+                  key={tab}
+                  onPress={() => {
+                    console.log('[PersonDetail] Tab selected:', tab);
+                    setActiveTab(tab);
+                  }}
+                  style={{
+                    flex: 1, height: 44, borderRadius: 20,
+                    backgroundColor: isActive ? RED : 'transparent',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{
+                    color: isActive ? '#FFFFFF' : '#888888',
+                    fontSize: 14, fontWeight: isActive ? '600' : '400',
+                  }}>
+                    {tab}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
 
         {/* ── Tab Content ─────────────────────────────────────────────────── */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 }}>
-          {activeTab === 'Overview' && renderOverviewTab()}
-          {activeTab === 'Dates' && renderDatesTab()}
-          {activeTab === 'Notes' && renderNotesTab()}
-          {activeTab === 'Reminders' && renderRemindersTab()}
-        </View>
+        {!editing && (
+          <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 }}>
+            {activeTab === 'Overview' && renderOverviewTab()}
+            {activeTab === 'Dates' && renderDatesTab()}
+            {activeTab === 'Notes' && renderNotesTab()}
+            {activeTab === 'Reminders' && renderRemindersTab()}
+          </View>
+        )}
       </ScrollView>
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}

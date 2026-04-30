@@ -947,20 +947,6 @@ export default function AnalyticsScreen() {
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       <Stack.Screen options={{ title: 'Insights', headerBackTitle: '' }} />
 
-      {/* Red section header */}
-      <View
-        style={{
-          backgroundColor: COLORS.primary,
-          paddingTop: insets.top > 0 ? 0 : 12,
-          paddingBottom: 16,
-          paddingHorizontal: H_PAD,
-        }}
-      >
-        <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: -0.3 }}>
-          Insights
-        </Text>
-      </View>
-
       {/* Tab pills */}
       <View style={{ backgroundColor: '#FFFFFF', paddingTop: 14 }}>
         <TabPills active={activeTab} onChange={setActiveTab} />
