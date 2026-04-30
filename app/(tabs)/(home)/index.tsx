@@ -457,12 +457,14 @@ export default function RosterScreen() {
           >
             {profilePhotoUrl && resolveImageSource(profilePhotoUrl) ? (
               <Image
+                key={profilePhotoUrl}
                 source={resolveImageSource(profilePhotoUrl)!}
                 style={{ width: 56, height: 56 }}
                 contentFit="cover"
               />
             ) : user?.image && resolveImageSource(user.image) ? (
               <Image
+                key={user.image}
                 source={resolveImageSource(user.image)!}
                 style={{ width: 56, height: 56 }}
                 contentFit="cover"

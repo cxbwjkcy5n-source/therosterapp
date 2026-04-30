@@ -9,7 +9,6 @@ import {
   ImageSourcePropType,
   Dimensions,
 } from 'react-native';
-import { Stack } from 'expo-router';
 import { COLORS } from '@/constants/Colors';
 import { apiGet } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -227,7 +226,10 @@ function computeDateStats(dates: DateEntry[], persons: Person[]): DateStats {
   const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
 
   const wantAnotherTotal = completed.length;
-  const wantAnotherCount = completed.filter((d) => d.want_another_date === true || (d.want_another_date as any) === 1).length;
+  const wantAnotherCount = completed.filter((d) => {
+    const val = (d as any).want_another_date;
+    return val === true || val === 1 || val === 'true' || val === '1';
+  }).length;
 
   const locations = dates.map((d) => d.location).filter((l): l is string => !!l && l.trim() !== '');
   const mostVisitedLocation = topN(locations, 1)[0]?.label || '—';
@@ -894,7 +896,6 @@ export default function AnalyticsScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
-        <Stack.Screen options={{ title: 'Insights', headerBackTitle: '' }} />
         <ActivityIndicator color={COLORS.primary} size="large" />
       </View>
     );
@@ -903,7 +904,6 @@ export default function AnalyticsScreen() {
   if (error) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <Stack.Screen options={{ title: 'Insights', headerBackTitle: '' }} />
         <View
           style={{
             backgroundColor: COLORS.dangerMuted,
@@ -945,8 +945,6 @@ export default function AnalyticsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      <Stack.Screen options={{ title: 'Insights', headerBackTitle: '' }} />
-
       {/* Tab pills */}
       <View style={{ backgroundColor: '#FFFFFF', paddingTop: 14 }}>
         <TabPills active={activeTab} onChange={setActiveTab} />
