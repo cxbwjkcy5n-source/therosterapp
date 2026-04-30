@@ -31,6 +31,13 @@ app.withAuth();
 // Enable file storage for uploads
 app.withStorage();
 
+// Set global body size limit to 10MB for large payloads (base64 photos, data URIs, etc.)
+await app.fastify.register(async (fastify) => {
+  fastify.addContentTypeParser('application/json', { bodyLimit: 10 * 1024 * 1024 }, async (request, body) => {
+    return JSON.parse(body.toString());
+  });
+});
+
 // Register routes - IMPORTANT: Always use registration functions to avoid circular dependency issues
 registerPersonsRoutes(app);
 registerDatesRoutes(app);

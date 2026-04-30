@@ -1573,7 +1573,8 @@ describe("API Integration Tests", () => {
     const res = await authenticatedApi("/api/profile", authToken);
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.userId).toBeDefined();
+    expect(data.profile).toBeDefined();
+    expect(data.profile.userId).toBeDefined();
   });
 
   test("Update user profile with partial data", async () => {
@@ -1587,7 +1588,8 @@ describe("API Integration Tests", () => {
     });
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.id !== undefined || data.userId !== undefined).toBe(true);
+    expect(data.profile).toBeDefined();
+    expect(data.profile.id !== undefined || data.profile.userId !== undefined).toBe(true);
   });
 
   test("Update user profile with all fields", async () => {
@@ -1617,7 +1619,8 @@ describe("API Integration Tests", () => {
     });
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.id !== undefined || data.userId !== undefined).toBe(true);
+    expect(data.profile).toBeDefined();
+    expect(data.profile.id !== undefined || data.profile.userId !== undefined).toBe(true);
   });
 
   // ========== Preferences Tests ==========

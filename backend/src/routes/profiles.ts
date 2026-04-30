@@ -41,30 +41,35 @@ export function registerProfilesRoutes(app: App) {
           200: {
             type: 'object',
             properties: {
-              id: { type: ['string', 'null'] },
-              userId: { type: ['string', 'null'] },
-              displayName: { type: ['string', 'null'] },
-              photoUrl: { type: ['string', 'null'] },
-              age: { type: ['integer', 'null'] },
-              birthday: { type: ['string', 'null'] },
-              zodiac: { type: ['string', 'null'] },
-              location: { type: ['string', 'null'] },
-              occupation: { type: ['string', 'null'] },
-              bio: { type: ['string', 'null'] },
-              phoneNumber: { type: ['string', 'null'] },
-              instagram: { type: ['string', 'null'] },
-              tiktok: { type: ['string', 'null'] },
-              twitterX: { type: ['string', 'null'] },
-              favoriteFoods: { type: ['array', 'null'], items: { type: 'string' } },
-              hobbies: { type: ['array', 'null'], items: { type: 'string' } },
-              whatIBring: { type: ['array', 'null'], items: { type: 'string' } },
-              thingsToWorkOn: { type: ['array', 'null'], items: { type: 'string' } },
-              greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
-              redFlags: { type: ['array', 'null'], items: { type: 'string' } },
-              attractivenessSelf: { type: ['integer', 'null'] },
-              communicationSelf: { type: ['integer', 'null'] },
-              createdAt: { type: ['string', 'null'], format: 'date-time' },
-              updatedAt: { type: ['string', 'null'], format: 'date-time' },
+              profile: {
+                type: ['object', 'null'],
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  userId: { type: 'string' },
+                  displayName: { type: ['string', 'null'] },
+                  photoUrl: { type: ['string', 'null'] },
+                  age: { type: ['integer', 'null'] },
+                  birthday: { type: ['string', 'null'] },
+                  zodiac: { type: ['string', 'null'] },
+                  location: { type: ['string', 'null'] },
+                  occupation: { type: ['string', 'null'] },
+                  bio: { type: ['string', 'null'] },
+                  phoneNumber: { type: ['string', 'null'] },
+                  instagram: { type: ['string', 'null'] },
+                  tiktok: { type: ['string', 'null'] },
+                  twitterX: { type: ['string', 'null'] },
+                  favoriteFoods: { type: ['array', 'null'], items: { type: 'string' } },
+                  hobbies: { type: ['array', 'null'], items: { type: 'string' } },
+                  whatIBring: { type: ['array', 'null'], items: { type: 'string' } },
+                  thingsToWorkOn: { type: ['array', 'null'], items: { type: 'string' } },
+                  greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
+                  redFlags: { type: ['array', 'null'], items: { type: 'string' } },
+                  attractivenessSelf: { type: ['integer', 'null'] },
+                  communicationSelf: { type: ['integer', 'null'] },
+                  createdAt: { type: 'string', format: 'date-time' },
+                  updatedAt: { type: 'string', format: 'date-time' },
+                },
+              },
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -75,45 +80,15 @@ export function registerProfilesRoutes(app: App) {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
-      app.logger.info({ userId: session.user.id }, 'Getting user profile');
+      const userId = session.user.id;
+      app.logger.info({ userId }, `[profile] GET for user: ${userId}`);
 
       // Get user profile data
       const userProfile = await app.db.query.userProfiles.findFirst({
-        where: eq(schema.userProfiles.userId, session.user.id),
+        where: eq(schema.userProfiles.userId, userId),
       });
 
-      // Merge display_name from user.name if not set
-      const displayName = userProfile?.displayName || session.user.name || null;
-
-      const profile = {
-        id: userProfile?.id || null,
-        userId: userProfile?.userId || session.user.id,
-        displayName,
-        photoUrl: userProfile?.photoUrl || null,
-        age: userProfile?.age || null,
-        birthday: userProfile?.birthday || null,
-        zodiac: userProfile?.zodiac || null,
-        location: userProfile?.location || null,
-        occupation: userProfile?.occupation || null,
-        bio: userProfile?.bio || null,
-        phoneNumber: userProfile?.phoneNumber || null,
-        instagram: userProfile?.instagram || null,
-        tiktok: userProfile?.tiktok || null,
-        twitterX: userProfile?.twitterX || null,
-        favoriteFoods: userProfile?.favoriteFoods || null,
-        hobbies: userProfile?.hobbies || null,
-        whatIBring: userProfile?.whatIBring || null,
-        thingsToWorkOn: userProfile?.thingsToWorkOn || null,
-        greenFlags: userProfile?.greenFlags || null,
-        redFlags: userProfile?.redFlags || null,
-        attractivenessSelf: userProfile?.attractivenessSelf || null,
-        communicationSelf: userProfile?.communicationSelf || null,
-        createdAt: userProfile?.createdAt || null,
-        updatedAt: userProfile?.updatedAt || null,
-      };
-
-      app.logger.info({ userId: session.user.id }, 'Retrieved user profile');
-      return profile;
+      return { profile: userProfile || null };
     }
   );
 
@@ -154,30 +129,35 @@ export function registerProfilesRoutes(app: App) {
           200: {
             type: 'object',
             properties: {
-              id: { type: ['string', 'null'] },
-              userId: { type: ['string', 'null'] },
-              displayName: { type: ['string', 'null'] },
-              photoUrl: { type: ['string', 'null'] },
-              age: { type: ['integer', 'null'] },
-              birthday: { type: ['string', 'null'] },
-              zodiac: { type: ['string', 'null'] },
-              location: { type: ['string', 'null'] },
-              occupation: { type: ['string', 'null'] },
-              bio: { type: ['string', 'null'] },
-              phoneNumber: { type: ['string', 'null'] },
-              instagram: { type: ['string', 'null'] },
-              tiktok: { type: ['string', 'null'] },
-              twitterX: { type: ['string', 'null'] },
-              favoriteFoods: { type: ['array', 'null'], items: { type: 'string' } },
-              hobbies: { type: ['array', 'null'], items: { type: 'string' } },
-              whatIBring: { type: ['array', 'null'], items: { type: 'string' } },
-              thingsToWorkOn: { type: ['array', 'null'], items: { type: 'string' } },
-              greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
-              redFlags: { type: ['array', 'null'], items: { type: 'string' } },
-              attractivenessSelf: { type: ['integer', 'null'] },
-              communicationSelf: { type: ['integer', 'null'] },
-              createdAt: { type: ['string', 'null'], format: 'date-time' },
-              updatedAt: { type: ['string', 'null'], format: 'date-time' },
+              profile: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  userId: { type: 'string' },
+                  displayName: { type: ['string', 'null'] },
+                  photoUrl: { type: ['string', 'null'] },
+                  age: { type: ['integer', 'null'] },
+                  birthday: { type: ['string', 'null'] },
+                  zodiac: { type: ['string', 'null'] },
+                  location: { type: ['string', 'null'] },
+                  occupation: { type: ['string', 'null'] },
+                  bio: { type: ['string', 'null'] },
+                  phoneNumber: { type: ['string', 'null'] },
+                  instagram: { type: ['string', 'null'] },
+                  tiktok: { type: ['string', 'null'] },
+                  twitterX: { type: ['string', 'null'] },
+                  favoriteFoods: { type: ['array', 'null'], items: { type: 'string' } },
+                  hobbies: { type: ['array', 'null'], items: { type: 'string' } },
+                  whatIBring: { type: ['array', 'null'], items: { type: 'string' } },
+                  thingsToWorkOn: { type: ['array', 'null'], items: { type: 'string' } },
+                  greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
+                  redFlags: { type: ['array', 'null'], items: { type: 'string' } },
+                  attractivenessSelf: { type: ['integer', 'null'] },
+                  communicationSelf: { type: ['integer', 'null'] },
+                  createdAt: { type: 'string', format: 'date-time' },
+                  updatedAt: { type: 'string', format: 'date-time' },
+                },
+              },
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -189,20 +169,16 @@ export function registerProfilesRoutes(app: App) {
       if (!session) return;
 
       const userId = session.user.id;
-      app.logger.info({ userId, body: request.body }, 'Updating user profile');
 
-      // If display_name is provided, also update user.name
-      if (request.body.display_name !== undefined) {
-        try {
-          await app.auth.api.updateUser({
-            body: { name: request.body.display_name },
-            headers: new Headers(),
-          });
-          app.logger.info({ userId }, 'Updated user name via auth API');
-        } catch (error) {
-          app.logger.warn({ userId, err: error }, 'Failed to update user name');
-        }
-      }
+      // Collect list of provided field names for logging
+      const providedFields = Object.keys(request.body).filter(
+        (key) => (request.body as any)[key] !== undefined
+      );
+
+      app.logger.info(
+        { userId },
+        `[profile] PUT for user: ${userId}, fields: [${providedFields.join(', ')}]`
+      );
 
       // Prepare profile update data
       const profileUpdateData: any = {
@@ -230,63 +206,25 @@ export function registerProfilesRoutes(app: App) {
       if (request.body.attractiveness_self !== undefined) profileUpdateData.attractivenessSelf = request.body.attractiveness_self;
       if (request.body.communication_self !== undefined) profileUpdateData.communicationSelf = request.body.communication_self;
 
-      // Check if user profile exists
-      const existingProfile = await app.db.query.userProfiles.findFirst({
-        where: eq(schema.userProfiles.userId, userId),
-      });
-
-      if (existingProfile) {
-        // Update existing profile
-        await app.db
-          .update(schema.userProfiles)
-          .set(profileUpdateData)
-          .where(eq(schema.userProfiles.userId, userId));
-      } else {
-        // Create new profile
-        await app.db.insert(schema.userProfiles).values({
+      // Upsert into user_profiles table
+      await app.db
+        .insert(schema.userProfiles)
+        .values({
           userId,
           ...profileUpdateData,
           createdAt: new Date(),
+        })
+        .onConflictDoUpdate({
+          target: schema.userProfiles.userId,
+          set: profileUpdateData,
         });
-      }
 
       // Fetch updated profile
       const userProfile = await app.db.query.userProfiles.findFirst({
         where: eq(schema.userProfiles.userId, userId),
       });
 
-      // Merge display_name from user.name if not set
-      const displayName = userProfile?.displayName || session.user.name || null;
-
-      const profile = {
-        id: userProfile?.id || null,
-        userId: userProfile?.userId || null,
-        displayName,
-        photoUrl: userProfile?.photoUrl || null,
-        age: userProfile?.age || null,
-        birthday: userProfile?.birthday || null,
-        zodiac: userProfile?.zodiac || null,
-        location: userProfile?.location || null,
-        occupation: userProfile?.occupation || null,
-        bio: userProfile?.bio || null,
-        phoneNumber: userProfile?.phoneNumber || null,
-        instagram: userProfile?.instagram || null,
-        tiktok: userProfile?.tiktok || null,
-        twitterX: userProfile?.twitterX || null,
-        favoriteFoods: userProfile?.favoriteFoods || null,
-        hobbies: userProfile?.hobbies || null,
-        whatIBring: userProfile?.whatIBring || null,
-        thingsToWorkOn: userProfile?.thingsToWorkOn || null,
-        greenFlags: userProfile?.greenFlags || null,
-        redFlags: userProfile?.redFlags || null,
-        attractivenessSelf: userProfile?.attractivenessSelf || null,
-        communicationSelf: userProfile?.communicationSelf || null,
-        createdAt: userProfile?.createdAt || null,
-        updatedAt: userProfile?.updatedAt || null,
-      };
-
-      app.logger.info({ userId }, 'User profile updated');
-      return profile;
+      return { profile: userProfile };
     }
   );
 
