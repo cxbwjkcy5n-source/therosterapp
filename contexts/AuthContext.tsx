@@ -74,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);   // true only during initial session check
   const [isReady, setIsReady] = useState(false);  // true once initial check is done
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
     // Initial session check on mount
@@ -118,9 +119,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       return null;
     } finally {
-      // Always mark as ready and not loading after first call
-      setLoading(false);
-      setIsReady(true);
+      // Only flip loading/isReady on the very first call (app startup)
+      // Subsequent calls (after sign-in, background refresh) must NOT re-trigger the layout guard
+      if (!hasInitialized.current) {
+        hasInitialized.current = true;
+        setLoading(false);
+        setIsReady(true);
+      }
     }
   };
 
@@ -131,11 +136,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result?.error?.message) {
         throw new Error(result.error.message);
       }
-      // Navigate immediately — don't wait for getSession to confirm
-      console.log("[Auth] Sign in successful, navigating to home");
-      router.replace("/(tabs)/(home)");
-      // Hydrate user state in the background
-      fetchUser().catch(console.error);
+      console.log("[Auth] Sign in API succeeded, fetching session");
+      const u = await fetchUser();
+      if (u) {
+        console.log("[Auth] Session confirmed, navigating to home");
+        router.replace("/(tabs)/(home)");
+      } else {
+        throw new Error("Sign in succeeded but session could not be confirmed. Please try again.");
+      }
     } catch (error) {
       console.error("Email sign in failed:", error);
       throw error;
@@ -149,9 +157,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (result?.error?.message) {
         throw new Error(result.error.message);
       }
-      console.log("[Auth] Sign up successful, navigating to home");
-      router.replace("/(tabs)/(home)");
-      fetchUser().catch(console.error);
+      console.log("[Auth] Sign up API succeeded, fetching session");
+      const u = await fetchUser();
+      if (u) {
+        console.log("[Auth] Session confirmed, navigating to home");
+        router.replace("/(tabs)/(home)");
+      } else {
+        throw new Error("Sign up succeeded but session could not be confirmed. Please try again.");
+      }
     } catch (error) {
       console.error("Email sign up failed:", error);
       throw error;

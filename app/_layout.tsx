@@ -2,7 +2,7 @@ import 'react-native-reanimated';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
-import { Stack, router, useSegments } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { SystemBars } from 'react-native-edge-to-edge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -142,27 +142,25 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
 
 function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplashDone: () => void }) {
   const { user, loading, isReady } = useAuth();
-  const segments = useSegments();
+  const hasNavigated = useRef(false); // only navigate once on initial load
 
   // Show red placeholder while splash is playing OR while auth is still loading
   const showPlaceholder = showSplash || loading;
 
-  // Safety net: only runs on initial load (when isReady first becomes true)
-  // Handles: already-logged-in user opening app, or unauthenticated user on protected route
+  // One-shot guard: fires exactly once when auth finishes loading for the first time.
+  // Never re-fires after navigation — prevents the sign-in redirect loop.
   useEffect(() => {
-    if (!isReady || showSplash) return;
+    if (!isReady || showSplash || hasNavigated.current) return;
+    hasNavigated.current = true;
 
-    const currentRoute = segments[0] ?? '';
-    const isPublicRoute = PUBLIC_ROUTES.includes(currentRoute);
-
-    if (user && isPublicRoute) {
-      console.log('[AppContent] Already logged in, redirecting to home');
+    if (user) {
+      console.log('[AppContent] Session found on startup, navigating to home');
       router.replace('/(tabs)/(home)');
-    } else if (!user && !isPublicRoute) {
-      console.log('[AppContent] No session on protected route, redirecting to auth');
+    } else {
+      console.log('[AppContent] No session on startup, navigating to auth');
       router.replace('/auth-screen');
     }
-  }, [isReady, showSplash]); // Only run when isReady or showSplash changes — NOT on user changes
+  }, [isReady, showSplash, user]);
 
   return (
     <>
