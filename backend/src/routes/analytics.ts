@@ -51,11 +51,11 @@ export function registerAnalyticsRoutes(app: App) {
         .from(schema.dates)
         .where(eq(schema.dates.userId, session.user.id));
 
-      // Count dates where want_another_date = true
+      // Count completed dates where want_another_date = true
       const wantAnotherDateResult = await app.db
         .select({ count: count() })
         .from(schema.dates)
-        .where(and(eq(schema.dates.userId, session.user.id), eq(schema.dates.wantAnotherDate, true)));
+        .where(and(eq(schema.dates.userId, session.user.id), eq(schema.dates.wantAnotherDate, true), eq(schema.dates.status, 'completed')));
 
       // Count completed dates
       const completedDatesResult = await app.db
