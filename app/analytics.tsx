@@ -9,7 +9,6 @@ import {
   ImageSourcePropType,
   Dimensions,
 } from 'react-native';
-import { Stack } from 'expo-router';
 import { COLORS } from '@/constants/Colors';
 import { apiGet } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -906,14 +905,6 @@ export default function AnalyticsScreen() {
   if (loading) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
-        <Stack.Screen options={{
-          title: 'Insights',
-          headerShown: true,
-          headerStyle: { backgroundColor: '#FFFFFF' },
-          headerTintColor: COLORS.text,
-          headerShadowVisible: false,
-          headerBackTitle: '',
-        }} />
         <ActivityIndicator color={COLORS.primary} size="large" />
       </View>
     );
@@ -922,14 +913,6 @@ export default function AnalyticsScreen() {
   if (error) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <Stack.Screen options={{
-          title: 'Insights',
-          headerShown: true,
-          headerStyle: { backgroundColor: '#FFFFFF' },
-          headerTintColor: COLORS.text,
-          headerShadowVisible: false,
-          headerBackTitle: '',
-        }} />
         <View
           style={{
             backgroundColor: COLORS.dangerMuted,
@@ -971,14 +954,6 @@ export default function AnalyticsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      <Stack.Screen options={{
-        title: 'Insights',
-        headerShown: true,
-        headerStyle: { backgroundColor: '#FFFFFF' },
-        headerTintColor: COLORS.text,
-        headerShadowVisible: false,
-        headerBackTitle: '',
-      }} />
       {/* Tab pills */}
       <View style={{ backgroundColor: '#FFFFFF', paddingTop: 14 }}>
         <TabPills active={activeTab} onChange={setActiveTab} />

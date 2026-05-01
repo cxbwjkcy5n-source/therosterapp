@@ -169,7 +169,7 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
             <Stack.Screen name="auth-screen" options={{ headerShown: false }} />
             <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
             <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false, headerBackTitle: '', title: '' }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false, headerBackTitle: '', title: '', gestureEnabled: false }} />
             <Stack.Screen
               name="person"
               options={{

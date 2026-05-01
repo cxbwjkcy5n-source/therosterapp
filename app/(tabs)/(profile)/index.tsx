@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Pressable,
   Animated,
+  Image as RNImage,
 } from 'react-native';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import {
@@ -498,8 +499,8 @@ export default function ProfileScreen() {
                 shadowOffset: { width: 0, height: 4 },
               }}
             >
-              {photoSource && resolveImageSource(photoSource) ? (
-                <Image source={resolveImageSource(photoSource)!} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+              {photoSource && photoSource.length > 10 ? (
+                <RNImage source={{ uri: photoSource }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
               ) : (
                 <Text style={{ fontSize: 34, fontWeight: '700', color: COLORS.primary }}>{initials}</Text>
               )}

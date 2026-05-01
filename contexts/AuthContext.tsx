@@ -104,13 +104,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const session = await authClient.getSession();
       if (session?.data?.user) {
         const u = session.data.user as User;
-        setUser(u);
+        setUser(prev => (prev?.id === u.id ? prev : u));
         if (session.data.session?.token) {
           await setBearerToken(session.data.session.token);
         }
         return u;
       } else {
-        setUser(null);
+        setUser(prev => prev === null ? prev : null);
         await clearAuthTokens();
         return null;
       }

@@ -8,6 +8,7 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
+  Image as RNImage,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router, useFocusEffect, Redirect } from 'expo-router';
@@ -455,19 +456,18 @@ export default function RosterScreen() {
               borderColor: 'rgba(255,255,255,0.6)',
             }}
           >
-            {profilePhotoUrl && resolveImageSource(profilePhotoUrl) ? (
-              <Image
-                key={profilePhotoUrl}
-                source={resolveImageSource(profilePhotoUrl)!}
+            {profilePhotoUrl && profilePhotoUrl.length > 10 ? (
+              <RNImage
+                key={profilePhotoUrl.slice(-20)}
+                source={{ uri: profilePhotoUrl }}
                 style={{ width: 56, height: 56 }}
-                contentFit="cover"
+                resizeMode="cover"
               />
-            ) : user?.image && resolveImageSource(user.image) ? (
-              <Image
-                key={user.image}
-                source={resolveImageSource(user.image)!}
+            ) : user?.image && user.image.length > 10 ? (
+              <RNImage
+                source={{ uri: user.image }}
                 style={{ width: 56, height: 56 }}
-                contentFit="cover"
+                resizeMode="cover"
               />
             ) : (
               <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700' }}>
