@@ -30,6 +30,7 @@ interface Person {
   id: string;
   name: string;
   photo_url?: string;
+  is_benched?: boolean;
 }
 
 export default function DateHaveScreen() {
@@ -52,10 +53,11 @@ export default function DateHaveScreen() {
     console.log('[DateHave] Loading persons');
     apiGet<{ persons: Person[] }>('/api/persons')
       .then((data) => {
-        const active = (data.persons || []).filter((p: any) => !p.is_benched);
-        console.log('[DateHave] Loaded', active.length, 'persons');
-        setPersons(active);
-        if (active.length > 0) setSelectedPersonId(active[0].id);
+        const all = data.persons || [];
+        console.log('[DateHave] Loaded', all.length, 'persons');
+        setPersons(all);
+        const firstActive = all.find((p) => !p.is_benched);
+        if (firstActive) setSelectedPersonId(firstActive.id);
       })
       .catch((e) => console.error('[DateHave] Failed to load persons:', e));
   }, []);
@@ -178,8 +180,14 @@ export default function DateHaveScreen() {
               justifyContent: 'space-between',
             }}
           >
-            {selectedPersonName ? (
-              <Text style={{ color: COLORS.text, fontSize: 15 }}>{selectedPersonName}</Text>
+            {selectedPerson ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{
+                  width: 8, height: 8, borderRadius: 4,
+                  backgroundColor: selectedPerson.is_benched ? '#E53935' : '#4CAF50',
+                }} />
+                <Text style={{ color: COLORS.text, fontSize: 15 }}>{selectedPerson.name}</Text>
+              </View>
             ) : (
               <Text style={{ color: COLORS.textTertiary, fontSize: 15 }}>Select a person...</Text>
             )}
@@ -227,7 +235,16 @@ export default function DateHaveScreen() {
                       justifyContent: 'space-between',
                     }}
                   >
-                    <Text style={{ color: COLORS.text, fontSize: 15 }}>{p.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                      <View style={{
+                        width: 8, height: 8, borderRadius: 4,
+                        backgroundColor: p.is_benched ? '#E53935' : '#4CAF50',
+                      }} />
+                      <Text style={{ color: COLORS.text, fontSize: 15 }}>{p.name}</Text>
+                      {p.is_benched && (
+                        <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
+                      )}
+                    </View>
                     {isSelected && <Check size={16} color={COLORS.primary} />}
                   </Pressable>
                 );
