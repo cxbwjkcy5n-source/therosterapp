@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Stack, router } from 'expo-router';
+import { X } from 'lucide-react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { SystemBars } from 'react-native-edge-to-edge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -179,6 +180,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: '',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -190,6 +202,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Dating Coach',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -201,6 +224,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Insights',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -212,6 +246,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Review Date',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -224,6 +269,8 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 title: 'Add Person',
                 headerBackTitle: '',
                 presentation: 'modal',
+                headerBackVisible: false,
+                gestureEnabled: false,
                 headerLeft: () => (
                   <Pressable onPress={() => { console.log('[add-person] Cancel pressed'); router.back(); }} style={{ paddingRight: 8 }}>
                     <Text style={{ color: COLORS.primary, fontSize: 16 }}>Cancel</Text>
@@ -276,6 +323,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Reminders',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -287,6 +345,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'My Share Code',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -298,6 +367,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Scan Code',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -309,6 +389,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Privacy Policy',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color="#1A1A1A" />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -320,6 +411,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Terms & Conditions',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color="#1A1A1A" />
+                  </Pressable>
+                ),
               }}
             />
           </Stack>

@@ -1945,11 +1945,41 @@ export default function PersonDetailScreen() {
       <Stack.Screen
         options={{
           title: 'Roster Details',
-          headerBackTitle: 'Back',
+          headerBackVisible: false,
+          gestureEnabled: false,
           headerStyle: { backgroundColor: '#FFFFFF' },
           headerTintColor: '#1A1A1A',
           headerTitleStyle: { fontWeight: '600', fontSize: 17 },
           headerShadowVisible: false,
+          headerLeft: () => (
+            <Pressable
+              onPress={() => {
+                if (editing) {
+                  Alert.alert(
+                    'Unsaved Changes',
+                    'Do you want to save your changes?',
+                    [
+                      {
+                        text: 'Discard',
+                        style: 'destructive',
+                        onPress: () => router.back(),
+                      },
+                      {
+                        text: 'Save',
+                        onPress: () => handleSave(),
+                      },
+                    ]
+                  );
+                } else {
+                  router.back();
+                }
+              }}
+              style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+              hitSlop={8}
+            >
+              <XIcon size={22} color="#1A1A1A" />
+            </Pressable>
+          ),
           headerRight: () => (
             <Pressable
               onPress={() => {
@@ -1977,6 +2007,7 @@ export default function PersonDetailScreen() {
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 160 }}
+        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
