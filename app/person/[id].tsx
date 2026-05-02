@@ -1983,7 +1983,7 @@ export default function PersonDetailScreen() {
         {/* ── Profile Card ─────────────────────────────────────────────────── */}
         <View style={{
           backgroundColor: '#FFFFFF',
-          marginHorizontal: 16, marginTop: 8,
+          marginHorizontal: 16, marginTop: 0,
           borderRadius: 16, padding: 20,
           ...CARD_SHADOW,
         }}>

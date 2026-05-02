@@ -471,10 +471,10 @@ export default function RosterScreen() {
                 resizeMode="cover"
               />
             ) : user?.image && user.image.length > 10 ? (
-              <Image
-                source={resolveImageSource(user.image)}
+              <RNImage
+                source={{ uri: user.image }}
                 style={{ width: 40, height: 40 }}
-                contentFit="cover"
+                resizeMode="cover"
               />
             ) : (
               <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>

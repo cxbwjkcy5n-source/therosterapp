@@ -1,12 +1,11 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, Animated, useWindowDimensions, Pressable } from 'react-native';
-import { Stack, router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   Calendar,
   Sparkles,
   Shield,
   MessageCircle,
-  MoreHorizontal,
   Heart,
   Users,
   Star,
@@ -245,44 +244,6 @@ export default function DatingScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <Stack.Screen
-        options={{
-          title: 'Dating',
-          headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 8, marginRight: 4 }}>
-              <AnimatedPressable
-                onPress={() => {
-                  console.log('[Dating] Analytics pressed');
-                  router.push('/analytics');
-                }}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: COLORS.surface,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Heart size={18} color={COLORS.primary} />
-              </AnimatedPressable>
-              <AnimatedPressable
-                onPress={() => console.log('[Dating] Menu pressed')}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: COLORS.surface,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <MoreHorizontal size={18} color={COLORS.textSecondary} />
-              </AnimatedPressable>
-            </View>
-          ),
-        }}
-      />
 
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 100, gap: 20 }}
@@ -380,7 +341,7 @@ export default function DatingScreen() {
             <Pressable
               onPress={() => {
                 console.log('[Dating] See All dates pressed');
-                router.push('/date-review');
+                router.push('/analytics');
               }}
             >
               <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '600' }}>See All</Text>
