@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, Pressable } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { router } from 'expo-router';
 import { Bell, Calendar, Zap, ChevronRight } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
@@ -63,16 +63,7 @@ export default function RemindersScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <Stack.Screen
-        options={{
-          title: 'Reminders',
-          headerShown: true,
-          headerStyle: { backgroundColor: COLORS.background },
-          headerTintColor: COLORS.text,
-          headerShadowVisible: false,
-          headerBackTitle: '',
-        }}
-      />
+
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -215,7 +206,8 @@ export default function RemindersScreen() {
             <View style={{ gap: 10 }}>
               {nudges.map((n) => {
                 const initials = getInitials(n.person_name);
-                const interestDisplay = String(n.interest_level) + '/10';
+                const rawLevel = (n as any).interestLevel ?? n.interest_level;
+                const interestDisplay = rawLevel != null ? `${rawLevel}/10` : null;
                 return (
                   <Pressable
                     key={n.person_id}
@@ -268,16 +260,18 @@ export default function RemindersScreen() {
                         {n.message}
                       </Text>
                     </View>
-                    <View
-                      style={{
-                        backgroundColor: COLORS.primaryMuted,
-                        borderRadius: 8,
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                      }}
-                    >
-                      <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '700' }}>{interestDisplay}</Text>
-                    </View>
+                    {interestDisplay != null && (
+                      <View
+                        style={{
+                          backgroundColor: COLORS.primaryMuted,
+                          borderRadius: 8,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                        }}
+                      >
+                        <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '700' }}>{interestDisplay}</Text>
+                      </View>
+                    )}
                   </Pressable>
                 );
               })}
