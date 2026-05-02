@@ -7,9 +7,10 @@ import {
   Pressable,
   TextInput,
   ScrollView,
+  Image as RNImage,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, router, useFocusEffect, Redirect } from 'expo-router';
+import { router, useFocusEffect, Redirect } from 'expo-router';
 import { Bell, Search, SlidersHorizontal } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import Svg, { Circle } from 'react-native-svg';
@@ -320,6 +321,7 @@ export default function RosterScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('Newest');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const filterHeight = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
@@ -343,7 +345,35 @@ export default function RosterScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [loadData])
+      if (user) {
+        console.log('[Roster iOS] Fetching profile photo from /api/profile');
+        apiGet<any>('/api/profile')
+          .then((res) => {
+            const raw: string | null =
+              res?.profile?.photo_url ??
+              res?.profile?.photoUrl ??
+              res?.photo_url ??
+              res?.photoUrl ??
+              null;
+
+            if (!raw || raw.length < 10) {
+              setProfilePhotoUrl(null);
+              return;
+            }
+
+            let finalUrl = raw;
+            if (!raw.startsWith('http') && !raw.startsWith('data:')) {
+              finalUrl = `data:image/jpeg;base64,${raw}`;
+            }
+
+            console.log('[Roster iOS] Profile photo resolved, length:', finalUrl.length, 'prefix:', finalUrl.slice(0, 30));
+            setProfilePhotoUrl(finalUrl);
+          })
+          .catch((e) => {
+            console.error('[Roster iOS] Failed to fetch profile photo:', e);
+          });
+      }
+    }, [loadData, user])
   );
 
   useEffect(() => {
@@ -405,7 +435,6 @@ export default function RosterScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <Stack.Screen options={{ headerShown: false }} />
 
       {/* ── Red header ── */}
       <SafeAreaView edges={['top']} style={{ backgroundColor: RED }}>
@@ -430,9 +459,18 @@ export default function RosterScreen() {
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: 12,
+              borderWidth: 2,
+              borderColor: 'rgba(255,255,255,0.6)',
             }}
           >
-            {user?.image ? (
+            {profilePhotoUrl && profilePhotoUrl.length > 10 ? (
+              <RNImage
+                key={profilePhotoUrl.slice(-20)}
+                source={{ uri: profilePhotoUrl }}
+                style={{ width: 40, height: 40 }}
+                resizeMode="cover"
+              />
+            ) : user?.image && user.image.length > 10 ? (
               <Image
                 source={resolveImageSource(user.image)}
                 style={{ width: 40, height: 40 }}

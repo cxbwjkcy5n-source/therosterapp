@@ -11,7 +11,7 @@ import {
   Image as RNImage,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Stack, router, useFocusEffect, Redirect } from 'expo-router';
+import { router, useFocusEffect, Redirect } from 'expo-router';
 import { Bell, Search, SlidersHorizontal } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import Svg, { Circle } from 'react-native-svg';
@@ -356,10 +356,25 @@ export default function RosterScreen() {
         console.log('[Roster] Fetching profile photo from /api/profile');
         apiGet<any>('/api/profile')
           .then((res) => {
-            const profileData = res?.profile ?? {};
-            const photoUrl = profileData?.photoUrl ?? profileData?.photo_url ?? null;
-            console.log('[Roster] Profile photoUrl length:', photoUrl?.length ?? 0);
-            setProfilePhotoUrl(photoUrl);
+            const raw: string | null =
+              res?.profile?.photo_url ??
+              res?.profile?.photoUrl ??
+              res?.photo_url ??
+              res?.photoUrl ??
+              null;
+
+            if (!raw || raw.length < 10) {
+              setProfilePhotoUrl(null);
+              return;
+            }
+
+            let finalUrl = raw;
+            if (!raw.startsWith('http') && !raw.startsWith('data:')) {
+              finalUrl = `data:image/jpeg;base64,${raw}`;
+            }
+
+            console.log('[Roster] Profile photo resolved, length:', finalUrl.length, 'prefix:', finalUrl.slice(0, 30));
+            setProfilePhotoUrl(finalUrl);
           })
           .catch((e) => {
             console.error('[Roster] Failed to fetch profile photo:', e);
@@ -427,7 +442,6 @@ export default function RosterScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <Stack.Screen options={{ headerShown: false }} />
 
       {/* ── Red header ── */}
       <SafeAreaView edges={['top']} style={{ backgroundColor: RED }}>
