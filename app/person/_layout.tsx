@@ -5,7 +5,9 @@ export default function PersonLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        headerBackVisible: false,
+        gestureEnabled: false,
         headerStyle: { backgroundColor: COLORS.background },
         headerTintColor: COLORS.text,
         headerShadowVisible: false,

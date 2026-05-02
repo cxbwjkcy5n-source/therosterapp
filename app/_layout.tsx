@@ -174,13 +174,7 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
             <Stack.Screen
               name="person"
               options={{
-                headerShown: true,
-                headerStyle: { backgroundColor: COLORS.background },
-                headerTintColor: COLORS.text,
-                headerShadowVisible: false,
-                title: '',
-                headerBackTitle: '',
-                headerBackVisible: false,
+                headerShown: false,
                 gestureEnabled: false,
               }}
             />
