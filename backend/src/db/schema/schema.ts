@@ -75,6 +75,9 @@ export const persons = pgTable('persons', {
   hobbies: text('hobbies').array(),
   redFlags: text('red_flags').array(),
   greenFlags: text('green_flags').array(),
+  datingStatus: text('dating_status'),
+  tags: text('tags').array(),
+  thingsILike: text('things_i_like'),
   isBenched: boolean('is_benched').default(false).notNull(),
   benchReason: text('bench_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -190,4 +193,13 @@ export const userPreferences = pgTable('user_preferences', {
   darkModeEnabled: boolean('dark_mode_enabled').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const weeklyCheckins = pgTable('weekly_checkins', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  mood: integer('mood').notNull(),
+  mostExcitedPerson: text('most_excited_person'),
+  oneThingToChange: text('one_thing_to_change'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
