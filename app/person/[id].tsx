@@ -1493,25 +1493,82 @@ export default function PersonDetailScreen() {
         </View>
 
         {/* Next Step card */}
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-          <SectionHeader label="Next Step" />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {[
-              { label: '📅 Plan a date', onPress: () => { console.log('[PersonDetail] Next Step: Plan a date pressed'); router.push('/date-plan'); } },
-              { label: '💬 Send a message', onPress: () => { console.log('[PersonDetail] Next Step: Send a message pressed'); if (displayData.phone_number) Linking.openURL(`sms:${displayData.phone_number}`); } },
-              { label: '🌿 Give it space', onPress: () => { console.log('[PersonDetail] Next Step: Give it space pressed'); } },
-              { label: '🚪 End it', onPress: () => { console.log('[PersonDetail] Next Step: End it pressed'); router.push({ pathname: '/bench-reason', params: { personId: displayData.id, personName: displayData.name } }); } },
-            ].map((action) => (
-              <Pressable
-                key={action.label}
-                onPress={action.onPress}
-                style={{ backgroundColor: '#F5F5F5', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 }}
-              >
-                <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '600' }}>{action.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
+        {(() => {
+          const nextStepActions: { label: string; onPress: () => void }[] = [];
+
+          // Plan a date — always available
+          nextStepActions.push({
+            label: '📅 Plan a date',
+            onPress: () => {
+              console.log('[PersonDetail] Next Step: Plan a date pressed');
+              router.push({ pathname: '/date-plan', params: { personId: displayData.id, personName: displayData.name } });
+            },
+          });
+
+          // Send a message — only if phone number exists
+          if (displayData.phone_number) {
+            nextStepActions.push({
+              label: '💬 Send a message',
+              onPress: () => {
+                console.log('[PersonDetail] Next Step: Send a message pressed');
+                Linking.openURL(`sms:${displayData.phone_number}`);
+              },
+            });
+          }
+
+          // Call them — only if phone number exists
+          if (displayData.phone_number) {
+            nextStepActions.push({
+              label: '📞 Call them',
+              onPress: () => {
+                console.log('[PersonDetail] Next Step: Call them pressed');
+                Linking.openURL(`tel:${displayData.phone_number}`);
+              },
+            });
+          }
+
+          // Give it space — always available, sets dating_status to 'on_hold' via API
+          nextStepActions.push({
+            label: '🌿 Give it space',
+            onPress: async () => {
+              console.log('[PersonDetail] Next Step: Give it space pressed');
+              try {
+                await apiPut(`/api/persons/${id}`, { dating_status: 'on_hold' });
+                await loadPerson();
+                Alert.alert('Done', `${personFirstName} has been set to "On Hold".`);
+              } catch (e) {
+                console.error('[PersonDetail] Give it space failed:', e);
+                Alert.alert('Error', 'Could not update status. Try again.');
+              }
+            },
+          });
+
+          // End it — always available
+          nextStepActions.push({
+            label: '🚪 End it',
+            onPress: () => {
+              console.log('[PersonDetail] Next Step: End it pressed');
+              router.push({ pathname: '/bench-reason', params: { personId: displayData.id, personName: displayData.name } });
+            },
+          });
+
+          return (
+            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+              <SectionHeader label="Next Step" />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {nextStepActions.map((action) => (
+                  <Pressable
+                    key={action.label}
+                    onPress={action.onPress}
+                    style={{ backgroundColor: '#F5F5F5', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 }}
+                  >
+                    <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '600' }}>{action.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          );
+        })()}
 
         {/* Conversation Starters card */}
         <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>

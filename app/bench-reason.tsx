@@ -44,27 +44,29 @@ export default function BenchReasonScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-      {/* Drag handle row with close button */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 4, paddingHorizontal: 16 }}>
-        <View style={{ flex: 1, alignItems: 'center' }}>
-          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CCCCCC' }} />
+      {/* Drag handle + close button */}
+      <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 8, paddingHorizontal: 16 }}>
+        {/* Drag handle */}
+        <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CCCCCC', marginBottom: 8 }} />
+        {/* Close button — absolute top right */}
+        <View style={{ position: 'absolute', top: 12, right: 16 }}>
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[BenchReason] Close pressed');
+              router.back();
+            }}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: COLORS.surface,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <X size={18} color={COLORS.textSecondary} />
+          </AnimatedPressable>
         </View>
-        <AnimatedPressable
-          onPress={() => {
-            console.log('[BenchReason] Close pressed');
-            router.back();
-          }}
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 18,
-            backgroundColor: COLORS.surface,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <X size={18} color={COLORS.textSecondary} />
-        </AnimatedPressable>
       </View>
       <ScrollView
         contentContainerStyle={{ padding: 24, paddingBottom: 8 }}
@@ -146,7 +148,7 @@ export default function BenchReasonScreen() {
       </ScrollView>
 
       {/* Button always pinned at bottom */}
-      <View style={{ paddingHorizontal: 24, paddingBottom: insets.bottom + 16, paddingTop: 8, backgroundColor: '#FFFFFF' }}>
+      <View style={{ paddingHorizontal: 24, paddingBottom: Math.max(insets.bottom, 16) + 8, paddingTop: 8, backgroundColor: '#FFFFFF' }}>
         <AnimatedPressable
           onPress={handleBench}
           disabled={!canSave || saving}
