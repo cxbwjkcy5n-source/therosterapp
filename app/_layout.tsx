@@ -264,6 +264,29 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
               }}
             />
             <Stack.Screen
+              name="weekly-checkin"
+              options={{
+                presentation: 'modal',
+                headerShown: true,
+                headerStyle: { backgroundColor: COLORS.background },
+                headerTintColor: COLORS.text,
+                headerShadowVisible: false,
+                title: 'Weekly Check-in',
+                headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: true,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
+              }}
+            />
+            <Stack.Screen
               name="bench-reason"
               options={{
                 presentation: 'formSheet',

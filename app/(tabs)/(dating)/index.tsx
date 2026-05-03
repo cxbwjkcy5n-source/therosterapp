@@ -199,6 +199,7 @@ export default function DatingScreen() {
   const [recentDates, setRecentDates] = useState<DateEntry[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [weeklySummary, setWeeklySummary] = useState<any>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Card width: (screenWidth - 16 left - 16 right - 8 gap) / 2
@@ -207,7 +208,7 @@ export default function DatingScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!user) return;
-      console.log('[Dating] Loading analytics, persons, and recent dates');
+      console.log('[Dating] Loading analytics, persons, recent dates, and weekly summary');
       Promise.all([
         apiGet<Analytics>('/api/analytics').catch((e) => {
           console.error('[Dating] Failed to load analytics:', e);
@@ -221,8 +222,10 @@ export default function DatingScreen() {
           console.error('[Dating] Failed to load dates:', e);
           return { dates: [] };
         }),
-      ]).then(([analyticsData, personsData, datesData]) => {
-        console.log('[Dating] Analytics, persons, and dates loaded');
+        apiGet<{ summary: any }>('/api/analytics/weekly-summary').catch(() => ({ summary: null })),
+      ]).then((data) => {
+        const [analyticsData, personsData, datesData] = data;
+        console.log('[Dating] Analytics, persons, dates, and weekly summary loaded');
         setAnalytics(analyticsData);
         setPersons(personsData.persons || []);
         const datesList = datesData.dates || [];
@@ -233,6 +236,7 @@ export default function DatingScreen() {
           return bTime - aTime;
         });
         setRecentDates(sorted.slice(0, 3));
+        setWeeklySummary(data[3]?.summary ?? null);
         Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -332,6 +336,38 @@ export default function DatingScreen() {
             />
           </View>
         </View>
+
+        {/* This Week vs Last Week */}
+        {weeklySummary && (
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: COLORS.border }}>
+            <Text style={{ color: '#999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>
+              This Week vs Last Week
+            </Text>
+            {[
+              { label: 'Dates', thisWeek: weeklySummary.this_week_dates ?? 0, lastWeek: weeklySummary.last_week_dates ?? 0 },
+              { label: 'People added', thisWeek: weeklySummary.this_week_persons_added ?? 0, lastWeek: weeklySummary.last_week_persons_added ?? 0 },
+              { label: 'Notes written', thisWeek: weeklySummary.this_week_notes ?? 0, lastWeek: weeklySummary.last_week_notes ?? 0 },
+            ].map((row) => {
+              const up = row.thisWeek > row.lastWeek;
+              const same = row.thisWeek === row.lastWeek;
+              const arrowColor = same ? '#999' : up ? '#4CAF50' : '#E53935';
+              const arrowChar = same ? '—' : up ? '↑' : '↓';
+              const lastWeekStr = String(row.lastWeek);
+              const thisWeekStr = String(row.thisWeek);
+              return (
+                <View key={row.label} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <Text style={{ flex: 1, color: COLORS.text, fontSize: 14, fontWeight: '500' }}>{row.label}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
+                    <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{lastWeekStr}</Text>
+                    <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{' → '}</Text>
+                    <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '700' }}>{thisWeekStr}</Text>
+                  </View>
+                  <Text style={{ fontSize: 14, color: arrowColor, fontWeight: '700' }}>{arrowChar}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* Recent Dates */}
         <Animated.View style={{ opacity: fadeAnim }}>

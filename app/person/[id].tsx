@@ -165,6 +165,8 @@ function normalizePerson(raw: any): Person {
     bench_reason: raw.bench_reason ?? raw.benchReason,
     nickname: raw.nickname,
     things_i_like: raw.things_i_like ?? raw.thingsILike,
+    dating_status: raw.dating_status ?? raw.datingStatus,
+    tags: raw.tags,
   };
 }
 
@@ -207,6 +209,8 @@ interface Person {
   bench_reason?: string;
   nickname?: string;
   things_i_like?: string;
+  dating_status?: string;
+  tags?: string[];
 }
 
 interface DateEntry {
@@ -862,6 +866,14 @@ export default function PersonDetailScreen() {
   const [addingGreenFlag, setAddingGreenFlag] = useState('');
   const [addingRedFlag, setAddingRedFlag] = useState('');
 
+  // tags
+  const [newTag, setNewTag] = useState('');
+
+  // conversation starters
+  const [startersLoading, setStartersLoading] = useState(false);
+  const [starters, setStarters] = useState<string[]>([]);
+  const [startersModalVisible, setStartersModalVisible] = useState(false);
+
   // edit date
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
 
@@ -991,7 +1003,7 @@ export default function PersonDetailScreen() {
         'sexual_chemistry', 'communication', 'overall_chemistry', 'consistency',
         'emotional_availability', 'date_planning', 'alignment',
         'favorite_foods', 'hobbies', 'green_flags', 'red_flags', 'photo_url',
-        'things_i_like',
+        'things_i_like', 'dating_status', 'tags',
       ];
       const payload: Record<string, any> = {};
       for (const key of ALLOWED_FIELDS) {
@@ -1326,6 +1338,22 @@ export default function PersonDetailScreen() {
 
     return (
       <View style={{ gap: 16 }}>
+        {/* Red flag warning banner */}
+        {(displayData.red_flags?.length ?? 0) >= 3 && (
+          <View style={{ backgroundColor: '#FFF8E1', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#FFB300', flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 4 }}>
+            <Text style={{ fontSize: 18 }}>⚠️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#E65100', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>
+                {displayData.red_flags!.length}
+                <Text style={{ color: '#E65100', fontSize: 13, fontWeight: '700' }}> red flags noted</Text>
+              </Text>
+              <Text style={{ color: '#BF360C', fontSize: 12, lineHeight: 17 }}>
+                Are you sure about this one? Take a moment to reflect.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* What I like about them */}
         <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="What I Like About Them" />
@@ -1354,6 +1382,165 @@ export default function PersonDetailScreen() {
               Tap edit to add what you appreciate about them...
             </Text>
           )}
+        </View>
+
+        {/* Status card */}
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <SectionHeader label="Status" />
+          {editing ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {[
+                { value: 'talking', label: 'Talking', color: '#2196F3' },
+                { value: 'dating', label: 'Dating', color: '#4CAF50' },
+                { value: 'exclusive', label: 'Exclusive', color: '#9C27B0' },
+                { value: 'fading', label: 'Fading', color: '#9E9E9E' },
+                { value: 'on_hold', label: 'On Hold', color: '#FF9800' },
+              ].map((s) => {
+                const selected = (editData.dating_status as string) === s.value;
+                return (
+                  <Pressable
+                    key={s.value}
+                    onPress={() => {
+                      console.log('[PersonDetail] Dating status selected:', s.value);
+                      update('dating_status' as keyof Person, selected ? '' : s.value);
+                    }}
+                    style={{
+                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                      backgroundColor: selected ? s.color : '#F5F5F5',
+                      borderWidth: 1.5, borderColor: selected ? s.color : '#E0E0E0',
+                    }}
+                  >
+                    <Text style={{ color: selected ? '#fff' : '#666', fontSize: 13, fontWeight: '600' }}>{s.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : displayData.dating_status ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{
+                width: 10, height: 10, borderRadius: 5,
+                backgroundColor:
+                  displayData.dating_status === 'talking' ? '#2196F3' :
+                  displayData.dating_status === 'dating' ? '#4CAF50' :
+                  displayData.dating_status === 'exclusive' ? '#9C27B0' :
+                  displayData.dating_status === 'fading' ? '#9E9E9E' :
+                  displayData.dating_status === 'on_hold' ? '#FF9800' : '#CCC',
+              }} />
+              <Text style={{ color: '#1A1A1A', fontSize: 15, fontWeight: '600', textTransform: 'capitalize' }}>
+                {displayData.dating_status.replace('_', ' ')}
+              </Text>
+            </View>
+          ) : (
+            <Text style={{ color: '#BBBBBB', fontSize: 14, fontStyle: 'italic' }}>Tap edit to set a status...</Text>
+          )}
+        </View>
+
+        {/* Tags card */}
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <SectionHeader label="Tags" />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: editing ? 10 : 0 }}>
+            {((editing ? editData.tags : displayData.tags) as string[] | undefined || []).map((tag, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F4FF', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, gap: 6 }}>
+                <Text style={{ color: '#3F51B5', fontSize: 12, fontWeight: '600' }}>{tag}</Text>
+                {editing && (
+                  <Pressable onPress={() => {
+                    console.log('[PersonDetail] Tag removed at index:', i);
+                    const current = (editData.tags as string[]) || [];
+                    update('tags' as keyof Person, current.filter((_, idx) => idx !== i));
+                  }}>
+                    <Text style={{ color: '#9E9E9E', fontSize: 14 }}>×</Text>
+                  </Pressable>
+                )}
+              </View>
+            ))}
+            {!editing && ((displayData.tags?.length ?? 0) === 0) && (
+              <Text style={{ color: '#BBBBBB', fontSize: 14, fontStyle: 'italic' }}>Tap edit to add tags...</Text>
+            )}
+          </View>
+          {editing && (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TextInput
+                value={newTag}
+                onChangeText={setNewTag}
+                placeholder="Add a tag (e.g. Met on Hinge)"
+                placeholderTextColor="#BBBBBB"
+                style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', color: '#1A1A1A' }}
+                onSubmitEditing={() => {
+                  if (newTag.trim()) {
+                    console.log('[PersonDetail] Tag added via submit:', newTag.trim());
+                    const current = (editData.tags as string[]) || [];
+                    update('tags' as keyof Person, [...current, newTag.trim()]);
+                    setNewTag('');
+                  }
+                }}
+                returnKeyType="done"
+              />
+              <Pressable
+                onPress={() => {
+                  if (newTag.trim()) {
+                    console.log('[PersonDetail] Tag added via button:', newTag.trim());
+                    const current = (editData.tags as string[]) || [];
+                    update('tags' as keyof Person, [...current, newTag.trim()]);
+                    setNewTag('');
+                  }
+                }}
+                style={{ backgroundColor: RED, borderRadius: 10, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Add</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+
+        {/* Next Step card */}
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <SectionHeader label="Next Step" />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {[
+              { label: '📅 Plan a date', onPress: () => { console.log('[PersonDetail] Next Step: Plan a date pressed'); router.push('/date-plan'); } },
+              { label: '💬 Send a message', onPress: () => { console.log('[PersonDetail] Next Step: Send a message pressed'); if (displayData.phone_number) Linking.openURL(`sms:${displayData.phone_number}`); } },
+              { label: '🌿 Give it space', onPress: () => { console.log('[PersonDetail] Next Step: Give it space pressed'); } },
+              { label: '🚪 End it', onPress: () => { console.log('[PersonDetail] Next Step: End it pressed'); router.push({ pathname: '/bench-reason', params: { personId: displayData.id, personName: displayData.name } }); } },
+            ].map((action) => (
+              <Pressable
+                key={action.label}
+                onPress={action.onPress}
+                style={{ backgroundColor: '#F5F5F5', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 }}
+              >
+                <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '600' }}>{action.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* Conversation Starters card */}
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <SectionHeader label="Conversation Starters" />
+          <AnimatedPressable
+            onPress={async () => {
+              console.log('[PersonDetail] Get Conversation Starters pressed for person:', displayData.id);
+              setStartersLoading(true);
+              try {
+                const res = await apiPost<{ starters: string[] }>(`/api/persons/${displayData.id}/conversation-starters`, {});
+                setStarters(res.starters || []);
+                setStartersModalVisible(true);
+              } catch (e) {
+                console.error('[PersonDetail] Failed to get conversation starters:', e);
+              } finally {
+                setStartersLoading(false);
+              }
+            }}
+            style={{ backgroundColor: RED, borderRadius: 12, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+          >
+            {startersLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Text style={{ fontSize: 16 }}>✨</Text>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Get Conversation Starters</Text>
+              </>
+            )}
+          </AnimatedPressable>
         </View>
 
         {/* Dating Timeline */}
@@ -2508,6 +2695,31 @@ export default function PersonDetailScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* ── Conversation Starters Modal ─────────────────────────────────────── */}
+      <Modal visible={startersModalVisible} transparent animationType="slide" onRequestClose={() => setStartersModalVisible(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={() => setStartersModalVisible(false)}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', marginBottom: 16 }}>✨ Conversation Starters</Text>
+            <View style={{ gap: 12 }}>
+              {starters.map((s, i) => (
+                <View key={i} style={{ backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14 }}>
+                  <Text style={{ color: '#1A1A1A', fontSize: 14, lineHeight: 20 }}>{s}</Text>
+                </View>
+              ))}
+            </View>
+            <Pressable
+              onPress={() => {
+                console.log('[PersonDetail] Conversation starters modal closed');
+                setStartersModalVisible(false);
+              }}
+              style={{ marginTop: 20, backgroundColor: RED, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
+            >
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Done</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
       <CallModal

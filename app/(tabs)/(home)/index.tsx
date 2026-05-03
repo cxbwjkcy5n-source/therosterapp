@@ -43,6 +43,7 @@ interface Person {
   alignment?: number;
   created_at?: string;
   category?: string;
+  dating_status?: string;
 }
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
@@ -79,16 +80,13 @@ function computeScore(person: Person): number | null {
   return Math.round(avg * 10) / 10;
 }
 
-function formatLastActive(createdAt?: string): string {
+function formatTalkingDuration(createdAt?: string): string {
   if (!createdAt) return '';
   const diff = Date.now() - new Date(createdAt).getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days === 0) return 'Added today';
-  if (days === 1) return 'Added yesterday';
-  if (days < 30) return `Added ${days}d ago`;
-  const months = Math.floor(days / 30);
-  if (months === 1) return 'Added 1mo ago';
-  return `Added ${months}mo ago`;
+  if (days < 7) return `${days}d`;
+  if (days < 30) return `${Math.floor(days / 7)}w`;
+  return `${Math.floor(days / 30)}mo`;
 }
 
 function getCategoryLabel(type?: string, custom?: string): string {
@@ -316,19 +314,32 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
               <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 5 }} numberOfLines={1}>
                 {item.name}
               </Text>
-              {categoryLabel ? (
-                <View
-                  style={{
-                    alignSelf: 'flex-start',
-                    backgroundColor: '#F5F5F5',
-                    borderRadius: 6,
-                    paddingHorizontal: 8,
-                    paddingVertical: 3,
-                  }}
-                >
-                  <Text style={{ fontSize: 11, color: '#666', fontWeight: '500' }}>{categoryLabel}</Text>
-                </View>
-              ) : null}
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {item.dating_status ? (
+                  <View style={{
+                    width: 8, height: 8, borderRadius: 4, marginRight: 6,
+                    backgroundColor:
+                      item.dating_status === 'talking' ? '#2196F3' :
+                      item.dating_status === 'dating' ? '#4CAF50' :
+                      item.dating_status === 'exclusive' ? '#9C27B0' :
+                      item.dating_status === 'fading' ? '#9E9E9E' :
+                      item.dating_status === 'on_hold' ? '#FF9800' : 'transparent',
+                  }} />
+                ) : null}
+                {categoryLabel ? (
+                  <View
+                    style={{
+                      alignSelf: 'flex-start',
+                      backgroundColor: '#F5F5F5',
+                      borderRadius: 6,
+                      paddingHorizontal: 8,
+                      paddingVertical: 3,
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, color: '#666', fontWeight: '500' }}>{categoryLabel}</Text>
+                  </View>
+                ) : null}
+              </View>
               {/* Info row */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
                 {item.location ? (
@@ -350,7 +361,7 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
                   <Text style={{ fontSize: 11, color: '#CCC' }}>·</Text>
                 ) : null}
                 {item.created_at ? (
-                  <Text style={{ fontSize: 12, color: '#AAAAAA', fontWeight: '400' }}>{formatLastActive(item.created_at)}</Text>
+                  <Text style={{ fontSize: 12, color: '#AAAAAA', fontWeight: '400' }}>{formatTalkingDuration(item.created_at)}</Text>
                 ) : null}
               </View>
             </View>
@@ -411,6 +422,7 @@ export default function RosterScreen() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  const [checkinBannerDismissed, setCheckinBannerDismissed] = useState(false);
   const filterHeight = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
@@ -437,6 +449,16 @@ export default function RosterScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
+      if (user) {
+        apiGet<{ checkin: { created_at: string } | null }>('/api/weekly-checkins/latest')
+          .then((res) => {
+            if (res.checkin) {
+              const daysSince = Math.floor((Date.now() - new Date(res.checkin.created_at).getTime()) / (1000 * 60 * 60 * 24));
+              if (daysSince < 7) setCheckinBannerDismissed(true);
+            }
+          })
+          .catch(() => {});
+      }
       if (user) {
         console.log('[Roster] Fetching profile photo from /api/profile');
         apiGet<any>('/api/profile')
@@ -626,6 +648,35 @@ export default function RosterScreen() {
             style={{ padding: 4 }}
           >
             <Text style={{ color: '#E65100', fontSize: 16 }}>✕</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* ── Weekly check-in nudge banner ── */}
+      {!loading && !checkinBannerDismissed && persons.length > 0 && (
+        <View style={{ marginHorizontal: 16, marginTop: 8, backgroundColor: '#EDE7F6', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#B39DDB' }}>
+          <Text style={{ fontSize: 20 }}>📋</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#4527A0', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>Time for your weekly check-in</Text>
+            <Text style={{ color: '#512DA8', fontSize: 12, lineHeight: 17 }}>Reflect on your dating life this week.</Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              console.log('[Roster] Weekly check-in banner Go pressed');
+              router.push('/weekly-checkin' as any);
+            }}
+            style={{ backgroundColor: '#7C4DFF', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+          >
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Go</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              console.log('[Roster] Weekly check-in banner dismissed');
+              setCheckinBannerDismissed(true);
+            }}
+            style={{ padding: 4 }}
+          >
+            <Text style={{ color: '#7C4DFF', fontSize: 14 }}>✕</Text>
           </Pressable>
         </View>
       )}
