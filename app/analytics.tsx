@@ -9,6 +9,7 @@ import {
   ImageSourcePropType,
   Dimensions,
 } from 'react-native';
+import { ChevronDown } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
 import { apiGet } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -551,21 +552,29 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
       </View>
 
       {/* Average Ratings */}
-      <Card style={{ minHeight: undefined }}>
-        <CardTitle>Average Ratings</CardTitle>
-        <View style={{ gap: 12 }}>
-          {ratingRows.map((item) => (
-            <View key={item.label}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{item.label}</Text>
-                <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '700' }}>
-                  {item.display}
-                </Text>
+      <Card style={{ minHeight: undefined, padding: 0, overflow: 'hidden' }}>
+        <Pressable
+          onPress={() => setRatingsExpanded((v) => !v)}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}
+        >
+          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '700' }}>Average Ratings</Text>
+          <ChevronDown size={16} color={COLORS.textSecondary} style={{ transform: [{ rotate: ratingsExpanded ? '180deg' : '0deg' }] }} />
+        </Pressable>
+        {ratingsExpanded && (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}>
+            {ratingRows.map((item) => (
+              <View key={item.label}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                  <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{item.label}</Text>
+                  <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '700' }}>
+                    {item.display}
+                  </Text>
+                </View>
+                <ProgressBar value={item.value} max={10} />
               </View>
-              <ProgressBar value={item.value} max={10} />
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
       </Card>
 
       {/* Connection Types */}
@@ -864,6 +873,7 @@ export default function AnalyticsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'people' | 'dating'>('people');
+  const [ratingsExpanded, setRatingsExpanded] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(() => {

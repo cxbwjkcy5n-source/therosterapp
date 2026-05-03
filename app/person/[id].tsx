@@ -781,6 +781,7 @@ export default function PersonDetailScreen() {
   const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
   const [newPhotoBase64, setNewPhotoBase64] = useState<string | null>(null);
   const [excludedRatings, setExcludedRatings] = useState<Set<string>>(new Set());
+  const [ratingsExpanded, setRatingsExpanded] = useState(false);
 
   // tab
   const [activeTab, setActiveTab] = useState<TabName>('Overview');
@@ -2371,50 +2372,79 @@ export default function PersonDetailScreen() {
           </View>
         )}
 
-        {/* ── Ratings (always visible) ─────────────────────────────────── */}
+        {/* ── Ratings ─────────────────────────────────────────────────── */}
         <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-            <SectionHeader label="Ratings" />
-            {ratingFields.map((f) =>
-              editing ? (
-                <EditableSlider
-                  key={f.key}
-                  label={f.label}
-                  value={editData[f.key] as number}
-                  onChange={(v) => update(f.key, v)}
-                  excluded={excludedRatings.has(f.key)}
-                  onToggleExclude={() => setExcludedRatings((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
-                    return next;
-                  })}
-                />
-              ) : (
-                <ReadOnlySlider
-                  key={f.key}
-                  label={f.label}
-                  value={person[f.key] as number}
-                  excluded={excludedRatings.has(f.key)}
-                  onToggleExclude={() => setExcludedRatings((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
-                    return next;
-                  })}
-                />
-              )
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, ...CARD_SHADOW, overflow: 'hidden' }}>
+            {/* Header row — always visible, tappable to expand/collapse */}
+            <Pressable
+              onPress={() => {
+                if (!editing) setRatingsExpanded((v) => !v);
+              }}
+              style={{ padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <Text style={{ color: '#1A1A1A', fontSize: 15, fontWeight: '700' }}>Ratings</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                {/* Always show the overall score as a preview */}
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 1 }}>
+                  <Text style={{ color: RED, fontSize: 20, fontWeight: '800' }}>{avgCompatibility}</Text>
+                  <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>/10</Text>
+                </View>
+                {!editing && (
+                  <ChevronDown
+                    size={18}
+                    color="#999"
+                    style={{ transform: [{ rotate: ratingsExpanded ? '180deg' : '0deg' }] }}
+                  />
+                )}
+              </View>
+            </Pressable>
+
+            {/* Expanded content */}
+            {(ratingsExpanded || editing) && (
+              <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+                <View style={{ height: 1, backgroundColor: '#EEEEEE', marginBottom: 16 }} />
+                {ratingFields.map((f) =>
+                  editing ? (
+                    <EditableSlider
+                      key={f.key}
+                      label={f.label}
+                      value={editData[f.key] as number}
+                      onChange={(v) => update(f.key, v)}
+                      excluded={excludedRatings.has(f.key)}
+                      onToggleExclude={() => setExcludedRatings((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
+                        return next;
+                      })}
+                    />
+                  ) : (
+                    <ReadOnlySlider
+                      key={f.key}
+                      label={f.label}
+                      value={person[f.key] as number}
+                      excluded={excludedRatings.has(f.key)}
+                      onToggleExclude={() => setExcludedRatings((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
+                        return next;
+                      })}
+                    />
+                  )
+                )}
+                <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 16 }} />
+                <Text style={{ color: '#999999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+                  Overall Compatibility
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2, marginBottom: 10 }}>
+                  <Text style={{ color: RED, fontSize: 36, fontWeight: '800', letterSpacing: -1 }}>{avgCompatibility}</Text>
+                  <Text style={{ color: RED, fontSize: 18, fontWeight: '600' }}>/10</Text>
+                </View>
+                <View style={{ height: 6, backgroundColor: '#E8E8E8', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
+                  <View style={{ height: 6, width: `${(avgCompatibility / 10) * 100}%` as any, backgroundColor: RED, borderRadius: 3 }} />
+                </View>
+                <Text style={{ color: '#AAAAAA', fontSize: 12 }}>Based on your ratings</Text>
+              </View>
             )}
-            <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 16 }} />
-            <Text style={{ color: '#999999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
-              Overall Compatibility
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2, marginBottom: 10 }}>
-              <Text style={{ color: RED, fontSize: 36, fontWeight: '800', letterSpacing: -1 }}>{avgCompatibility}</Text>
-              <Text style={{ color: RED, fontSize: 18, fontWeight: '600' }}>/10</Text>
-            </View>
-            <View style={{ height: 6, backgroundColor: '#E8E8E8', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
-              <View style={{ height: 6, width: `${(avgCompatibility / 10) * 100}%` as any, backgroundColor: RED, borderRadius: 3 }} />
-            </View>
-            <Text style={{ color: '#AAAAAA', fontSize: 12 }}>Based on your ratings</Text>
           </View>
         </View>
 

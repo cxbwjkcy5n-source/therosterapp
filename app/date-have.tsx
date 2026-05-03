@@ -50,16 +50,24 @@ export default function DateHaveScreen() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    console.log('[DateHave] Loading persons');
-    apiGet<{ persons: Person[] }>('/api/persons')
-      .then((data) => {
-        const all = data.persons || [];
-        console.log('[DateHave] Loaded', all.length, 'persons');
-        setPersons(all);
-        const firstActive = all.find((p) => !p.is_benched);
-        if (firstActive) setSelectedPersonId(firstActive.id);
-      })
-      .catch((e) => console.error('[DateHave] Failed to load persons:', e));
+    console.log('[DateHave] Loading all persons (active + benched)');
+    Promise.all([
+      apiGet<{ persons: Person[] }>('/api/persons').catch(() => ({ persons: [] })),
+      apiGet<{ persons: Person[] }>('/api/persons?benched=true').catch(() => ({ persons: [] })),
+    ]).then(([activeData, benchedData]) => {
+      const active = activeData.persons || [];
+      const benched = benchedData.persons || [];
+      // Merge, avoiding duplicates
+      const allMap = new Map<string, Person>();
+      for (const p of active) allMap.set(p.id, { ...p, is_benched: false });
+      for (const p of benched) allMap.set(p.id, { ...p, is_benched: true });
+      const all = Array.from(allMap.values());
+      console.log('[DateHave] Loaded', active.length, 'active +', benched.length, 'benched persons');
+      setPersons(all);
+      const firstActive = all.find((p) => !p.is_benched);
+      if (firstActive) setSelectedPersonId(firstActive.id);
+      else if (all.length > 0) setSelectedPersonId(all[0].id);
+    });
   }, []);
 
   const selectedPerson = persons.find((p) => p.id === selectedPersonId) || null;
