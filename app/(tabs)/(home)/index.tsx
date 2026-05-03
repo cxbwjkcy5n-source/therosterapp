@@ -78,6 +78,18 @@ function computeScore(person: Person): number | null {
   return Math.round(avg * 10) / 10;
 }
 
+function formatLastActive(createdAt?: string): string {
+  if (!createdAt) return '';
+  const diff = Date.now() - new Date(createdAt).getTime();
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days === 0) return 'Added today';
+  if (days === 1) return 'Added yesterday';
+  if (days < 30) return `Added ${days}d ago`;
+  const months = Math.floor(days / 30);
+  if (months === 1) return 'Added 1mo ago';
+  return `Added ${months}mo ago`;
+}
+
 function getCategoryLabel(type?: string, custom?: string): string {
   const map: Record<string, string> = {
     friend: 'Friend',
@@ -224,7 +236,7 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
           marginVertical: 4,
           backgroundColor: '#fff',
           borderRadius: 16,
-          padding: 14,
+          padding: 16,
           flexDirection: 'row',
           alignItems: 'center',
           shadowColor: '#000',
@@ -237,9 +249,9 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
         {/* Avatar */}
         <View
           style={{
-            width: 64,
-            height: 64,
-            borderRadius: 32,
+            width: 72,
+            height: 72,
+            borderRadius: 36,
             borderWidth: 2,
             borderColor: RED,
             overflow: 'hidden',
@@ -252,11 +264,11 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
           {hasPhoto && resolveImageSource(item.photo_url) ? (
             <Image
               source={resolveImageSource(item.photo_url)!}
-              style={{ width: 60, height: 60, borderRadius: 30 }}
+              style={{ width: 68, height: 68, borderRadius: 34 }}
               contentFit="cover"
             />
           ) : (
-            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700' }}>{initials}</Text>
+            <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700' }}>{initials}</Text>
           )}
         </View>
 
@@ -278,6 +290,30 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
               <Text style={{ fontSize: 11, color: '#666', fontWeight: '500' }}>{categoryLabel}</Text>
             </View>
           ) : null}
+          {/* Info row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
+            {item.location ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Text style={{ fontSize: 11, color: '#999' }}>📍</Text>
+                <Text style={{ fontSize: 12, color: '#888', fontWeight: '400' }} numberOfLines={1}>{item.location}</Text>
+              </View>
+            ) : null}
+            {item.location && item.interest_level ? (
+              <Text style={{ fontSize: 11, color: '#CCC' }}>·</Text>
+            ) : null}
+            {item.interest_level ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Text style={{ fontSize: 11, color: '#999' }}>⚡</Text>
+                <Text style={{ fontSize: 12, color: '#888', fontWeight: '400' }}>{item.interest_level} interest</Text>
+              </View>
+            ) : null}
+            {(item.location || item.interest_level) && item.created_at ? (
+              <Text style={{ fontSize: 11, color: '#CCC' }}>·</Text>
+            ) : null}
+            {item.created_at ? (
+              <Text style={{ fontSize: 12, color: '#AAAAAA', fontWeight: '400' }}>{formatLastActive(item.created_at)}</Text>
+            ) : null}
+          </View>
         </View>
 
         {/* Score ring */}
