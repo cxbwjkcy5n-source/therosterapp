@@ -80,24 +80,32 @@ function getInitials(name: string) {
 }
 
 function formatShortDate(dateStr: string): string {
+  if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
 }
 
 function formatDateTimeLabel(dateStr: string): string {
+  if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
   const date = d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' });
   const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return `${date}  ${time}`;
 }
 
 function formatFullDate(dateStr: string): string {
+  if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatTimestamp(dateStr: string): string {
+  if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -812,7 +820,11 @@ export default function PersonDetailScreen() {
   const [showTextModal, setShowTextModal] = useState(false);
 
   // interactions (calls/texts)
-  const [interactions, setInteractions] = useState<{ id: string; type: string; title: string; occurred_at: string }[]>([]);
+  const [interactions, setInteractions] = useState<{ id: string; type: string; title: string; occurred_at: string; created_at?: string }[]>([]);
+
+  // inline flag editing (view mode)
+  const [addingGreenFlag, setAddingGreenFlag] = useState('');
+  const [addingRedFlag, setAddingRedFlag] = useState('');
 
   // edit date
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
@@ -887,7 +899,7 @@ export default function PersonDetailScreen() {
     if (!id) return;
     console.log('[PersonDetail] Loading interactions for person:', id);
     try {
-      const data = await apiGet<{ interactions: { id: string; type: string; title: string; occurred_at: string }[] }>(`/api/interactions?person_id=${id}`);
+      const data = await apiGet<{ interactions: { id: string; type: string; title: string; occurred_at: string; created_at?: string }[] }>(`/api/interactions?person_id=${id}`);
       console.log('[PersonDetail] Loaded', data.interactions?.length ?? 0, 'interactions');
       setInteractions(data.interactions || []);
     } catch (e) {
@@ -1263,7 +1275,7 @@ export default function PersonDetailScreen() {
 
     type TimelineItem =
       | { kind: 'date'; id: string; timestamp: number; data: DateEntry }
-      | { kind: 'interaction'; id: string; timestamp: number; data: { id: string; type: string; title: string; occurred_at: string } };
+      | { kind: 'interaction'; id: string; timestamp: number; data: { id: string; type: string; title: string; occurred_at: string; created_at?: string } };
 
     const timelineItems: TimelineItem[] = [
       ...sortedDates.map((d): TimelineItem => ({
@@ -1337,7 +1349,7 @@ export default function PersonDetailScreen() {
                   );
                 } else {
                   const i = item.data;
-                  const interactionLabel = formatShortDate(i.occurred_at);
+                  const interactionLabel = formatShortDate(i.occurred_at || i.created_at || '');
                   const isCall = i.type === 'call';
                   const dotColor = isCall ? '#4CAF50' : '#2196F3';
                   return (
@@ -1454,25 +1466,24 @@ export default function PersonDetailScreen() {
         )}
 
         {/* Flags */}
-        {((displayData.green_flags && displayData.green_flags.length > 0) ||
-          (displayData.red_flags && displayData.red_flags.length > 0) || editing) && (
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-            <View style={{ flexDirection: 'row', gap: 16 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: '#2E7D32', fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Green Flags</Text>
-                {editing ? (
-                  <TextInput
-                    value={((editData.green_flags || []).join(', '))}
-                    onChangeText={(v) => update('green_flags', v.split(',').map((s) => s.trim()).filter(Boolean))}
-                    placeholder="e.g. Kind, Funny"
-                    placeholderTextColor="#BBBBBB"
-                    multiline
-                    style={{
-                      backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10,
-                      color: '#1A1A1A', fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', minHeight: 60,
-                    }}
-                  />
-                ) : (
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#2E7D32', fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Green Flags</Text>
+              {editing ? (
+                <TextInput
+                  value={((editData.green_flags || []).join(', '))}
+                  onChangeText={(v) => update('green_flags', v.split(',').map((s) => s.trim()).filter(Boolean))}
+                  placeholder="e.g. Kind, Funny"
+                  placeholderTextColor="#BBBBBB"
+                  multiline
+                  style={{
+                    backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10,
+                    color: '#1A1A1A', fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', minHeight: 60,
+                  }}
+                />
+              ) : (
+                <View>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                     {(displayData.green_flags || []).map((flag) => (
                       <PillTag key={flag} label={flag} color="#2E7D32" bg="rgba(46,125,50,0.08)" />
@@ -1481,24 +1492,50 @@ export default function PersonDetailScreen() {
                       <Text style={{ color: '#BBBBBB', fontSize: 13 }}>None added</Text>
                     )}
                   </View>
-                )}
-              </View>
-              <View style={{ width: 1, backgroundColor: '#F0F0F0' }} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: RED, fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Red Flags</Text>
-                {editing ? (
-                  <TextInput
-                    value={((editData.red_flags || []).join(', '))}
-                    onChangeText={(v) => update('red_flags', v.split(',').map((s) => s.trim()).filter(Boolean))}
-                    placeholder="e.g. Flaky, Rude"
-                    placeholderTextColor="#BBBBBB"
-                    multiline
-                    style={{
-                      backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10,
-                      color: '#1A1A1A', fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', minHeight: 60,
-                    }}
-                  />
-                ) : (
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, alignItems: 'center' }}>
+                    <TextInput
+                      value={addingGreenFlag}
+                      onChangeText={setAddingGreenFlag}
+                      placeholder="Add flag..."
+                      placeholderTextColor="#BBBBBB"
+                      style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', color: '#1A1A1A' }}
+                    />
+                    <Pressable
+                      onPress={async () => {
+                        if (!addingGreenFlag.trim()) return;
+                        console.log('[PersonDetail] Adding green flag:', addingGreenFlag.trim());
+                        const newFlags = [...(person!.green_flags || []), addingGreenFlag.trim()];
+                        setAddingGreenFlag('');
+                        try {
+                          await apiPut(`/api/persons/${id}`, { green_flags: newFlags });
+                          await loadPerson();
+                        } catch (e) { console.error('[PersonDetail] Failed to add green flag:', e); }
+                      }}
+                      style={{ backgroundColor: '#2E7D32', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+            </View>
+            <View style={{ width: 1, backgroundColor: '#F0F0F0' }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: RED, fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Red Flags</Text>
+              {editing ? (
+                <TextInput
+                  value={((editData.red_flags || []).join(', '))}
+                  onChangeText={(v) => update('red_flags', v.split(',').map((s) => s.trim()).filter(Boolean))}
+                  placeholder="e.g. Flaky, Rude"
+                  placeholderTextColor="#BBBBBB"
+                  multiline
+                  style={{
+                    backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10,
+                    color: '#1A1A1A', fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', minHeight: 60,
+                  }}
+                />
+              ) : (
+                <View>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                     {(displayData.red_flags || []).map((flag) => (
                       <PillTag key={flag} label={flag} color={RED} bg="rgba(229,57,53,0.08)" />
@@ -1507,11 +1544,35 @@ export default function PersonDetailScreen() {
                       <Text style={{ color: '#BBBBBB', fontSize: 13 }}>None added</Text>
                     )}
                   </View>
-                )}
-              </View>
+                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, alignItems: 'center' }}>
+                    <TextInput
+                      value={addingRedFlag}
+                      onChangeText={setAddingRedFlag}
+                      placeholder="Add flag..."
+                      placeholderTextColor="#BBBBBB"
+                      style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', color: '#1A1A1A' }}
+                    />
+                    <Pressable
+                      onPress={async () => {
+                        if (!addingRedFlag.trim()) return;
+                        console.log('[PersonDetail] Adding red flag:', addingRedFlag.trim());
+                        const newFlags = [...(person!.red_flags || []), addingRedFlag.trim()];
+                        setAddingRedFlag('');
+                        try {
+                          await apiPut(`/api/persons/${id}`, { red_flags: newFlags });
+                          await loadPerson();
+                        } catch (e) { console.error('[PersonDetail] Failed to add red flag:', e); }
+                      }}
+                      style={{ backgroundColor: RED, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
             </View>
           </View>
-        )}
+        </View>
 
         {/* Delete / Bench row */}
         <View style={{ paddingTop: 12, paddingBottom: 8, gap: 10, paddingHorizontal: 16 }}>
@@ -1795,12 +1856,12 @@ export default function PersonDetailScreen() {
           />
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <AnimatedPressable onPress={() => { setAddingNote(false); setNewNoteText(''); }} style={{ flex: 1 }}>
-              <View style={{ backgroundColor: '#F5F5F5', borderRadius: 12, paddingVertical: 13, alignItems: 'center' }}>
+              <View style={{ backgroundColor: '#F5F5F5', borderRadius: 12, paddingVertical: 16, paddingHorizontal: 20, alignItems: 'center' }}>
                 <Text style={{ color: '#666666', fontSize: 14, fontWeight: '600' }}>Cancel</Text>
               </View>
             </AnimatedPressable>
             <AnimatedPressable onPress={handleSaveNote} disabled={!newNoteText.trim() || savingNote} style={{ flex: 1 }}>
-              <View style={{ backgroundColor: newNoteText.trim() ? RED : '#F5F5F5', borderRadius: 12, paddingVertical: 13, alignItems: 'center' }}>
+              <View style={{ backgroundColor: newNoteText.trim() ? RED : '#F5F5F5', borderRadius: 12, paddingVertical: 16, paddingHorizontal: 20, alignItems: 'center' }}>
                 {savingNote ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
@@ -2015,34 +2076,40 @@ export default function PersonDetailScreen() {
         <View style={{
           backgroundColor: '#FFFFFF',
           marginHorizontal: 16, marginTop: 0,
-          borderRadius: 16, padding: 20,
+          borderRadius: 16,
+          overflow: 'hidden',
           ...CARD_SHADOW,
         }}>
-          {/* Avatar */}
-          <AnimatedPressable onPress={editing ? pickPhoto : undefined} style={{ alignSelf: 'center', marginBottom: 12 }}>
-            <View style={{
-              width: 80, height: 80, borderRadius: 40,
-              borderWidth: 3, borderColor: RED,
-              overflow: 'hidden',
-              backgroundColor: RED,
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              {hasPhoto && resolveImageSource(photoSource) ? (
-                <Image
-                  source={resolveImageSource(photoSource)!}
-                  style={{ width: '100%', height: '100%' }}
-                  contentFit="cover"
-                />
-              ) : (
-                <Text style={{ fontSize: 28, fontWeight: '700', color: '#fff' }}>{initials}</Text>
-              )}
-            </View>
-          </AnimatedPressable>
-          {editing && (
-            <Pressable onPress={pickPhoto} style={{ alignSelf: 'center', marginBottom: 8 }}>
-              <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>Change photo</Text>
-            </Pressable>
-          )}
+          {/* Full-width photo */}
+          <View style={{ width: '100%', height: 220, borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: 'hidden' }}>
+            {hasPhoto && resolveImageSource(photoSource) ? (
+              <Image
+                source={resolveImageSource(photoSource)!}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={{ width: '100%', height: 220, backgroundColor: RED, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 48, fontWeight: '700', color: '#fff' }}>{initials}</Text>
+              </View>
+            )}
+            {editing && (
+              <Pressable
+                onPress={pickPhoto}
+                style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: 'rgba(0,0,0,0.45)',
+                  alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <Ionicons name="camera-outline" size={28} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Change photo</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Card content below image */}
+          <View style={{ padding: 20 }}>
 
           {/* Name */}
           {editing ? (
@@ -2151,7 +2218,41 @@ export default function PersonDetailScreen() {
               <Text style={{ color: '#1A1A1A', fontSize: 12, fontWeight: '500' }}>TikTok</Text>
             </Pressable>
           </View>
+          </View>{/* end card content padding */}
         </View>
+
+        {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
+        {!editing && (
+          <View style={{
+            backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 14,
+            borderRadius: 16, padding: 6, flexDirection: 'row', ...CARD_SHADOW,
+          }}>
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab;
+              return (
+                <Pressable
+                  key={tab}
+                  onPress={() => {
+                    console.log('[PersonDetail] Tab selected:', tab);
+                    setActiveTab(tab);
+                  }}
+                  style={{
+                    flex: 1, height: 44, borderRadius: 20,
+                    backgroundColor: isActive ? RED : 'transparent',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{
+                    color: isActive ? '#FFFFFF' : '#888888',
+                    fontSize: 14, fontWeight: isActive ? '600' : '400',
+                  }}>
+                    {tab}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
 
         {/* Details (edit mode) — shown here so it's first when editing */}
         {editing && (
@@ -2308,39 +2409,6 @@ export default function PersonDetailScreen() {
             <Text style={{ color: '#AAAAAA', fontSize: 12 }}>Based on your ratings</Text>
           </View>
         </View>
-
-        {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
-        {!editing && (
-          <View style={{
-            backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 14,
-            borderRadius: 16, padding: 6, flexDirection: 'row', ...CARD_SHADOW,
-          }}>
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab;
-              return (
-                <Pressable
-                  key={tab}
-                  onPress={() => {
-                    console.log('[PersonDetail] Tab selected:', tab);
-                    setActiveTab(tab);
-                  }}
-                  style={{
-                    flex: 1, height: 44, borderRadius: 20,
-                    backgroundColor: isActive ? RED : 'transparent',
-                    alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{
-                    color: isActive ? '#FFFFFF' : '#888888',
-                    fontSize: 14, fontWeight: isActive ? '600' : '400',
-                  }}>
-                    {tab}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
 
         {/* ── Tab Content ─────────────────────────────────────────────────── */}
         {!editing && (
