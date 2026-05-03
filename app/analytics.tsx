@@ -448,6 +448,7 @@ function TabPills({ active, onChange }: { active: 'people' | 'dating'; onChange:
 // ─── People tab content ───────────────────────────────────────────────────────
 
 function PeopleTab({ ps }: { ps: PeopleStats }) {
+  const [ratingsExpanded, setRatingsExpanded] = useState(false);
   const isEmpty = ps.total === 0;
 
   if (isEmpty) {
@@ -873,7 +874,6 @@ export default function AnalyticsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'people' | 'dating'>('people');
-  const [ratingsExpanded, setRatingsExpanded] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(() => {

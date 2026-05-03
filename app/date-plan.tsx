@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 interface Person {
   id: string;
   name: string;
+  is_benched?: boolean;
 }
 
 interface DateIdea {
@@ -49,15 +50,23 @@ export default function DatePlanScreen() {
   const sparkleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    console.log('[DatePlan] Loading persons');
-    apiGet<{ persons: Person[] }>('/api/persons')
-      .then((data) => {
-        const active = (data.persons || []).filter((p: any) => !p.is_benched);
-        console.log('[DatePlan] Loaded', active.length, 'persons');
-        setPersons(active);
-        if (active.length > 0) setSelectedPersonId(active[0].id);
-      })
-      .catch((e) => console.error('[DatePlan] Failed to load persons:', e));
+    console.log('[DatePlan] Loading all persons (active + benched)');
+    Promise.all([
+      apiGet<{ persons: Person[] }>('/api/persons').catch(() => ({ persons: [] })),
+      apiGet<{ persons: Person[] }>('/api/persons?benched=true').catch(() => ({ persons: [] })),
+    ]).then(([activeData, benchedData]) => {
+      const active = activeData.persons || [];
+      const benched = benchedData.persons || [];
+      const allMap = new Map<string, Person>();
+      for (const p of active) allMap.set(p.id, { ...p, is_benched: false });
+      for (const p of benched) allMap.set(p.id, { ...p, is_benched: true });
+      const all = Array.from(allMap.values());
+      console.log('[DatePlan] Loaded', active.length, 'active +', benched.length, 'benched');
+      setPersons(all);
+      const firstActive = all.find((p) => !p.is_benched);
+      if (firstActive) setSelectedPersonId(firstActive.id);
+      else if (all.length > 0) setSelectedPersonId(all[0].id);
+    });
   }, []);
 
   const startSparkleAnimation = () => {
@@ -158,11 +167,26 @@ export default function DatePlanScreen() {
               justifyContent: 'space-between',
             }}
           >
-            {selectedPersonName ? (
-              <Text style={{ color: COLORS.text, fontSize: 15 }}>{selectedPersonName}</Text>
-            ) : (
-              <Text style={{ color: COLORS.textTertiary, fontSize: 15 }}>Select a person...</Text>
-            )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+              {selectedPerson && (
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: selectedPerson.is_benched ? '#E53935' : '#2E7D32',
+                  }}
+                />
+              )}
+              {selectedPersonName ? (
+                <Text style={{ color: COLORS.text, fontSize: 15 }}>{selectedPersonName}</Text>
+              ) : (
+                <Text style={{ color: COLORS.textTertiary, fontSize: 15 }}>Select a person...</Text>
+              )}
+              {selectedPerson?.is_benched && (
+                <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
+              )}
+            </View>
             <ChevronDown size={16} color={COLORS.textSecondary} />
           </Pressable>
           {dropdownOpen && (
@@ -189,11 +213,12 @@ export default function DatePlanScreen() {
               {persons.map((p, index) => {
                 const isSelected = selectedPersonId === p.id;
                 const isLast = index === persons.length - 1;
+                const dotColor = p.is_benched ? '#E53935' : '#2E7D32';
                 return (
                   <Pressable
                     key={p.id}
                     onPress={() => {
-                      console.log('[DatePlan] Person selected from dropdown:', p.id, p.name);
+                      console.log('[DatePlan] Person selected from dropdown:', p.id, p.name, 'benched:', p.is_benched);
                       setSelectedPersonId(p.id);
                       setDropdownOpen(false);
                     }}
@@ -207,7 +232,13 @@ export default function DatePlanScreen() {
                       justifyContent: 'space-between',
                     }}
                   >
-                    <Text style={{ color: COLORS.text, fontSize: 15 }}>{p.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
+                      <Text style={{ color: COLORS.text, fontSize: 15 }}>{p.name}</Text>
+                      {p.is_benched && (
+                        <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
+                      )}
+                    </View>
                     {isSelected && <Check size={16} color={COLORS.primary} />}
                   </Pressable>
                 );

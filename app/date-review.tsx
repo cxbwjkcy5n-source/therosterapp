@@ -40,6 +40,9 @@ export default function DateReviewScreen() {
     personPhoto?: string;
   }>();
 
+  const safePersonName = (Array.isArray(personName) ? personName[0] : personName) || 'Unknown';
+  const safePersonPhoto = (Array.isArray(personPhoto) ? personPhoto[0] : personPhoto) || null;
+
   const [rating, setRating] = useState(0);
   const [wentWell, setWentWell] = useState('');
   const [wentPoorly, setWentPoorly] = useState('');
@@ -72,10 +75,10 @@ export default function DateReviewScreen() {
       .finally(() => setLoading(false));
   }, [dateId]);
 
-  const displayName = personName || 'Unknown';
+  const displayName = safePersonName;
   const initials = getInitials(displayName);
-  const photoSource = resolveImageSource(personPhoto);
-  const hasPhoto = !!personPhoto && !!photoSource;
+  const photoSource = resolveImageSource(safePersonPhoto ?? undefined);
+  const hasPhoto = !!safePersonPhoto && !!photoSource;
 
   const handleSubmit = async () => {
     if (rating === 0) {

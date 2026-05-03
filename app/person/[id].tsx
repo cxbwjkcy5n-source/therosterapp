@@ -1279,7 +1279,7 @@ export default function PersonDetailScreen() {
       ...interactions.map((i): TimelineItem => ({
         kind: 'interaction',
         id: `interaction-${i.id}`,
-        timestamp: new Date(i.occurred_at).getTime(),
+        timestamp: new Date(i.occurred_at || i.created_at || Date.now()).getTime(),
         data: i,
       })),
     ].sort((a, b) => b.timestamp - a.timestamp);
@@ -2188,38 +2188,20 @@ export default function PersonDetailScreen() {
 
         {/* ── Favorites (view mode) ───────────────────────────────────── */}
         {!editing && (() => {
-          const favTags: { label: string; value?: string | string[] }[] = [
-            { label: 'Fav Food', value: displayData.favorite_foods?.join(', ') },
-            { label: 'Fav Color', value: displayData.favorite_color },
-            { label: 'Things they like', value: displayData.things_they_like?.join(', ') },
-            { label: 'Lifestyle vibe', value: displayData.lifestyle_vibe },
-            { label: 'Intention', value: displayData.intention },
-            { label: displayData.distance_type || 'In-person', value: undefined },
-          ].filter((t) => t.value !== undefined || t.label === (displayData.distance_type || 'In-person'));
+          const favTags: { label: string; value: string | undefined }[] = [
+            { label: 'Favourite Foods', value: displayData.favorite_foods?.join(', ') },
+            { label: 'Hobbies', value: displayData.hobbies?.join(', ') },
+            { label: 'Connection', value: displayData.connection_type_custom || undefined },
+          ].filter((t) => !!t.value);
           if (favTags.length === 0) return null;
           return (
             <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
               <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
                 <SectionHeader label="Favorites" />
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {displayData.favorite_foods && displayData.favorite_foods.length > 0 && (
-                    <PillTag label={`Fav Food: ${displayData.favorite_foods.join(', ')}`} />
-                  )}
-                  {displayData.favorite_color && (
-                    <PillTag label={`Fav Color: ${displayData.favorite_color}`} />
-                  )}
-                  {displayData.things_they_like && displayData.things_they_like.length > 0 && (
-                    <PillTag label={`Things they like: ${displayData.things_they_like.join(', ')}`} />
-                  )}
-                  {displayData.lifestyle_vibe && (
-                    <PillTag label={`Lifestyle vibe: ${displayData.lifestyle_vibe}`} />
-                  )}
-                  {displayData.intention && (
-                    <PillTag label={`Intention: ${displayData.intention}`} />
-                  )}
-                  {displayData.distance_type && (
-                    <PillTag label={displayData.distance_type} />
-                  )}
+                  {favTags.map((t) => (
+                    <PillTag key={t.label} label={`${t.label}: ${t.value}`} />
+                  ))}
                 </View>
               </View>
             </View>
