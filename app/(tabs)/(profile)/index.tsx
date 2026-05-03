@@ -478,77 +478,63 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Avatar + info */}
-        <View style={{ alignItems: 'center', paddingTop: 8, paddingBottom: 24, paddingHorizontal: 24 }}>
-          <AnimatedPressable onPress={editing ? pickPhoto : undefined}>
-            <View
-              style={{
-                width: 96,
-                height: 96,
-                borderRadius: 48,
-                backgroundColor: COLORS.primaryMuted,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 14,
-                borderWidth: 2.5,
-                borderColor: COLORS.primary,
-                overflow: 'hidden',
-                shadowColor: COLORS.primary,
-                shadowOpacity: 0.3,
-                shadowRadius: 16,
-                shadowOffset: { width: 0, height: 4 },
-              }}
-            >
-              {photoSource && photoSource.length > 10 ? (
-                <RNImage source={{ uri: photoSource }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-              ) : (
-                <Text style={{ fontSize: 34, fontWeight: '700', color: COLORS.primary }}>{initials}</Text>
-              )}
-              {editing && (
-                <View
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    backgroundColor: 'rgba(0,0,0,0.6)',
-                    alignItems: 'center',
-                    paddingVertical: 6,
-                  }}
-                >
-                  <Camera size={14} color="#fff" />
-                </View>
-              )}
-            </View>
-          </AnimatedPressable>
+        {/* Full-width photo card */}
+        <View style={{
+          marginHorizontal: 16, marginTop: 8, marginBottom: 16,
+          borderRadius: 16, overflow: 'hidden',
+          backgroundColor: COLORS.surface,
+          shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 2 }, elevation: 3,
+        }}>
+          {/* Photo area */}
+          <View style={{ width: '100%', height: 220, position: 'relative' }}>
+            {photoSource && photoSource.length > 10 ? (
+              <RNImage source={{ uri: photoSource }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            ) : (
+              <View style={{ width: '100%', height: '100%', backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 56, fontWeight: '700', color: COLORS.primary }}>{initials}</Text>
+              </View>
+            )}
+            {editing && (
+              <Pressable
+                onPress={() => {
+                  console.log('[Profile] Change photo pressed');
+                  pickPhoto();
+                }}
+                style={{
+                  position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                  backgroundColor: 'rgba(0,0,0,0.45)',
+                  alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                <Camera size={28} color="#fff" />
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Change photo</Text>
+              </Pressable>
+            )}
+          </View>
 
-          {editing ? (
-            <TextInput
-              value={editData.displayName || ''}
-              onChangeText={(v) => update('displayName', v)}
-              placeholder={user?.name || 'Display name'}
-              placeholderTextColor={COLORS.textTertiary}
-              style={{
-                color: COLORS.text,
-                fontSize: 22,
-                fontWeight: '700',
-                backgroundColor: COLORS.surfaceSecondary,
-                borderRadius: 10,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                borderWidth: 1,
-                borderColor: COLORS.border,
-                textAlign: 'center',
-                marginBottom: 4,
-                minWidth: 180,
-              }}
-            />
-          ) : (
-            <Text style={{ fontSize: 22, fontWeight: '700', color: COLORS.text, marginBottom: 4 }}>
-              {displayData.displayName || user?.name || 'Anonymous'}
-            </Text>
-          )}
-          <Text style={{ fontSize: 14, color: COLORS.textSecondary }}>{user?.email || ''}</Text>
+          {/* Name + email below photo */}
+          <View style={{ padding: 16, alignItems: 'center' }}>
+            {editing ? (
+              <TextInput
+                value={editData.displayName || ''}
+                onChangeText={(v) => update('displayName', v)}
+                placeholder={user?.name || 'Display name'}
+                placeholderTextColor={COLORS.textTertiary}
+                style={{
+                  color: COLORS.text, fontSize: 20, fontWeight: '700',
+                  backgroundColor: COLORS.surfaceSecondary, borderRadius: 10,
+                  paddingHorizontal: 14, paddingVertical: 8,
+                  borderWidth: 1, borderColor: COLORS.border,
+                  textAlign: 'center', marginBottom: 4, minWidth: 180,
+                }}
+              />
+            ) : (
+              <Text style={{ fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: 4 }}>
+                {displayData.displayName || user?.name || 'Anonymous'}
+              </Text>
+            )}
+            <Text style={{ fontSize: 14, color: COLORS.textSecondary }}>{user?.email || ''}</Text>
+          </View>
         </View>
 
         {/* Stats row */}

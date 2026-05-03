@@ -1258,15 +1258,6 @@ export default function PersonDetailScreen() {
   // ── render tabs ───────────────────────────────────────────────────────────
 
   const renderOverviewTab = () => {
-    const favTags: { label: string; value?: string | string[] }[] = [
-      { label: 'Fav Food', value: displayData.favorite_foods?.join(', ') },
-      { label: 'Fav Color', value: displayData.favorite_color },
-      { label: 'Things they like', value: displayData.things_they_like?.join(', ') },
-      { label: 'Lifestyle vibe', value: displayData.lifestyle_vibe },
-      { label: 'Intention', value: displayData.intention },
-      { label: displayData.distance_type || 'In-person', value: undefined },
-    ].filter((t) => t.value !== undefined || t.label === (displayData.distance_type || 'In-person'));
-
     const sortedDates = [...dates].sort((a, b) => {
       const da = new Date(a.date_time || a.created_at).getTime();
       const db = new Date(b.date_time || b.created_at).getTime();
@@ -1377,201 +1368,6 @@ export default function PersonDetailScreen() {
               })}
             </ScrollView>
           )}
-        </View>
-
-        {/* Details */}
-        {!editing && (
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-            <SectionHeader label="Details" />
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 0 }}>
-              {[
-                { label: 'Age', value: displayData.age?.toString() },
-                { label: 'Birthday', value: displayData.birthday ? formatBirthdayDisplay(displayData.birthday) : undefined },
-                { label: 'Zodiac', value: ZODIAC_SIGNS.find(z => z.value === displayData.zodiac)?.label },
-                { label: 'Location', value: displayData.location },
-                { label: 'Connection', value: getConnectionLabel(displayData.connection_type, displayData.connection_type_custom) || undefined },
-                { label: 'Instagram', value: displayData.instagram ? `@${displayData.instagram.replace('@', '')}` : undefined },
-                { label: 'TikTok', value: displayData.tiktok ? `@${displayData.tiktok.replace('@', '')}` : undefined },
-                { label: 'Phone', value: displayData.phone_number || undefined },
-              ].filter(f => !!f.value).map((f) => (
-                <View key={f.label} style={{ width: '50%', paddingVertical: 8, paddingRight: 8 }}>
-                  <Text style={{ color: '#999999', fontSize: 11, marginBottom: 2 }}>{f.label}</Text>
-                  <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '500' }} numberOfLines={1}>{f.value}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Favorites */}
-        {(favTags.length > 0 || editing) && (
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-            <SectionHeader label="Favorites" />
-            {editing ? (
-              <View style={{ gap: 10 }}>
-                {[
-                  { label: 'Fav Food (comma-separated)', key: 'favorite_foods' as keyof Person, isArray: true },
-                  { label: 'Fav Color', key: 'favorite_color' as keyof Person, isArray: false },
-                  { label: 'Things they like (comma-separated)', key: 'things_they_like' as keyof Person, isArray: true },
-                  { label: 'Lifestyle vibe', key: 'lifestyle_vibe' as keyof Person, isArray: false },
-                  { label: 'Intention', key: 'intention' as keyof Person, isArray: false },
-                  { label: 'Distance type (e.g. In-person)', key: 'distance_type' as keyof Person, isArray: false },
-                ].map((field) => (
-                  <View key={field.key}>
-                    <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>{field.label}</Text>
-                    <TextInput
-                      value={field.isArray
-                        ? ((editData[field.key] as string[]) || []).join(', ')
-                        : (editData[field.key] as string) || ''}
-                      onChangeText={(v) => {
-                        if (field.isArray) {
-                          update(field.key, v.split(',').map((s) => s.trim()).filter(Boolean));
-                        } else {
-                          update(field.key, v);
-                        }
-                      }}
-                      placeholder={field.label}
-                      placeholderTextColor="#BBBBBB"
-                      style={{
-                        backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10,
-                        color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0',
-                      }}
-                    />
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {displayData.favorite_foods && displayData.favorite_foods.length > 0 && (
-                  <PillTag label={`Fav Food: ${displayData.favorite_foods.join(', ')}`} />
-                )}
-                {displayData.favorite_color && (
-                  <PillTag label={`Fav Color: ${displayData.favorite_color}`} />
-                )}
-                {displayData.things_they_like && displayData.things_they_like.length > 0 && (
-                  <PillTag label={`Things they like: ${displayData.things_they_like.join(', ')}`} />
-                )}
-                {displayData.lifestyle_vibe && (
-                  <PillTag label={`Lifestyle vibe: ${displayData.lifestyle_vibe}`} />
-                )}
-                {displayData.intention && (
-                  <PillTag label={`Intention: ${displayData.intention}`} />
-                )}
-                {displayData.distance_type && (
-                  <PillTag label={displayData.distance_type} />
-                )}
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Flags */}
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-          <View style={{ flexDirection: 'row', gap: 16 }}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: '#2E7D32', fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Green Flags</Text>
-              {editing ? (
-                <TextInput
-                  value={((editData.green_flags || []).join(', '))}
-                  onChangeText={(v) => update('green_flags', v.split(',').map((s) => s.trim()).filter(Boolean))}
-                  placeholder="e.g. Kind, Funny"
-                  placeholderTextColor="#BBBBBB"
-                  multiline
-                  style={{
-                    backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10,
-                    color: '#1A1A1A', fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', minHeight: 60,
-                  }}
-                />
-              ) : (
-                <View>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {(displayData.green_flags || []).map((flag) => (
-                      <PillTag key={flag} label={flag} color="#2E7D32" bg="rgba(46,125,50,0.08)" />
-                    ))}
-                    {(!displayData.green_flags || displayData.green_flags.length === 0) && (
-                      <Text style={{ color: '#BBBBBB', fontSize: 13 }}>None added</Text>
-                    )}
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, alignItems: 'center' }}>
-                    <TextInput
-                      value={addingGreenFlag}
-                      onChangeText={setAddingGreenFlag}
-                      placeholder="Add flag..."
-                      placeholderTextColor="#BBBBBB"
-                      style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', color: '#1A1A1A' }}
-                    />
-                    <Pressable
-                      onPress={async () => {
-                        if (!addingGreenFlag.trim()) return;
-                        console.log('[PersonDetail] Adding green flag:', addingGreenFlag.trim());
-                        const newFlags = [...(person!.green_flags || []), addingGreenFlag.trim()];
-                        setAddingGreenFlag('');
-                        try {
-                          await apiPut(`/api/persons/${id}`, { green_flags: newFlags });
-                          await loadPerson();
-                        } catch (e) { console.error('[PersonDetail] Failed to add green flag:', e); }
-                      }}
-                      style={{ backgroundColor: '#2E7D32', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
-                    >
-                      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              )}
-            </View>
-            <View style={{ width: 1, backgroundColor: '#F0F0F0' }} />
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: RED, fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Red Flags</Text>
-              {editing ? (
-                <TextInput
-                  value={((editData.red_flags || []).join(', '))}
-                  onChangeText={(v) => update('red_flags', v.split(',').map((s) => s.trim()).filter(Boolean))}
-                  placeholder="e.g. Flaky, Rude"
-                  placeholderTextColor="#BBBBBB"
-                  multiline
-                  style={{
-                    backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10,
-                    color: '#1A1A1A', fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', minHeight: 60,
-                  }}
-                />
-              ) : (
-                <View>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {(displayData.red_flags || []).map((flag) => (
-                      <PillTag key={flag} label={flag} color={RED} bg="rgba(229,57,53,0.08)" />
-                    ))}
-                    {(!displayData.red_flags || displayData.red_flags.length === 0) && (
-                      <Text style={{ color: '#BBBBBB', fontSize: 13 }}>None added</Text>
-                    )}
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 6, marginTop: 8, alignItems: 'center' }}>
-                    <TextInput
-                      value={addingRedFlag}
-                      onChangeText={setAddingRedFlag}
-                      placeholder="Add flag..."
-                      placeholderTextColor="#BBBBBB"
-                      style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', color: '#1A1A1A' }}
-                    />
-                    <Pressable
-                      onPress={async () => {
-                        if (!addingRedFlag.trim()) return;
-                        console.log('[PersonDetail] Adding red flag:', addingRedFlag.trim());
-                        const newFlags = [...(person!.red_flags || []), addingRedFlag.trim()];
-                        setAddingRedFlag('');
-                        try {
-                          await apiPut(`/api/persons/${id}`, { red_flags: newFlags });
-                          await loadPerson();
-                        } catch (e) { console.error('[PersonDetail] Failed to add red flag:', e); }
-                      }}
-                      style={{ backgroundColor: RED, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 }}
-                    >
-                      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Add</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              )}
-            </View>
-          </View>
         </View>
 
         {/* Delete / Bench row */}
@@ -2359,6 +2155,160 @@ export default function PersonDetailScreen() {
                   />
                 </View>
               ))}
+            </View>
+          </View>
+        )}
+
+        {/* ── Details (view mode) ─────────────────────────────────────── */}
+        {!editing && (
+          <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
+            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+              <SectionHeader label="Details" />
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 0 }}>
+                {[
+                  { label: 'Age', value: displayData.age?.toString() },
+                  { label: 'Birthday', value: displayData.birthday ? formatBirthdayDisplay(displayData.birthday) : undefined },
+                  { label: 'Zodiac', value: ZODIAC_SIGNS.find(z => z.value === displayData.zodiac)?.label },
+                  { label: 'Location', value: displayData.location },
+                  { label: 'Connection', value: getConnectionLabel(displayData.connection_type, displayData.connection_type_custom) || undefined },
+                  { label: 'Instagram', value: displayData.instagram ? `@${displayData.instagram.replace('@', '')}` : undefined },
+                  { label: 'TikTok', value: displayData.tiktok ? `@${displayData.tiktok.replace('@', '')}` : undefined },
+                  { label: 'Phone', value: displayData.phone_number || undefined },
+                ].filter(f => !!f.value).map((f) => (
+                  <View key={f.label} style={{ width: '50%', paddingVertical: 8, paddingRight: 8 }}>
+                    <Text style={{ color: '#999999', fontSize: 11, marginBottom: 2 }}>{f.label}</Text>
+                    <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '500' }} numberOfLines={1}>{f.value}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ── Favorites (view mode) ───────────────────────────────────── */}
+        {!editing && (() => {
+          const favTags: { label: string; value?: string | string[] }[] = [
+            { label: 'Fav Food', value: displayData.favorite_foods?.join(', ') },
+            { label: 'Fav Color', value: displayData.favorite_color },
+            { label: 'Things they like', value: displayData.things_they_like?.join(', ') },
+            { label: 'Lifestyle vibe', value: displayData.lifestyle_vibe },
+            { label: 'Intention', value: displayData.intention },
+            { label: displayData.distance_type || 'In-person', value: undefined },
+          ].filter((t) => t.value !== undefined || t.label === (displayData.distance_type || 'In-person'));
+          if (favTags.length === 0) return null;
+          return (
+            <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
+              <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+                <SectionHeader label="Favorites" />
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {displayData.favorite_foods && displayData.favorite_foods.length > 0 && (
+                    <PillTag label={`Fav Food: ${displayData.favorite_foods.join(', ')}`} />
+                  )}
+                  {displayData.favorite_color && (
+                    <PillTag label={`Fav Color: ${displayData.favorite_color}`} />
+                  )}
+                  {displayData.things_they_like && displayData.things_they_like.length > 0 && (
+                    <PillTag label={`Things they like: ${displayData.things_they_like.join(', ')}`} />
+                  )}
+                  {displayData.lifestyle_vibe && (
+                    <PillTag label={`Lifestyle vibe: ${displayData.lifestyle_vibe}`} />
+                  )}
+                  {displayData.intention && (
+                    <PillTag label={`Intention: ${displayData.intention}`} />
+                  )}
+                  {displayData.distance_type && (
+                    <PillTag label={displayData.distance_type} />
+                  )}
+                </View>
+              </View>
+            </View>
+          );
+        })()}
+
+        {/* ── Flags ───────────────────────────────────────────────────── */}
+        {!editing && (
+          <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
+            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+              {/* Green Flags */}
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ color: '#2E7D32', fontSize: 14, fontWeight: '700', marginBottom: 10 }}>🟢 Green Flags</Text>
+                <View>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                    {(displayData.green_flags || []).map((flag) => (
+                      <PillTag key={flag} label={flag} color="#2E7D32" bg="rgba(46,125,50,0.08)" />
+                    ))}
+                    {(!displayData.green_flags || displayData.green_flags.length === 0) && (
+                      <Text style={{ color: '#BBBBBB', fontSize: 13 }}>None added yet</Text>
+                    )}
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <TextInput
+                      value={addingGreenFlag}
+                      onChangeText={setAddingGreenFlag}
+                      placeholder="Add green flag..."
+                      placeholderTextColor="#BBBBBB"
+                      style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0', color: '#1A1A1A' }}
+                    />
+                    <Pressable
+                      onPress={async () => {
+                        if (!addingGreenFlag.trim()) return;
+                        console.log('[PersonDetail] Adding green flag:', addingGreenFlag.trim());
+                        const newFlags = [...(person!.green_flags || []), addingGreenFlag.trim()];
+                        setAddingGreenFlag('');
+                        try {
+                          await apiPut(`/api/persons/${id}`, { green_flags: newFlags });
+                          await loadPerson();
+                        } catch (e) { console.error('[PersonDetail] Failed to add green flag:', e); }
+                      }}
+                      style={{ backgroundColor: '#2E7D32', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Add</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+
+              {/* Divider */}
+              <View style={{ height: 1, backgroundColor: '#F0F0F0', marginBottom: 16 }} />
+
+              {/* Red Flags */}
+              <View>
+                <Text style={{ color: '#E53935', fontSize: 14, fontWeight: '700', marginBottom: 10 }}>🔴 Red Flags</Text>
+                <View>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                    {(displayData.red_flags || []).map((flag) => (
+                      <PillTag key={flag} label={flag} color="#E53935" bg="rgba(229,57,53,0.08)" />
+                    ))}
+                    {(!displayData.red_flags || displayData.red_flags.length === 0) && (
+                      <Text style={{ color: '#BBBBBB', fontSize: 13 }}>None added yet</Text>
+                    )}
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <TextInput
+                      value={addingRedFlag}
+                      onChangeText={setAddingRedFlag}
+                      placeholder="Add red flag..."
+                      placeholderTextColor="#BBBBBB"
+                      style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0', color: '#1A1A1A' }}
+                    />
+                    <Pressable
+                      onPress={async () => {
+                        if (!addingRedFlag.trim()) return;
+                        console.log('[PersonDetail] Adding red flag:', addingRedFlag.trim());
+                        const newFlags = [...(person!.red_flags || []), addingRedFlag.trim()];
+                        setAddingRedFlag('');
+                        try {
+                          await apiPut(`/api/persons/${id}`, { red_flags: newFlags });
+                          await loadPerson();
+                        } catch (e) { console.error('[PersonDetail] Failed to add red flag:', e); }
+                      }}
+                      style={{ backgroundColor: '#E53935', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }}
+                    >
+                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Add</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
             </View>
           </View>
         )}
