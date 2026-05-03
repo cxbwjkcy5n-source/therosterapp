@@ -9,6 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Image as RNImage,
+  PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
@@ -210,6 +211,29 @@ function Chip({
 function PersonCard({ item, index }: { item: Person; index: number }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
+  const translateX = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
+      onPanResponderMove: (_, g) => {
+        translateX.setValue(Math.max(-80, Math.min(80, g.dx)));
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dx < -60) {
+          console.log('[Roster] Swipe left — bench action for:', item.id, item.name);
+          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+          router.push({ pathname: '/bench-reason', params: { personId: item.id, personName: item.name } });
+        } else if (g.dx > 60) {
+          console.log('[Roster] Swipe right — log date action for:', item.id, item.name);
+          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+          router.push('/date-have');
+        } else {
+          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+        }
+      },
+    })
+  ).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -224,101 +248,125 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
   const score = computeScore(item);
   const categoryLabel = getCategoryLabel(item.connection_type, item.connection_type_custom);
 
+  const trendColor = item.interest_level != null
+    ? (item.interest_level >= 7 ? '#4CAF50' : item.interest_level <= 4 ? '#E53935' : 'transparent')
+    : 'transparent';
+  const trendArrow = item.interest_level != null
+    ? (item.interest_level >= 7 ? '↑' : item.interest_level <= 4 ? '↓' : '·')
+    : '·';
+
   return (
     <Animated.View style={{ opacity, transform: [{ translateY }] }}>
-      <AnimatedPressable
-        onPress={() => {
-          console.log('[Roster] Navigating to person:', item.id, item.name);
-          router.push(`/person/${item.id}`);
-        }}
-        style={{
-          marginHorizontal: 16,
-          marginVertical: 4,
-          backgroundColor: '#fff',
-          borderRadius: 16,
-          padding: 16,
-          flexDirection: 'row',
-          alignItems: 'center',
-          shadowColor: '#000',
-          shadowOpacity: 0.06,
-          shadowRadius: 10,
-          shadowOffset: { width: 0, height: 2 },
-          elevation: 2,
-        }}
-      >
-        {/* Avatar */}
-        <View
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: 36,
-            borderWidth: 2,
-            borderColor: RED,
-            overflow: 'hidden',
-            backgroundColor: RED,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 12,
-          }}
-        >
-          {hasPhoto && resolveImageSource(item.photo_url) ? (
-            <Image
-              source={resolveImageSource(item.photo_url)!}
-              style={{ width: 68, height: 68, borderRadius: 34 }}
-              contentFit="cover"
-            />
-          ) : (
-            <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700' }}>{initials}</Text>
-          )}
+      <View style={{ position: 'relative', overflow: 'hidden', borderRadius: 16, marginHorizontal: 16, marginVertical: 4 }}>
+        {/* Left action (bench - revealed on swipe left) */}
+        <View style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 80, backgroundColor: '#FF9800', alignItems: 'center', justifyContent: 'center', borderRadius: 16 }}>
+          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Bench</Text>
         </View>
-
-        {/* Name + category */}
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 5 }} numberOfLines={1}>
-            {item.name}
-          </Text>
-          {categoryLabel ? (
+        {/* Right action (log date - revealed on swipe right) */}
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 80, backgroundColor: '#4CAF50', alignItems: 'center', justifyContent: 'center', borderRadius: 16 }}>
+          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Log Date</Text>
+        </View>
+        <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[Roster] Navigating to person:', item.id, item.name);
+              router.push(`/person/${item.id}`);
+            }}
+            style={{
+              backgroundColor: '#fff',
+              borderRadius: 16,
+              padding: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOpacity: 0.06,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 2,
+            }}
+          >
+            {/* Avatar */}
             <View
               style={{
-                alignSelf: 'flex-start',
-                backgroundColor: '#F5F5F5',
-                borderRadius: 6,
-                paddingHorizontal: 8,
-                paddingVertical: 3,
+                width: 72,
+                height: 72,
+                borderRadius: 36,
+                borderWidth: 2,
+                borderColor: RED,
+                overflow: 'hidden',
+                backgroundColor: RED,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 12,
               }}
             >
-              <Text style={{ fontSize: 11, color: '#666', fontWeight: '500' }}>{categoryLabel}</Text>
+              {hasPhoto && resolveImageSource(item.photo_url) ? (
+                <Image
+                  source={resolveImageSource(item.photo_url)!}
+                  style={{ width: 68, height: 68, borderRadius: 34 }}
+                  contentFit="cover"
+                />
+              ) : (
+                <Text style={{ color: '#fff', fontSize: 24, fontWeight: '700' }}>{initials}</Text>
+              )}
             </View>
-          ) : null}
-          {/* Info row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
-            {item.location ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                <Text style={{ fontSize: 11, color: '#999' }}>📍</Text>
-                <Text style={{ fontSize: 12, color: '#888', fontWeight: '400' }} numberOfLines={1}>{item.location}</Text>
-              </View>
-            ) : null}
-            {item.location && item.interest_level ? (
-              <Text style={{ fontSize: 11, color: '#CCC' }}>·</Text>
-            ) : null}
-            {item.interest_level ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                <Text style={{ fontSize: 11, color: '#999' }}>⚡</Text>
-                <Text style={{ fontSize: 12, color: '#888', fontWeight: '400' }}>{item.interest_level} interest</Text>
-              </View>
-            ) : null}
-            {(item.location || item.interest_level) && item.created_at ? (
-              <Text style={{ fontSize: 11, color: '#CCC' }}>·</Text>
-            ) : null}
-            {item.created_at ? (
-              <Text style={{ fontSize: 12, color: '#AAAAAA', fontWeight: '400' }}>{formatLastActive(item.created_at)}</Text>
-            ) : null}
-          </View>
-        </View>
 
-        {/* Score ring */}
-        <CircleScore score={score} size={52} />
-      </AnimatedPressable>
+            {/* Name + category */}
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 5 }} numberOfLines={1}>
+                {item.name}
+              </Text>
+              {categoryLabel ? (
+                <View
+                  style={{
+                    alignSelf: 'flex-start',
+                    backgroundColor: '#F5F5F5',
+                    borderRadius: 6,
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                  }}
+                >
+                  <Text style={{ fontSize: 11, color: '#666', fontWeight: '500' }}>{categoryLabel}</Text>
+                </View>
+              ) : null}
+              {/* Info row */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
+                {item.location ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <Text style={{ fontSize: 11, color: '#999' }}>📍</Text>
+                    <Text style={{ fontSize: 12, color: '#888', fontWeight: '400' }} numberOfLines={1}>{item.location}</Text>
+                  </View>
+                ) : null}
+                {item.location && item.interest_level ? (
+                  <Text style={{ fontSize: 11, color: '#CCC' }}>·</Text>
+                ) : null}
+                {item.interest_level ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <Text style={{ fontSize: 11, color: '#999' }}>⚡</Text>
+                    <Text style={{ fontSize: 12, color: '#888', fontWeight: '400' }}>{item.interest_level} interest</Text>
+                  </View>
+                ) : null}
+                {(item.location || item.interest_level) && item.created_at ? (
+                  <Text style={{ fontSize: 11, color: '#CCC' }}>·</Text>
+                ) : null}
+                {item.created_at ? (
+                  <Text style={{ fontSize: 12, color: '#AAAAAA', fontWeight: '400' }}>{formatLastActive(item.created_at)}</Text>
+                ) : null}
+              </View>
+            </View>
+
+            {/* Score ring + trend arrow */}
+            <View style={{ alignItems: 'center' }}>
+              <CircleScore score={score} size={52} />
+              {item.interest_level != null && (
+                <Text style={{ fontSize: 13, color: trendColor, marginLeft: -4, marginTop: 2 }}>
+                  {trendArrow}
+                </Text>
+              )}
+            </View>
+          </AnimatedPressable>
+        </Animated.View>
+      </View>
     </Animated.View>
   );
 }
@@ -362,6 +410,7 @@ export default function RosterScreen() {
   const [sortBy, setSortBy] = useState<SortOption>('Newest');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const filterHeight = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
@@ -480,6 +529,16 @@ export default function RosterScreen() {
     outputRange: [0, 0, 1],
   });
 
+  // ── Who needs attention ──
+  const needsAttention = persons
+    .filter((p) => {
+      if (!p.created_at) return false;
+      const days = Math.floor((Date.now() - new Date(p.created_at).getTime()) / (1000 * 60 * 60 * 24));
+      return days >= 14;
+    })
+    .sort((a, b) => new Date(a.created_at!).getTime() - new Date(b.created_at!).getTime())
+    .slice(0, 5);
+
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
 
@@ -550,6 +609,26 @@ export default function RosterScreen() {
           </Pressable>
         </View>
       </SafeAreaView>
+
+      {/* ── Nudge banner ── */}
+      {!loading && !nudgeDismissed && persons.length === 0 && (
+        <View style={{ marginHorizontal: 16, marginTop: 8, backgroundColor: '#FFF3E0', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#FFB74D' }}>
+          <Text style={{ fontSize: 20 }}>👋</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#E65100', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>Get started!</Text>
+            <Text style={{ color: '#BF360C', fontSize: 12, lineHeight: 17 }}>Add someone to your roster, rate them, then log a date.</Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              console.log('[Roster] Nudge banner dismissed');
+              setNudgeDismissed(true);
+            }}
+            style={{ padding: 4 }}
+          >
+            <Text style={{ color: '#E65100', fontSize: 16 }}>✕</Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* ── Search + filter card (overlaps header) ── */}
       <View
@@ -667,28 +746,86 @@ export default function RosterScreen() {
           </AnimatedPressable>
         </View>
       ) : (
-        <FlatList
-          data={sorted}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item, index }) => <PersonCard item={item} index={index} />}
-          contentContainerStyle={{ paddingTop: 8, paddingBottom: 120 }}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 60 }}>
-              <Text style={{ color: '#999', fontSize: 15, marginBottom: 12 }}>
-                No one on your roster yet
+        <View style={{ flex: 1 }}>
+          {/* Who needs attention */}
+          {persons.length > 0 && needsAttention.length > 0 && (
+            <View style={{ paddingTop: 16, paddingBottom: 4 }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#999', textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: 16, marginBottom: 10 }}>
+                Who needs attention?
               </Text>
-              <Pressable
-                onPress={() => {
-                  console.log('[Roster] Empty state add someone pressed');
-                  router.push('/add-person');
-                }}
-              >
-                <Text style={{ color: RED, fontSize: 15, fontWeight: '600' }}>+ Add someone</Text>
-              </Pressable>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
+                {needsAttention.map((p) => {
+                  const days = Math.floor((Date.now() - new Date(p.created_at!).getTime()) / (1000 * 60 * 60 * 24));
+                  const hasPhoto = !!p.photo_url && p.photo_url.length > 10;
+                  const initials = getInitials(p.name);
+                  const daysStr = String(days) + 'd ago';
+                  const firstName = p.name.split(' ')[0];
+                  return (
+                    <AnimatedPressable
+                      key={p.id}
+                      onPress={() => {
+                        console.log('[Roster] Needs attention card pressed:', p.id, p.name);
+                        router.push(`/person/${p.id}`);
+                      }}
+                      style={{ alignItems: 'center', width: 68 }}
+                    >
+                      <View style={{ width: 52, height: 52, borderRadius: 26, borderWidth: 2, borderColor: '#FF9800', overflow: 'hidden', backgroundColor: RED, alignItems: 'center', justifyContent: 'center', marginBottom: 5 }}>
+                        {hasPhoto ? (
+                          <Image source={{ uri: p.photo_url }} style={{ width: 48, height: 48, borderRadius: 24 }} contentFit="cover" />
+                        ) : (
+                          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{initials}</Text>
+                        )}
+                      </View>
+                      <Text style={{ fontSize: 11, color: '#1A1A1A', fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{firstName}</Text>
+                      <Text style={{ fontSize: 10, color: '#FF9800', textAlign: 'center' }}>{daysStr}</Text>
+                    </AnimatedPressable>
+                  );
+                })}
+              </ScrollView>
             </View>
-          }
-        />
+          )}
+
+          <FlatList
+            data={sorted}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item, index }) => <PersonCard item={item} index={index} />}
+            contentContainerStyle={{ paddingTop: 8, paddingBottom: 120 }}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 40, paddingHorizontal: 32 }}>
+                <Text style={{ fontSize: 32, marginBottom: 12 }}>💝</Text>
+                <Text style={{ color: '#1A1A1A', fontSize: 18, fontWeight: '700', marginBottom: 6, textAlign: 'center' }}>
+                  Start tracking your dating life
+                </Text>
+                <Text style={{ color: '#999', fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 28 }}>
+                  Get insights, spot patterns, and make better choices.
+                </Text>
+                {[
+                  { step: '1', label: 'Add someone to your roster', icon: '👤' },
+                  { step: '2', label: 'Rate them across 9 dimensions', icon: '⭐' },
+                  { step: '3', label: 'Log dates and track trends', icon: '📅' },
+                ].map((s) => (
+                  <View key={s.step} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16, width: '100%' }}>
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: RED, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>{s.step}</Text>
+                    </View>
+                    <Text style={{ fontSize: 16 }}>{s.icon}</Text>
+                    <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '500', flex: 1 }}>{s.label}</Text>
+                  </View>
+                ))}
+                <Pressable
+                  onPress={() => {
+                    console.log('[Roster] Empty state onboarding — Add Your First Person pressed');
+                    router.push('/add-person');
+                  }}
+                  style={{ backgroundColor: RED, borderRadius: 14, paddingHorizontal: 32, paddingVertical: 14, marginTop: 8 }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Add Your First Person</Text>
+                </Pressable>
+              </View>
+            }
+          />
+        </View>
       )}
 
       {/* ── Add New Person button ── */}

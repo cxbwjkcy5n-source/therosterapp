@@ -164,6 +164,7 @@ function normalizePerson(raw: any): Person {
     is_benched: raw.is_benched ?? raw.isBenched,
     bench_reason: raw.bench_reason ?? raw.benchReason,
     nickname: raw.nickname,
+    things_i_like: raw.things_i_like ?? raw.thingsILike,
   };
 }
 
@@ -205,6 +206,7 @@ interface Person {
   is_benched?: boolean;
   bench_reason?: string;
   nickname?: string;
+  things_i_like?: string;
 }
 
 interface DateEntry {
@@ -612,6 +614,7 @@ function LogDateModal({
   showTimePicker, setShowTimePicker,
   dateLocation, setDateLocation,
   dateNotes, setDateNotes,
+  dateVibe, setDateVibe,
   savingDate,
 }: {
   visible: boolean; onClose: () => void; onSave: () => void;
@@ -621,6 +624,7 @@ function LogDateModal({
   showTimePicker: boolean; setShowTimePicker: (v: boolean) => void;
   dateLocation: string; setDateLocation: (v: string) => void;
   dateNotes: string; setDateNotes: (v: string) => void;
+  dateVibe: string; setDateVibe: (v: string) => void;
   savingDate: boolean;
 }) {
   const dateWhenLabel = dateWhen.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -643,6 +647,36 @@ function LogDateModal({
             </Pressable>
           </View>
           <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 16 }} keyboardShouldPersistTaps="handled">
+            {/* Vibe */}
+            <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>How was the vibe?</Text>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
+              {[
+                { emoji: '😍', label: 'Amazing' },
+                { emoji: '🙂', label: 'Good' },
+                { emoji: '😐', label: 'Meh' },
+                { emoji: '😬', label: 'Awkward' },
+              ].map((v) => {
+                const isSelected = dateVibe === v.emoji;
+                return (
+                  <Pressable
+                    key={v.emoji}
+                    onPress={() => {
+                      console.log('[PersonDetail] Date vibe selected:', v.label);
+                      setDateVibe(dateVibe === v.emoji ? '' : v.emoji);
+                    }}
+                    style={{
+                      flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12,
+                      backgroundColor: isSelected ? 'rgba(229,57,53,0.1)' : '#F5F5F5',
+                      borderWidth: 1.5, borderColor: isSelected ? '#E53935' : 'transparent',
+                    }}
+                  >
+                    <Text style={{ fontSize: 22 }}>{v.emoji}</Text>
+                    <Text style={{ fontSize: 10, color: '#999', marginTop: 3 }}>{v.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
             {/* Type */}
             <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', letterSpacing: 0.5, marginBottom: 10 }}>Type</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
@@ -798,6 +832,7 @@ export default function PersonDetailScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [dateLocation, setDateLocation] = useState('');
   const [dateNotes, setDateNotes] = useState('');
+  const [dateVibe, setDateVibe] = useState('');
   const [savingDate, setSavingDate] = useState(false);
 
   // notes tab
@@ -956,6 +991,7 @@ export default function PersonDetailScreen() {
         'sexual_chemistry', 'communication', 'overall_chemistry', 'consistency',
         'emotional_availability', 'date_planning', 'alignment',
         'favorite_foods', 'hobbies', 'green_flags', 'red_flags', 'photo_url',
+        'things_i_like',
       ];
       const payload: Record<string, any> = {};
       for (const key of ALLOWED_FIELDS) {
@@ -1065,15 +1101,16 @@ export default function PersonDetailScreen() {
   };
 
   const handleSaveDate = async () => {
-    console.log('[PersonDetail] Saving date for person:', id, 'type:', dateType);
+    console.log('[PersonDetail] Saving date for person:', id, 'type:', dateType, 'vibe:', dateVibe);
     setSavingDate(true);
     try {
+      const combinedNotes = [dateVibe, dateNotes.trim()].filter(Boolean).join(' ') || undefined;
       const result = await apiPost<any>('/api/dates', {
         person_id: id,
         type: dateType.toLowerCase(),
         location: dateLocation.trim() || undefined,
         date_time: dateWhen.toISOString(),
-        notes: dateNotes.trim() || undefined,
+        notes: combinedNotes,
         status: 'completed',
         title: `Date with ${person?.name || 'Unknown'}`,
       });
@@ -1083,6 +1120,7 @@ export default function PersonDetailScreen() {
       setDateWhen(new Date());
       setDateLocation('');
       setDateNotes('');
+      setDateVibe('');
       setShowLogDateModal(false);
       await loadDates();
       if (newDateId) {
@@ -1288,6 +1326,36 @@ export default function PersonDetailScreen() {
 
     return (
       <View style={{ gap: 16 }}>
+        {/* What I like about them */}
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <SectionHeader label="What I Like About Them" />
+          {editing ? (
+            <TextInput
+              value={(editData.things_i_like as string) || ''}
+              onChangeText={(v) => {
+                console.log('[PersonDetail] things_i_like updated');
+                update('things_i_like' as keyof Person, v);
+              }}
+              placeholder="What do you genuinely appreciate about this person?"
+              placeholderTextColor="#BBBBBB"
+              multiline
+              style={{
+                backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
+                color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0',
+                minHeight: 80, textAlignVertical: 'top',
+              }}
+            />
+          ) : displayData.things_i_like ? (
+            <Text style={{ color: '#1A1A1A', fontSize: 14, lineHeight: 21, fontStyle: 'italic' }}>
+              {'"'}{displayData.things_i_like}{'"'}
+            </Text>
+          ) : (
+            <Text style={{ color: '#BBBBBB', fontSize: 14, fontStyle: 'italic' }}>
+              Tap edit to add what you appreciate about them...
+            </Text>
+          )}
+        </View>
+
         {/* Dating Timeline */}
         <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="Dating Timeline" />
@@ -2492,6 +2560,8 @@ export default function PersonDetailScreen() {
         setDateLocation={setDateLocation}
         dateNotes={dateNotes}
         setDateNotes={setDateNotes}
+        dateVibe={dateVibe}
+        setDateVibe={setDateVibe}
         savingDate={savingDate}
       />
     </View>

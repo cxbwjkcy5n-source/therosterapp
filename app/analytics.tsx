@@ -445,6 +445,55 @@ function TabPills({ active, onChange }: { active: 'people' | 'dating'; onChange:
   );
 }
 
+// ─── Insight generators ───────────────────────────────────────────────────────
+
+function generatePeopleInsights(ps: PeopleStats): string[] {
+  const insights: string[] = [];
+  if (ps.total === 0) return insights;
+  if (ps.benched > ps.active) insights.push(`You've benched more people (${ps.benched}) than you have active (${ps.active}) — time to refresh the roster?`);
+  if (ps.avgInterest > 0 && ps.avgInterest < 5) insights.push(`Your average interest level is ${ps.avgInterest.toFixed(1)}/10 — you might be settling. Raise your standards!`);
+  if (ps.avgInterest >= 8) insights.push(`Your average interest level is ${ps.avgInterest.toFixed(1)}/10 — you're really into the people you're seeing! 🔥`);
+  if (ps.topHobbies.length > 0) insights.push(`The most common hobby across your roster is "${ps.topHobbies[0].label}" — you have a type!`);
+  if (ps.topRedFlags.length > 0) insights.push(`"${ps.topRedFlags[0].label}" keeps showing up as a red flag — watch out for that pattern.`);
+  if (ps.avgCommunication > 0 && ps.avgCommunication < 5) insights.push(`Communication scores are low (avg ${ps.avgCommunication.toFixed(1)}/10) — this might be worth reflecting on.`);
+  return insights.slice(0, 3);
+}
+
+function generateDatingInsights(ds: DateStats): string[] {
+  const insights: string[] = [];
+  if (ds.total === 0) return insights;
+  if (ds.total > 0 && ds.avgRating >= 8) insights.push(`Your dates are going great — avg rating ${ds.avgRating.toFixed(1)}/10! Keep it up. 🌟`);
+  if (ds.total > 0 && ds.avgRating > 0 && ds.avgRating < 5) insights.push(`Your average date rating is ${ds.avgRating.toFixed(1)}/10 — maybe it's time to try different date ideas?`);
+  if (ds.wantAnotherTotal > 0) {
+    const pct = Math.round((ds.wantAnotherCount / ds.wantAnotherTotal) * 100);
+    if (pct >= 70) insights.push(`${pct}% of your dates left you wanting more — great chemistry!`);
+    if (pct < 40) insights.push(`Only ${pct}% of dates left you wanting another — consider being more selective.`);
+  }
+  if (ds.topPartnerName !== '—' && ds.topPartnerDates >= 3) insights.push(`You've been on ${ds.topPartnerDates} dates with ${ds.topPartnerName} — things are heating up!`);
+  if (ds.mostVisitedLocation !== '—') insights.push(`You keep going back to ${ds.mostVisitedLocation} — it must be a good spot!`);
+  return insights.slice(0, 3);
+}
+
+function InsightsCard({ insights }: { insights: string[] }) {
+  if (insights.length === 0) return null;
+  return (
+    <View style={{ backgroundColor: '#FFF8E1', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#FFE082', marginBottom: 12 }}>
+      <Text style={{ color: '#F57F17', fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>✨ Patterns</Text>
+      <View style={{ gap: 8 }}>
+        {insights.map((insight, i) => {
+          const insightKey = String(i);
+          return (
+            <View key={insightKey} style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
+              <Text style={{ color: '#F57F17', fontSize: 13, marginTop: 1 }}>•</Text>
+              <Text style={{ color: '#5D4037', fontSize: 13, lineHeight: 19, flex: 1 }}>{insight}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 // ─── People tab content ───────────────────────────────────────────────────────
 
 function PeopleTab({ ps }: { ps: PeopleStats }) {
@@ -485,8 +534,11 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
     { label: 'Alignment', value: ps.avgAlignment, display: ps.avgAlignment > 0 ? ps.avgAlignment.toFixed(1) : '—' },
   ];
 
+  const peopleInsights = generatePeopleInsights(ps);
+
   return (
     <View style={{ gap: CARD_GAP }}>
+      <InsightsCard insights={peopleInsights} />
       {/* Row 1: Total People + Active/Benched */}
       <View style={{ flexDirection: 'row', gap: CARD_GAP }}>
         {/* Total People */}
@@ -732,8 +784,11 @@ function DatingTab({ ds }: { ds: DateStats }) {
   const bestDateRatingStars = ds.bestDateRating > 0 ? ds.bestDateRating : 0;
   const locationDisplay = ds.mostVisitedLocation !== '—' ? capitalize(ds.mostVisitedLocation) : 'No data yet';
 
+  const datingInsights = generateDatingInsights(ds);
+
   return (
     <View style={{ gap: CARD_GAP }}>
+      <InsightsCard insights={datingInsights} />
       {/* Row 1: Total Dates + Avg Rating */}
       <View style={{ flexDirection: 'row', gap: CARD_GAP }}>
         <Card style={{ flex: 1 }}>
