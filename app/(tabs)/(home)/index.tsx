@@ -364,6 +364,9 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
                   <Text style={{ fontSize: 12, color: '#AAAAAA', fontWeight: '400' }}>{formatTalkingDuration(item.created_at)}</Text>
                 ) : null}
               </View>
+              {!item.location && !item.interest_level && !item.created_at && (
+                <Text style={{ fontSize: 11, color: '#CCCCCC', marginTop: 4, fontStyle: 'italic' }}>Tap to view details</Text>
+              )}
             </View>
 
             {/* Score ring + trend arrow */}
@@ -632,55 +635,6 @@ export default function RosterScreen() {
         </View>
       </SafeAreaView>
 
-      {/* ── Nudge banner ── */}
-      {!loading && !nudgeDismissed && persons.length === 0 && (
-        <View style={{ marginHorizontal: 16, marginTop: 8, backgroundColor: '#FFF3E0', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#FFB74D' }}>
-          <Text style={{ fontSize: 20 }}>👋</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: '#E65100', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>Get started!</Text>
-            <Text style={{ color: '#BF360C', fontSize: 12, lineHeight: 17 }}>Add someone to your roster, rate them, then log a date.</Text>
-          </View>
-          <Pressable
-            onPress={() => {
-              console.log('[Roster] Nudge banner dismissed');
-              setNudgeDismissed(true);
-            }}
-            style={{ padding: 4 }}
-          >
-            <Text style={{ color: '#E65100', fontSize: 16 }}>✕</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {/* ── Weekly check-in nudge banner ── */}
-      {!loading && !checkinBannerDismissed && persons.length > 0 && (
-        <View style={{ marginHorizontal: 16, marginTop: 8, backgroundColor: '#EDE7F6', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#B39DDB' }}>
-          <Text style={{ fontSize: 20 }}>📋</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: '#4527A0', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>Time for your weekly check-in</Text>
-            <Text style={{ color: '#512DA8', fontSize: 12, lineHeight: 17 }}>Reflect on your dating life this week.</Text>
-          </View>
-          <Pressable
-            onPress={() => {
-              console.log('[Roster] Weekly check-in banner Go pressed');
-              router.push('/weekly-checkin' as any);
-            }}
-            style={{ backgroundColor: '#7C4DFF', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
-          >
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Go</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              console.log('[Roster] Weekly check-in banner dismissed');
-              setCheckinBannerDismissed(true);
-            }}
-            style={{ padding: 4 }}
-          >
-            <Text style={{ color: '#7C4DFF', fontSize: 14 }}>✕</Text>
-          </Pressable>
-        </View>
-      )}
-
       {/* ── Search + filter card (overlaps header) ── */}
       <View
         style={{
@@ -772,6 +726,55 @@ export default function RosterScreen() {
           </View>
         </Animated.View>
       </View>
+
+      {/* ── Nudge banner ── */}
+      {!loading && !nudgeDismissed && persons.length === 0 && (
+        <View style={{ marginHorizontal: 16, marginTop: 8, backgroundColor: '#FFF3E0', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#FFB74D' }}>
+          <Text style={{ fontSize: 20 }}>👋</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#E65100', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>Get started!</Text>
+            <Text style={{ color: '#BF360C', fontSize: 12, lineHeight: 17 }}>Add someone to your roster, rate them, then log a date.</Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              console.log('[Roster] Nudge banner dismissed');
+              setNudgeDismissed(true);
+            }}
+            style={{ padding: 4 }}
+          >
+            <Text style={{ color: '#E65100', fontSize: 16 }}>✕</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* ── Weekly check-in nudge banner ── */}
+      {!loading && !checkinBannerDismissed && persons.length > 0 && (
+        <View style={{ marginHorizontal: 16, marginTop: 8, backgroundColor: '#EDE7F6', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: '#B39DDB' }}>
+          <Text style={{ fontSize: 20 }}>📋</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: '#4527A0', fontSize: 13, fontWeight: '700', marginBottom: 2 }}>Time for your weekly check-in</Text>
+            <Text style={{ color: '#512DA8', fontSize: 12, lineHeight: 17 }}>Reflect on your dating life this week.</Text>
+          </View>
+          <Pressable
+            onPress={() => {
+              console.log('[Roster] Weekly check-in banner Go pressed');
+              router.push('/weekly-checkin' as any);
+            }}
+            style={{ backgroundColor: '#7C4DFF', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}
+          >
+            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>Go</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              console.log('[Roster] Weekly check-in banner dismissed');
+              setCheckinBannerDismissed(true);
+            }}
+            style={{ padding: 4 }}
+          >
+            <Text style={{ color: '#7C4DFF', fontSize: 14 }}>✕</Text>
+          </Pressable>
+        </View>
+      )}
 
       {/* ── List ── */}
       {loading ? (

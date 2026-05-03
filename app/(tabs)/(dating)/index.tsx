@@ -198,7 +198,6 @@ export default function DatingScreen() {
   const [analytics, setAnalytics] = useState<Analytics>({});
   const [recentDates, setRecentDates] = useState<DateEntry[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [weeklySummary, setWeeklySummary] = useState<any>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -255,6 +254,33 @@ export default function DatingScreen() {
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
+        {/* Quick Actions */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginBottom: 4 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+          {[
+            { label: '📅 Log a Date', route: '/date-have' },
+            { label: '✨ Plan a Date', route: '/date-plan' },
+            { label: '➕ Add Person', route: '/add-person' },
+          ].map((action) => (
+            <Pressable
+              key={action.route}
+              onPress={() => {
+                console.log('[Dating] Quick Action pressed:', action.label, action.route);
+                router.push(action.route as any);
+              }}
+              style={{
+                backgroundColor: '#F5F5F5',
+                borderRadius: 20,
+                paddingHorizontal: 16,
+                paddingVertical: 9,
+                borderWidth: 1,
+                borderColor: '#E0E0E0',
+              }}
+            >
+              <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '600' }}>{action.label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
         {/* Stats */}
         <Animated.View style={{ opacity: fadeAnim }}>
           <Text style={{ color: '#999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
@@ -412,55 +438,6 @@ export default function DatingScreen() {
         </Animated.View>
       </ScrollView>
 
-      {/* Quick Add FAB */}
-      <View style={{ position: 'absolute', bottom: 100, right: 20 }}>
-        <AnimatedPressable
-          onPress={() => {
-            console.log('[Dating] Quick Add FAB pressed');
-            setQuickAddOpen(true);
-          }}
-          style={{
-            width: 52, height: 52, borderRadius: 26,
-            backgroundColor: '#E53935',
-            alignItems: 'center', justifyContent: 'center',
-            shadowColor: '#E53935', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 8,
-          }}
-        >
-          <Text style={{ color: '#fff', fontSize: 26, lineHeight: 30 }}>+</Text>
-        </AnimatedPressable>
-      </View>
-
-      {/* Quick Add Bottom Sheet */}
-      {quickAddOpen && (
-        <Pressable
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)' }}
-          onPress={() => {
-            console.log('[Dating] Quick Add sheet dismissed');
-            setQuickAddOpen(false);
-          }}
-        >
-          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40, gap: 12 }}>
-            <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '700', marginBottom: 4 }}>Quick Add</Text>
-            {[
-              { label: '📅  Log a Date', route: '/date-have' },
-              { label: '✨  Plan a Date', route: '/date-plan' },
-              { label: '➕  Add Person', route: '/add-person' },
-            ].map((quickItem) => (
-              <Pressable
-                key={quickItem.route}
-                onPress={() => {
-                  console.log('[Dating] Quick Add action pressed:', quickItem.label, quickItem.route);
-                  setQuickAddOpen(false);
-                  router.push(quickItem.route as any);
-                }}
-                style={{ backgroundColor: '#F5F5F5', borderRadius: 14, padding: 16 }}
-              >
-                <Text style={{ color: '#1A1A1A', fontSize: 15, fontWeight: '600' }}>{quickItem.label}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </Pressable>
-      )}
     </View>
   );
 }
