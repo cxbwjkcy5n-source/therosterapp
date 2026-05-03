@@ -514,6 +514,11 @@ export function registerPersonsRoutes(app: App) {
       let benchReason = getFieldValue('bench_reason', 'benchReason');
       if (benchReason === '') benchReason = null;
 
+      let favoriteFoods = getFieldValue('favorite_foods', 'favoriteFoods');
+      let hobbies = getFieldValue('hobbies', 'hobbies');
+      let redFlags = getFieldValue('red_flags', 'redFlags');
+      let greenFlags = getFieldValue('green_flags', 'greenFlags');
+
       // SPECIAL CASE: Unbenching fast path
       if (isBenched === false) {
         const [updated] = await app.db
@@ -593,6 +598,10 @@ export function registerPersonsRoutes(app: App) {
           datePlanning: datePlanning !== undefined ? datePlanning : sql`date_planning`,
           alignment: alignment !== undefined ? alignment : sql`alignment`,
           photoUrl: photoUrl !== undefined ? photoUrl : sql`photo_url`,
+          favoriteFoods: favoriteFoods !== undefined ? favoriteFoods : sql`favorite_foods`,
+          hobbies: hobbies !== undefined ? hobbies : sql`hobbies`,
+          redFlags: redFlags !== undefined ? redFlags : sql`red_flags`,
+          greenFlags: greenFlags !== undefined ? greenFlags : sql`green_flags`,
           isBenched: isBenched !== undefined ? isBenched : sql`is_benched`,
           benchReason: benchReason !== undefined ? benchReason : sql`bench_reason`,
           updatedAt: new Date(),
