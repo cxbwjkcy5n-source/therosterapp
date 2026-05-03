@@ -247,8 +247,8 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
   const categoryLabel = getCategoryLabel(item.connection_type, item.connection_type_custom);
 
   const trendColor = item.interest_level != null
-    ? (item.interest_level >= 7 ? '#4CAF50' : item.interest_level <= 4 ? '#E53935' : 'transparent')
-    : 'transparent';
+    ? (item.interest_level >= 7 ? '#4CAF50' : item.interest_level <= 4 ? '#E53935' : '#CCCCCC')
+    : '#CCCCCC';
   const trendArrow = item.interest_level != null
     ? (item.interest_level >= 7 ? '↑' : item.interest_level <= 4 ? '↓' : '·')
     : '·';
@@ -326,47 +326,28 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
                       item.dating_status === 'on_hold' ? '#FF9800' : 'transparent',
                   }} />
                 ) : null}
-                {categoryLabel ? (
-                  <View
-                    style={{
-                      alignSelf: 'flex-start',
-                      backgroundColor: '#F5F5F5',
-                      borderRadius: 6,
-                      paddingHorizontal: 8,
-                      paddingVertical: 3,
-                    }}
-                  >
-                    <Text style={{ fontSize: 11, color: '#666', fontWeight: '500' }}>{categoryLabel}</Text>
-                  </View>
-                ) : null}
+                <View style={{ alignSelf: 'flex-start', backgroundColor: '#F5F5F5', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ fontSize: 11, color: categoryLabel ? '#666' : '#CCCCCC', fontWeight: '500' }}>{categoryLabel || '—'}</Text>
+                </View>
               </View>
               {/* Info row */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5, flexWrap: 'wrap' }}>
                 {item.location ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                     <Text style={{ fontSize: 11, color: '#999' }}>📍</Text>
                     <Text style={{ fontSize: 12, color: '#888', fontWeight: '400' }} numberOfLines={1}>{item.location}</Text>
                   </View>
                 ) : null}
-                {item.location && item.interest_level ? (
-                  <Text style={{ fontSize: 11, color: '#CCC' }}>·</Text>
-                ) : null}
-                {item.interest_level ? (
+                {item.interest_level != null ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                     <Text style={{ fontSize: 11, color: '#999' }}>⚡</Text>
                     <Text style={{ fontSize: 12, color: '#888', fontWeight: '400' }}>{item.interest_level} interest</Text>
                   </View>
                 ) : null}
-                {(item.location || item.interest_level) && item.created_at ? (
-                  <Text style={{ fontSize: 11, color: '#CCC' }}>·</Text>
-                ) : null}
                 {item.created_at ? (
                   <Text style={{ fontSize: 12, color: '#AAAAAA', fontWeight: '400' }}>{formatTalkingDuration(item.created_at)}</Text>
                 ) : null}
               </View>
-              {!item.location && !item.interest_level && !item.created_at && (
-                <Text style={{ fontSize: 11, color: '#CCCCCC', marginTop: 4, fontStyle: 'italic' }}>Tap to view details</Text>
-              )}
             </View>
 
             {/* Score ring + trend arrow */}
@@ -451,16 +432,28 @@ export default function RosterScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setCheckinBannerDismissed(false);
       loadData();
       if (user) {
         apiGet<{ checkin: { created_at: string } | null }>('/api/weekly-checkins/latest')
           .then((res) => {
+            console.log('[Roster] Weekly checkin latest response:', JSON.stringify(res));
             if (res.checkin) {
               const daysSince = Math.floor((Date.now() - new Date(res.checkin.created_at).getTime()) / (1000 * 60 * 60 * 24));
-              if (daysSince < 7) setCheckinBannerDismissed(true);
+              console.log('[Roster] Days since last checkin:', daysSince);
+              if (daysSince < 7) {
+                console.log('[Roster] Recent checkin found, hiding banner');
+                setCheckinBannerDismissed(true);
+              } else {
+                console.log('[Roster] No recent checkin, showing banner');
+              }
+            } else {
+              console.log('[Roster] No checkin found, showing banner');
             }
           })
-          .catch(() => {});
+          .catch((e) => {
+            console.log('[Roster] Weekly checkin check failed (non-fatal):', e?.message);
+          });
       }
       if (user) {
         console.log('[Roster] Fetching profile photo from /api/profile');
