@@ -2251,14 +2251,22 @@ export default function PersonDetailScreen() {
                     />
                     <Pressable
                       onPress={async () => {
-                        if (!addingGreenFlag.trim()) return;
-                        console.log('[PersonDetail] Adding green flag:', addingGreenFlag.trim());
-                        const newFlags = [...(person!.green_flags || []), addingGreenFlag.trim()];
+                        const trimmed = addingGreenFlag.trim();
+                        if (!trimmed) return;
+                        console.log('[PersonDetail] Adding green flag:', trimmed);
+                        const newFlags = [...(person?.green_flags ?? []), trimmed];
                         setAddingGreenFlag('');
+                        // Optimistic update
+                        setPerson((prev) => prev ? { ...prev, green_flags: newFlags } : prev);
+                        setEditData((prev) => ({ ...prev, green_flags: newFlags }));
                         try {
                           await apiPut(`/api/persons/${id}`, { green_flags: newFlags });
                           await loadPerson();
-                        } catch (e) { console.error('[PersonDetail] Failed to add green flag:', e); }
+                        } catch (e) {
+                          console.error('[PersonDetail] Failed to add green flag:', e);
+                          // Revert on failure
+                          await loadPerson();
+                        }
                       }}
                       style={{ backgroundColor: '#2E7D32', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }}
                     >
@@ -2293,14 +2301,22 @@ export default function PersonDetailScreen() {
                     />
                     <Pressable
                       onPress={async () => {
-                        if (!addingRedFlag.trim()) return;
-                        console.log('[PersonDetail] Adding red flag:', addingRedFlag.trim());
-                        const newFlags = [...(person!.red_flags || []), addingRedFlag.trim()];
+                        const trimmed = addingRedFlag.trim();
+                        if (!trimmed) return;
+                        console.log('[PersonDetail] Adding red flag:', trimmed);
+                        const newFlags = [...(person?.red_flags ?? []), trimmed];
                         setAddingRedFlag('');
+                        // Optimistic update
+                        setPerson((prev) => prev ? { ...prev, red_flags: newFlags } : prev);
+                        setEditData((prev) => ({ ...prev, red_flags: newFlags }));
                         try {
                           await apiPut(`/api/persons/${id}`, { red_flags: newFlags });
                           await loadPerson();
-                        } catch (e) { console.error('[PersonDetail] Failed to add red flag:', e); }
+                        } catch (e) {
+                          console.error('[PersonDetail] Failed to add red flag:', e);
+                          // Revert on failure
+                          await loadPerson();
+                        }
                       }}
                       style={{ backgroundColor: '#E53935', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }}
                     >
