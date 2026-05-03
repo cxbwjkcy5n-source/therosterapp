@@ -47,6 +47,7 @@
     "experiments": {
       "typedRoutes": true
     },
+    "newArchEnabled": true,
     "extra": {
       "router": {},
       "backendUrl": "https://bqwfnumg43sdjmd5mdarg4jau4ey73ch.app.specular.dev"
