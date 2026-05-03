@@ -30,6 +30,9 @@ interface PersonInput {
   hobbies?: string[];
   redFlags?: string[];
   greenFlags?: string[];
+  datingStatus?: string;
+  tags?: string[];
+  thingsILike?: string;
   isBenched?: boolean;
   benchReason?: string;
 }
@@ -69,6 +72,9 @@ function toSnakePerson(person: any) {
     hobbies: person.hobbies,
     green_flags: person.greenFlags,
     red_flags: person.redFlags,
+    dating_status: person.datingStatus,
+    tags: person.tags,
+    things_i_like: person.thingsILike,
     is_benched: person.isBenched,
     bench_reason: person.benchReason,
     nickname: person.nickname,
@@ -130,6 +136,9 @@ export function registerPersonsRoutes(app: App) {
                     hobbies: { type: ['array', 'null'], items: { type: 'string' } },
                     red_flags: { type: ['array', 'null'], items: { type: 'string' } },
                     green_flags: { type: ['array', 'null'], items: { type: 'string' } },
+                    dating_status: { type: ['string', 'null'] },
+                    tags: { type: ['array', 'null'], items: { type: 'string' } },
+                    things_i_like: { type: ['string', 'null'] },
                     is_benched: { type: 'boolean' },
                     bench_reason: { type: ['string', 'null'] },
                     nickname: { type: ['string', 'null'] },
@@ -208,6 +217,9 @@ export function registerPersonsRoutes(app: App) {
             hobbies: { type: ['array', 'null'], items: { type: 'string' } },
             redFlags: { type: ['array', 'null'], items: { type: 'string' } },
             greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
+            datingStatus: { type: ['string', 'null'] },
+            tags: { type: ['array', 'null'], items: { type: 'string' } },
+            thingsILike: { type: ['string', 'null'] },
           },
         },
         response: {
@@ -260,6 +272,9 @@ export function registerPersonsRoutes(app: App) {
           hobbies: request.body.hobbies,
           redFlags: request.body.redFlags,
           greenFlags: request.body.greenFlags,
+          datingStatus: request.body.datingStatus,
+          tags: request.body.tags,
+          thingsILike: request.body.thingsILike,
         })
         .returning();
 
@@ -318,6 +333,9 @@ export function registerPersonsRoutes(app: App) {
                   hobbies: { type: ['array', 'null'], items: { type: 'string' } },
                   red_flags: { type: ['array', 'null'], items: { type: 'string' } },
                   green_flags: { type: ['array', 'null'], items: { type: 'string' } },
+                  dating_status: { type: ['string', 'null'] },
+                  tags: { type: ['array', 'null'], items: { type: 'string' } },
+                  things_i_like: { type: ['string', 'null'] },
                   is_benched: { type: 'boolean' },
                   bench_reason: { type: ['string', 'null'] },
                   created_at: { type: 'string', format: 'date-time' },
@@ -411,6 +429,11 @@ export function registerPersonsRoutes(app: App) {
             red_flags: { type: ['array', 'null'], items: { type: 'string' } },
             greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
             green_flags: { type: ['array', 'null'], items: { type: 'string' } },
+            datingStatus: { type: ['string', 'null'] },
+            dating_status: { type: ['string', 'null'] },
+            tags: { type: ['array', 'null'], items: { type: 'string' } },
+            thingsILike: { type: ['string', 'null'] },
+            things_i_like: { type: ['string', 'null'] },
             isBenched: { type: 'boolean' },
             is_benched: { type: 'boolean' },
             benchReason: { type: ['string', 'null'] },
@@ -452,6 +475,9 @@ export function registerPersonsRoutes(app: App) {
                   hobbies: { type: ['array', 'null'], items: { type: 'string' } },
                   redFlags: { type: ['array', 'null'], items: { type: 'string' } },
                   greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
+                  datingStatus: { type: ['string', 'null'] },
+                  tags: { type: ['array', 'null'], items: { type: 'string' } },
+                  thingsILike: { type: ['string', 'null'] },
                   isBenched: { type: 'boolean' },
                   benchReason: { type: ['string', 'null'] },
                   createdAt: { type: 'string', format: 'date-time' },
@@ -518,6 +544,9 @@ export function registerPersonsRoutes(app: App) {
       let hobbies = getFieldValue('hobbies', 'hobbies');
       let redFlags = getFieldValue('red_flags', 'redFlags');
       let greenFlags = getFieldValue('green_flags', 'greenFlags');
+      let datingStatus = getFieldValue('dating_status', 'datingStatus');
+      let tags = getFieldValue('tags', 'tags');
+      let thingsILike = getFieldValue('things_i_like', 'thingsILike');
 
       // SPECIAL CASE: Unbenching fast path
       if (isBenched === false) {
@@ -602,6 +631,9 @@ export function registerPersonsRoutes(app: App) {
           hobbies: hobbies !== undefined ? hobbies : sql`hobbies`,
           redFlags: redFlags !== undefined ? redFlags : sql`red_flags`,
           greenFlags: greenFlags !== undefined ? greenFlags : sql`green_flags`,
+          datingStatus: datingStatus !== undefined ? datingStatus : sql`dating_status`,
+          tags: tags !== undefined ? tags : sql`tags`,
+          thingsILike: thingsILike !== undefined ? thingsILike : sql`things_i_like`,
           isBenched: isBenched !== undefined ? isBenched : sql`is_benched`,
           benchReason: benchReason !== undefined ? benchReason : sql`bench_reason`,
           updatedAt: new Date(),
@@ -974,6 +1006,108 @@ export function registerPersonsRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id, stats }, 'Stats retrieved');
       return stats;
+    }
+  );
+
+  // POST /api/persons/:id/conversation-starters - Generate conversation starters
+  app.fastify.post(
+    '/api/persons/:id/conversation-starters',
+    {
+      schema: {
+        description: 'Generate conversation starters for a person using AI',
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              starters: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+          500: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      app.logger.info({ userId: session.user.id, personId: id }, 'Generating conversation starters');
+
+      // Fetch the person
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      // Build the prompt
+      const hobbiesList = person.hobbies?.join(', ') || 'unknown hobbies';
+      const foodsList = person.favoriteFoods?.join(', ') || 'unknown foods';
+      const connectionType = person.connectionType || 'casual';
+
+      const prompt = `Generate 3 fun, natural conversation starters or date ideas for someone who likes ${hobbiesList}, enjoys ${foodsList}, and has a ${connectionType} type connection. Keep each under 20 words. Return as a JSON array of strings with no extra text.`;
+
+      try {
+        app.logger.info({ userId: session.user.id, personId: id, prompt }, 'Calling AI API');
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: 0.7,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          app.logger.error({ userId: session.user.id, personId: id, statusCode: response.status, error }, 'AI API error');
+          return reply.status(500).send({ error: 'Failed to generate conversation starters' });
+        }
+
+        const data = (await response.json()) as any;
+        const aiResponse = data.choices[0]?.message?.content || '[]';
+
+        // Parse the JSON array from the response
+        let starters: string[] = [];
+        try {
+          starters = JSON.parse(aiResponse);
+        } catch (parseError) {
+          app.logger.error({ userId: session.user.id, personId: id, aiResponse }, 'Failed to parse AI response');
+          return reply.status(500).send({ error: 'Failed to parse conversation starters' });
+        }
+
+        app.logger.info({ userId: session.user.id, personId: id, count: starters.length }, 'Conversation starters generated');
+        return { starters };
+      } catch (error) {
+        app.logger.error({ err: error, userId: session.user.id, personId: id }, 'Error generating conversation starters');
+        return reply.status(500).send({ error: 'Failed to generate conversation starters' });
+      }
     }
   );
 }

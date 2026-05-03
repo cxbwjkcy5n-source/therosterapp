@@ -71,6 +71,13 @@
       "when": 1777430795687,
       "tag": "20260429024635_hot_the_leader",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777823990027,
+      "tag": "20260503155950_powerful_argent",
+      "breakpoints": true
     }
   ]
 }
