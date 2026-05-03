@@ -69,6 +69,12 @@ export default function DatePlanScreen() {
     });
   }, []);
 
+  useEffect(() => {
+    return () => {
+      sparkleAnim.stopAnimation();
+    };
+  }, [sparkleAnim]);
+
   const startSparkleAnimation = () => {
     Animated.loop(
       Animated.sequence([

@@ -391,10 +391,13 @@ export default function RosterScreen() {
     }).start();
   }, [filterOpen, filterHeight]);
 
-  if (!authLoading && !user) {
-    router.replace('/auth-screen');
-    return null;
-  }
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/auth-screen');
+    }
+  }, [authLoading, user]);
+
+  if (!authLoading && !user) return null;
 
   // ── filtering + sorting ──
   const lowerQuery = searchQuery.toLowerCase();
