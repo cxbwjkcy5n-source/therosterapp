@@ -2256,15 +2256,26 @@ export default function PersonDetailScreen() {
                         console.log('[PersonDetail] Adding green flag:', trimmed);
                         const newFlags = [...(person?.green_flags ?? []), trimmed];
                         setAddingGreenFlag('');
-                        // Optimistic update
                         setPerson((prev) => prev ? { ...prev, green_flags: newFlags } : prev);
                         setEditData((prev) => ({ ...prev, green_flags: newFlags }));
                         try {
-                          await apiPut(`/api/persons/${id}`, { green_flags: newFlags });
-                          await loadPerson();
+                          const payload: Record<string, any> = {};
+                          const ALLOWED = ['name','location','age','birthday','zodiac','instagram','tiktok','twitter_x','facebook','connection_type','connection_type_custom','interest_level','attractiveness','sexual_chemistry','communication','overall_chemistry','consistency','emotional_availability','date_planning','alignment','favorite_foods','hobbies','green_flags','red_flags','photo_url'];
+                          for (const key of ALLOWED) {
+                            if (key === 'zodiac' || key === 'connection_type') {
+                              const val = (person as any)?.[key];
+                              if (!val) continue;
+                              payload[key] = val;
+                              continue;
+                            }
+                            const val = (person as any)?.[key];
+                            if (val !== undefined) payload[key] = val;
+                          }
+                          payload.green_flags = newFlags;
+                          console.log('[PersonDetail] PUT green flag payload keys:', Object.keys(payload));
+                          await apiPut(`/api/persons/${id}`, payload);
                         } catch (e) {
                           console.error('[PersonDetail] Failed to add green flag:', e);
-                          // Revert on failure
                           await loadPerson();
                         }
                       }}
@@ -2306,15 +2317,26 @@ export default function PersonDetailScreen() {
                         console.log('[PersonDetail] Adding red flag:', trimmed);
                         const newFlags = [...(person?.red_flags ?? []), trimmed];
                         setAddingRedFlag('');
-                        // Optimistic update
                         setPerson((prev) => prev ? { ...prev, red_flags: newFlags } : prev);
                         setEditData((prev) => ({ ...prev, red_flags: newFlags }));
                         try {
-                          await apiPut(`/api/persons/${id}`, { red_flags: newFlags });
-                          await loadPerson();
+                          const payload: Record<string, any> = {};
+                          const ALLOWED = ['name','location','age','birthday','zodiac','instagram','tiktok','twitter_x','facebook','connection_type','connection_type_custom','interest_level','attractiveness','sexual_chemistry','communication','overall_chemistry','consistency','emotional_availability','date_planning','alignment','favorite_foods','hobbies','green_flags','red_flags','photo_url'];
+                          for (const key of ALLOWED) {
+                            if (key === 'zodiac' || key === 'connection_type') {
+                              const val = (person as any)?.[key];
+                              if (!val) continue;
+                              payload[key] = val;
+                              continue;
+                            }
+                            const val = (person as any)?.[key];
+                            if (val !== undefined) payload[key] = val;
+                          }
+                          payload.red_flags = newFlags;
+                          console.log('[PersonDetail] PUT red flag payload keys:', Object.keys(payload));
+                          await apiPut(`/api/persons/${id}`, payload);
                         } catch (e) {
                           console.error('[PersonDetail] Failed to add red flag:', e);
-                          // Revert on failure
                           await loadPerson();
                         }
                       }}
