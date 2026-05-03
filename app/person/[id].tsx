@@ -2274,6 +2274,16 @@ export default function PersonDetailScreen() {
                           payload.green_flags = newFlags;
                           console.log('[PersonDetail] PUT green flag payload keys:', Object.keys(payload));
                           await apiPut(`/api/persons/${id}`, payload);
+                          // Verify backend persisted the flags
+                          const raw = await apiGet<any>(`/api/persons/${id}`);
+                          const refreshed = normalizePerson(raw?.person ?? raw);
+                          if (refreshed?.green_flags && refreshed.green_flags.length >= newFlags.length) {
+                            console.log('[PersonDetail] Backend confirmed green flags saved:', refreshed.green_flags);
+                            setPerson(refreshed);
+                            setEditData(refreshed);
+                          } else {
+                            console.log('[PersonDetail] Backend did not return flags — keeping optimistic state');
+                          }
                         } catch (e) {
                           console.error('[PersonDetail] Failed to add green flag:', e);
                           await loadPerson();
@@ -2335,6 +2345,16 @@ export default function PersonDetailScreen() {
                           payload.red_flags = newFlags;
                           console.log('[PersonDetail] PUT red flag payload keys:', Object.keys(payload));
                           await apiPut(`/api/persons/${id}`, payload);
+                          // Verify backend persisted the flags
+                          const raw = await apiGet<any>(`/api/persons/${id}`);
+                          const refreshed = normalizePerson(raw?.person ?? raw);
+                          if (refreshed?.red_flags && refreshed.red_flags.length >= newFlags.length) {
+                            console.log('[PersonDetail] Backend confirmed red flags saved:', refreshed.red_flags);
+                            setPerson(refreshed);
+                            setEditData(refreshed);
+                          } else {
+                            console.log('[PersonDetail] Backend did not return flags — keeping optimistic state');
+                          }
                         } catch (e) {
                           console.error('[PersonDetail] Failed to add red flag:', e);
                           await loadPerson();
