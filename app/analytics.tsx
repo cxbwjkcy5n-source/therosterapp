@@ -4,7 +4,7 @@ import {
   Text,
   Animated,
   ActivityIndicator,
-  TouchableOpacity,
+  Pressable,
   Image,
   ImageSourcePropType,
   Dimensions,
@@ -402,7 +402,7 @@ function TabPills({ active, onChange }: { active: 'people' | 'dating'; onChange:
   const datingActive = active === 'dating';
   return (
     <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: H_PAD, marginBottom: 16 }}>
-      <TouchableOpacity
+      <Pressable
         onPress={() => {
           console.log('[Analytics] Tab pressed: people');
           onChange('people');
@@ -416,13 +416,12 @@ function TabPills({ active, onChange }: { active: 'people' | 'dating'; onChange:
           backgroundColor: peopleActive ? COLORS.primary : '#FFFFFF',
           alignItems: 'center',
         }}
-        activeOpacity={0.8}
       >
         <Text style={{ fontSize: 14, fontWeight: '600', color: peopleActive ? '#FFFFFF' : '#1A1A1A' }}>
           People
         </Text>
-      </TouchableOpacity>
-      <TouchableOpacity
+      </Pressable>
+      <Pressable
         onPress={() => {
           console.log('[Analytics] Tab pressed: dating');
           onChange('dating');
@@ -436,12 +435,11 @@ function TabPills({ active, onChange }: { active: 'people' | 'dating'; onChange:
           backgroundColor: datingActive ? COLORS.primary : '#FFFFFF',
           alignItems: 'center',
         }}
-        activeOpacity={0.8}
       >
         <Text style={{ fontSize: 14, fontWeight: '600', color: datingActive ? '#FFFFFF' : '#1A1A1A' }}>
           Dating
         </Text>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
@@ -930,7 +928,7 @@ export default function AnalyticsScreen() {
             Check your connection and try again
           </Text>
         </View>
-        <TouchableOpacity
+        <Pressable
           onPress={() => {
             console.log('[Analytics] Retry button pressed');
             loadData();
@@ -941,10 +939,9 @@ export default function AnalyticsScreen() {
             paddingHorizontal: 28,
             paddingVertical: 12,
           }}
-          activeOpacity={0.8}
         >
           <Text style={{ color: '#FFFFFF', fontSize: 15, fontWeight: '700' }}>Retry</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
     );
   }

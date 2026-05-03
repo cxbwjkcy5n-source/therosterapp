@@ -20,7 +20,7 @@ interface Nudge {
   person_id: string;
   person_name: string;
   person_photo_url?: string;
-  interest_level: number;
+  interest_level?: number | null;
   days_since_contact: number;
   message: string;
 }

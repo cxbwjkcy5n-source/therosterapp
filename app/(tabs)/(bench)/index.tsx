@@ -9,8 +9,8 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { Stack, router, useFocusEffect } from 'expo-router';
-import { Users, Heart, MoreHorizontal } from 'lucide-react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { Users } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
@@ -210,59 +210,31 @@ export default function BenchScreen() {
 
   const handleUnbench = useCallback(async (person: Person) => {
     console.log('[Bench] Unbenching person:', person.id, person.name);
-    // Optimistic remove
     setPersons((prev) => prev.filter((p) => p.id !== person.id));
     try {
-      await apiPut(`/api/persons/${person.id}`, { is_benched: false, bench_reason: null });
+      const raw = await apiGet<any>(`/api/persons/${person.id}`);
+      const full = raw?.person ?? raw;
+      const ALLOWED = ['name','location','age','birthday','zodiac','instagram','tiktok','twitter_x','facebook','connection_type','connection_type_custom','interest_level','attractiveness','sexual_chemistry','communication','overall_chemistry','consistency','emotional_availability','date_planning','alignment','favorite_foods','hobbies','green_flags','red_flags','photo_url'];
+      const payload: Record<string, any> = { is_benched: false, bench_reason: null };
+      for (const key of ALLOWED) {
+        const val = full?.[key];
+        if (val !== undefined) {
+          if ((key === 'zodiac' || key === 'connection_type') && !val) continue;
+          payload[key] = val;
+        }
+      }
+      await apiPut(`/api/persons/${person.id}`, payload);
       console.log('[Bench] Successfully moved back to roster:', person.id);
       loadPersons();
     } catch (e) {
       console.error('[Bench] Failed to unbench:', e);
       Alert.alert('Error', 'Could not move them back. Try again.');
-      loadPersons(); // reload to restore state
+      loadPersons();
     }
   }, [loadPersons]);
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <Stack.Screen
-        options={{
-          title: 'Bench',
-          headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 8, marginRight: 4 }}>
-              <AnimatedPressable
-                onPress={() => {
-                  console.log('[Bench] Analytics pressed');
-                  router.push('/analytics');
-                }}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: COLORS.surface,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Heart size={18} color={COLORS.primary} />
-              </AnimatedPressable>
-              <AnimatedPressable
-                onPress={() => console.log('[Bench] Menu pressed')}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: COLORS.surface,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <MoreHorizontal size={18} color={COLORS.textSecondary} />
-              </AnimatedPressable>
-            </View>
-          ),
-        }}
-      />
 
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>

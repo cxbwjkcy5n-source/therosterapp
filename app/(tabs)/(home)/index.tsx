@@ -11,7 +11,7 @@ import {
   Image as RNImage,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect, Redirect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Bell, Search, SlidersHorizontal } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import Svg, { Circle } from 'react-native-svg';
@@ -392,7 +392,8 @@ export default function RosterScreen() {
   }, [filterOpen, filterHeight]);
 
   if (!authLoading && !user) {
-    return <Redirect href="/auth-screen" />;
+    router.replace('/auth-screen');
+    return null;
   }
 
   // ── filtering + sorting ──

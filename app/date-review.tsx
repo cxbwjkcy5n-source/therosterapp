@@ -110,6 +110,16 @@ export default function DateReviewScreen() {
     );
   }
 
+  if (!dateId) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background, padding: 32 }}>
+        <Text style={{ color: COLORS.textSecondary, fontSize: 16, textAlign: 'center' }}>
+          No date selected. Go back and select a date to review.
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.background }}>
 
