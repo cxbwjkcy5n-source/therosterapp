@@ -15,6 +15,7 @@ import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet, apiPost } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Person {
@@ -39,6 +40,7 @@ const BUDGETS = [
 ];
 
 export default function DatePlanScreen() {
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [persons, setPersons] = useState<Person[]>([]);
   const [selectedPersonId, setSelectedPersonId] = useState('');
@@ -50,6 +52,7 @@ export default function DatePlanScreen() {
   const sparkleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!user) return;
     console.log('[DatePlan] Loading all persons (active + benched)');
     Promise.all([
       apiGet<{ persons: Person[] }>('/api/persons').catch(() => ({ persons: [] })),
@@ -67,7 +70,7 @@ export default function DatePlanScreen() {
       if (firstActive) setSelectedPersonId(firstActive.id);
       else if (all.length > 0) setSelectedPersonId(all[0].id);
     });
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     return () => {

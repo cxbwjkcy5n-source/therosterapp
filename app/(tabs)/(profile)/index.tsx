@@ -97,6 +97,7 @@ interface UserProfile {
   favoriteFoods?: string[];
   hobbies?: string[];
   photoUrl?: string;
+  photo_url?: string;
   whatIBring?: string[];
   thingsToWorkOn?: string[];
   greenFlags?: string[];
@@ -293,6 +294,7 @@ export default function ProfileScreen() {
           const uploadRes = await apiPost<{ photo_url: string }>('/api/upload-photo', { base64: newPhotoBase64 });
           console.log('[Profile] Upload succeeded, photo_url length:', uploadRes.photo_url?.length ?? 0);
           dataToSave.photoUrl = uploadRes.photo_url;
+          dataToSave.photo_url = uploadRes.photo_url;
         } catch (uploadErr: any) {
           console.error('[Profile] Photo upload failed:', uploadErr?.message);
           Alert.alert('Photo upload failed', uploadErr?.message || 'Could not upload photo.');
@@ -301,16 +303,17 @@ export default function ProfileScreen() {
         }
       }
 
+      console.log('[Profile] Location field value:', (dataToSave as any).location);
       await apiPut('/api/profile', dataToSave);
 
       console.log('[Profile] PUT succeeded, re-fetching profile');
+      setNewPhotoBase64(null);
       const res = await apiGet<any>('/api/profile');
       const saved: UserProfile = (res as any)?.profile ?? {};
       console.log('[Profile] Profile saved and re-fetched successfully');
       setProfile(saved);
       setEditData(saved);
       setEditing(false);
-      setNewPhotoBase64(null);
     } catch (e: any) {
       console.error('[Profile] Save failed:', e);
       Alert.alert('Could not save', e?.message || 'Please try again.');
@@ -615,7 +618,7 @@ export default function ProfileScreen() {
                     </View>
                   </View>
                 ) : null}
-                <FormField label="Location" value={editData.location || ''} onChangeText={(v) => update('location', v)} placeholder="City, neighborhood..." />
+                <FormField label="Location" value={editData.location || ''} onChangeText={(v) => update('location', v)} placeholder="Your city or neighborhood" />
                 <FormField label="Occupation" value={editData.occupation || ''} onChangeText={(v) => update('occupation', v)} placeholder="What do you do?" />
               </>
             ) : (

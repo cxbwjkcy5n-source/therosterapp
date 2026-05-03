@@ -15,6 +15,7 @@ import { X, MapPin, Shield, Share2, ChevronDown, Check } from 'lucide-react-nati
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet, apiPost } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Person {
@@ -25,6 +26,7 @@ interface Person {
 }
 
 export default function DateSafetyScreen() {
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [persons, setPersons] = useState<Person[]>([]);
   const [selectedPersonId, setSelectedPersonId] = useState('');
@@ -35,6 +37,7 @@ export default function DateSafetyScreen() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!user) return;
     console.log('[DateSafety] Loading all persons (active + benched)');
     Promise.all([
       apiGet<{ persons: Person[] }>('/api/persons').catch(() => ({ persons: [] })),
@@ -52,7 +55,7 @@ export default function DateSafetyScreen() {
       if (firstActive) setSelectedPersonId(firstActive.id);
       else if (all.length > 0) setSelectedPersonId(all[0].id);
     });
-  }, []);
+  }, [user]);
 
   const filledContacts = contacts.filter((c) => c.trim().length > 0);
   const canShare = !!selectedPersonId && !!location.trim() && filledContacts.length > 0;

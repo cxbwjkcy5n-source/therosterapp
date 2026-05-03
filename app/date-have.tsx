@@ -18,6 +18,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet, apiPost } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
@@ -34,6 +35,7 @@ interface Person {
 }
 
 export default function DateHaveScreen() {
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const [persons, setPersons] = useState<Person[]>([]);
   const [selectedPersonId, setSelectedPersonId] = useState('');
@@ -50,6 +52,7 @@ export default function DateHaveScreen() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    if (!user) return;
     console.log('[DateHave] Loading all persons (active + benched)');
     Promise.all([
       apiGet<{ persons: Person[] }>('/api/persons').catch(() => ({ persons: [] })),
@@ -68,7 +71,7 @@ export default function DateHaveScreen() {
       if (firstActive) setSelectedPersonId(firstActive.id);
       else if (all.length > 0) setSelectedPersonId(all[0].id);
     });
-  }, []);
+  }, [user]);
 
   const selectedPerson = persons.find((p) => p.id === selectedPersonId) || null;
   const canSave = !!selectedPersonId && !!location.trim();
