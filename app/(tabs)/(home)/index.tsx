@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Image as RNImage,
   PanResponder,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
@@ -117,9 +118,6 @@ function CircleScore({ score, size }: { score: number | null; size: number }) {
   const cx = size / 2;
   const cy = size / 2;
 
-  const scoreInt = score !== null ? Math.floor(score) : null;
-  const scoreDec = score !== null ? (score % 1 !== 0 ? `.${String(Math.round((score % 1) * 10))}` : '') : null;
-
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={{ position: 'absolute' }}>
@@ -148,11 +146,9 @@ function CircleScore({ score, size }: { score: number | null; size: number }) {
         )}
       </Svg>
       {score !== null ? (
-        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A' }}>{scoreInt}</Text>
-          {scoreDec ? <Text style={{ fontSize: 10, fontWeight: '600', color: '#999' }}>{scoreDec}</Text> : null}
-          <Text style={{ fontSize: 10, color: '#999', fontWeight: '500' }}>/10</Text>
-        </View>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: '#1A1A1A' }}>
+          {score % 1 === 0 ? `${score}/10` : `${score.toFixed(1)}/10`}
+        </Text>
       ) : (
         <Text style={{ fontSize: 15, fontWeight: '700', color: '#BBBBBB' }}>—</Text>
       )}
@@ -331,7 +327,7 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
                 </View>
               </View>
               {/* Info row */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5, flexWrap: 'wrap' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5, flexWrap: 'wrap', minHeight: 18 }}>
                 {item.location ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                     <Text style={{ fontSize: 11, color: '#999' }}>📍</Text>
@@ -353,11 +349,11 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
             {/* Score ring + trend arrow */}
             <View style={{ alignItems: 'center' }}>
               <CircleScore score={score} size={52} />
-              {item.interest_level != null && (
-                <Text style={{ fontSize: 13, color: trendColor, marginLeft: -4, marginTop: 2 }}>
+              <View style={{ width: 16, height: 16, alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
+                <Text style={{ fontSize: 13, color: trendColor }}>
                   {trendArrow}
                 </Text>
-              )}
+              </View>
             </View>
           </AnimatedPressable>
         </Animated.View>
@@ -437,7 +433,7 @@ export default function RosterScreen() {
       if (user) {
         apiGet<{ checkin: { created_at: string } | null }>('/api/weekly-checkins/latest')
           .then((res) => {
-            console.log('[Roster] Weekly checkin latest response:', JSON.stringify(res));
+            console.log('[Roster] Weekly checkin latest response (platform=' + Platform.OS + '):', JSON.stringify(res));
             if (res.checkin) {
               const daysSince = Math.floor((Date.now() - new Date(res.checkin.created_at).getTime()) / (1000 * 60 * 60 * 24));
               console.log('[Roster] Days since last checkin:', daysSince);
@@ -551,10 +547,17 @@ export default function RosterScreen() {
   const needsAttention = persons
     .filter((p) => {
       if (!p.created_at) return false;
-      const days = Math.floor((Date.now() - new Date(p.created_at).getTime()) / (1000 * 60 * 60 * 24));
+      const safeDate = new Date(p.created_at);
+      const days = isNaN(safeDate.getTime()) ? 0 : Math.floor((Date.now() - safeDate.getTime()) / (1000 * 60 * 60 * 24));
       return days >= 14;
     })
-    .sort((a, b) => new Date(a.created_at!).getTime() - new Date(b.created_at!).getTime())
+    .sort((a, b) => {
+      const aDate = new Date(a.created_at!);
+      const bDate = new Date(b.created_at!);
+      const aTime = isNaN(aDate.getTime()) ? 0 : aDate.getTime();
+      const bTime = isNaN(bDate.getTime()) ? 0 : bDate.getTime();
+      return aTime - bTime;
+    })
     .slice(0, 5);
 
   return (
@@ -802,7 +805,8 @@ export default function RosterScreen() {
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
                 {needsAttention.map((p) => {
-                  const days = Math.floor((Date.now() - new Date(p.created_at!).getTime()) / (1000 * 60 * 60 * 24));
+                  const safeDate = new Date(p.created_at!);
+                  const days = isNaN(safeDate.getTime()) ? 0 : Math.floor((Date.now() - safeDate.getTime()) / (1000 * 60 * 60 * 24));
                   const hasPhoto = !!p.photo_url && p.photo_url.length > 10;
                   const initials = getInitials(p.name);
                   const daysStr = String(days) + 'd ago';
