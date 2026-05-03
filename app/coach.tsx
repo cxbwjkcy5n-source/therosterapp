@@ -64,7 +64,7 @@ export default function CoachScreen() {
 
     try {
       console.log('[Coach] POST /api/chat with message and history');
-      const history = messages.map((m) => ({ role: m.role, content: m.content }));
+      const history = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
       const result = await apiPost<{ reply: string }>('/api/chat', {
         message: trimmed,
         history,

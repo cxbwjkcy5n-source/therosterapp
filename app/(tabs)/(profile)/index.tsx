@@ -487,7 +487,7 @@ export default function ProfileScreen() {
         }}>
           {/* Photo area */}
           <View style={{ width: '100%', height: 220, position: 'relative' }}>
-            {photoSource && photoSource.length > 10 ? (
+            {typeof photoSource === 'string' && photoSource.length > 10 ? (
               <RNImage source={{ uri: photoSource }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             ) : (
               <View style={{ width: '100%', height: '100%', backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' }}>

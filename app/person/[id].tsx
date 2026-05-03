@@ -1631,7 +1631,7 @@ export default function PersonDetailScreen() {
                 <XIcon size={16} color="#CCCCCC" />
               </AnimatedPressable>
             </View>
-            <Text style={{ color: '#1A1A1A', fontSize: 14, lineHeight: 21 }}>{note.content}</Text>
+            <Text style={{ color: '#1A1A1A', fontSize: 14, lineHeight: 21 }}>{note.content || ''}</Text>
           </View>
         ))
       )}
@@ -2403,7 +2403,7 @@ export default function PersonDetailScreen() {
                     <ReadOnlySlider
                       key={f.key}
                       label={f.label}
-                      value={person[f.key] as number}
+                      value={(person?.[f.key] as number) ?? 0}
                       excluded={excludedRatings.has(f.key)}
                       onToggleExclude={() => setExcludedRatings((prev) => {
                         const next = new Set(prev);

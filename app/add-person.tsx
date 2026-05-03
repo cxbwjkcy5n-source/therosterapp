@@ -296,6 +296,7 @@ export default function AddPersonScreen() {
     setSaving(true);
     try {
       const payload: Record<string, any> = {
+        is_benched: false,
         name: name.trim(),
         location: location.trim(),
         interest_level: interestLevel,
