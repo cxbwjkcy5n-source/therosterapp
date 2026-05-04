@@ -1056,15 +1056,34 @@ export function registerPersonsRoutes(app: App) {
         return reply.status(404).send({ error: 'Person not found' });
       }
 
-      // Build the prompt
-      const hobbiesList = person.hobbies?.join(', ') || 'unknown hobbies';
-      const foodsList = person.favoriteFoods?.join(', ') || 'unknown foods';
-      const connectionType = person.connectionType || 'casual';
+      // Build the prompt with comprehensive person data
+      const hobbiesList = person.hobbies?.join(', ') || '';
+      const foodsList = person.favoriteFoods?.join(', ') || '';
+      const tagsList = person.tags?.join(', ') || '';
+      const redFlagsList = person.redFlags?.join(', ') || '';
+      const greenFlagsList = person.greenFlags?.join(', ') || '';
+      const connectionTypeLabel = person.connectionTypeCustom || person.connectionType || 'unknown';
+      const thingsILike = person.thingsILike || '';
 
-      const prompt = `Generate 3 fun, natural conversation starters or date ideas for someone who likes ${hobbiesList}, enjoys ${foodsList}, and has a ${connectionType} type connection. Keep each under 20 words. Return as a JSON array of strings with no extra text.`;
+      const prompt = `Generate 5 creative, personalized conversation starters for someone named ${person.name}. They are a ${connectionTypeLabel}. Their hobbies include ${hobbiesList || 'not specified'}. Their favorite foods include ${foodsList || 'not specified'}. Things I like about them: ${thingsILike || 'not specified'}. Tags: ${tagsList || 'none'}. Make them natural, fun, witty, and not cheesy. If little info is available, generate charming generic starters. Return ONLY a valid JSON array of 5 strings, no other text.`;
+
+      // Check if API key is available
+      if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === '') {
+        app.logger.info({ userId: session.user.id, personId: id }, 'OPENAI_API_KEY not set, using default starters');
+        // Return default conversation starters for testing/demo purposes
+        const defaultStarters = [
+          `Hi ${person.name}! I'd love to hear more about your interests.`,
+          "What's your favorite way to spend a weekend?",
+          `I'm intrigued by someone who enjoys ${hobbiesList || 'exploring new things'}. Tell me more?`,
+          `Do you have any hidden talents or hobbies we haven't talked about?`,
+          `If you could go on an adventure anywhere, where would it be?`,
+        ];
+        app.logger.info({ userId: session.user.id, personId: id, count: defaultStarters.length }, 'Conversation starters generated (default)');
+        return { starters: defaultStarters };
+      }
 
       try {
-        app.logger.info({ userId: session.user.id, personId: id, prompt }, 'Calling AI API');
+        app.logger.info({ userId: session.user.id, personId: id }, 'Calling AI API');
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',

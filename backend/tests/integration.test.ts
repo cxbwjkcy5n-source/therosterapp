@@ -348,6 +348,43 @@ describe("API Integration Tests", () => {
     expect(typeof data.dates_count).toBe("number");
   });
 
+  // ========== Generate Conversation Starters Tests ==========
+  test("Generate conversation starters for a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/conversation-starters`,
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.starters).toBeDefined();
+    expect(Array.isArray(data.starters)).toBe(true);
+  });
+
+  test("Generate conversation starters with nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/conversation-starters",
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Generate conversation starters with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/conversation-starters",
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
   // ========== Person Phone Update Tests ==========
   test("Update person's phone number with phone_number field", async () => {
     const res = await authenticatedApi(
@@ -830,6 +867,20 @@ describe("API Integration Tests", () => {
     expect(typeof data.total_active).toBe("number");
     expect(typeof data.total_benched).toBe("number");
     expect(typeof data.total_dates).toBe("number");
+  });
+
+  test("Get weekly summary for authenticated user", async () => {
+    const res = await authenticatedApi("/api/analytics/weekly-summary", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.summary).toBeDefined();
+    expect(data.summary.this_week_dates).toBeDefined();
+    expect(data.summary.last_week_dates).toBeDefined();
+    expect(data.summary.this_week_persons_added).toBeDefined();
+    expect(data.summary.last_week_persons_added).toBeDefined();
+    expect(data.summary.this_week_notes).toBeDefined();
+    expect(data.summary.last_week_notes).toBeDefined();
+    expect(typeof data.summary.this_week_dates).toBe("number");
   });
 
   // ========== AI & Date Plan Tests ==========
@@ -1537,6 +1588,67 @@ describe("API Integration Tests", () => {
     expect(Array.isArray(data.nudges)).toBe(true);
   });
 
+  // ========== Weekly Checkins Tests ==========
+  test("Create a weekly checkin with just mood", async () => {
+    const res = await authenticatedApi("/api/weekly-checkins", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mood: 8,
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.checkin).toBeDefined();
+    expect(data.checkin.id).toBeDefined();
+    expect(data.checkin.mood).toBe(8);
+    expect(data.checkin.created_at).toBeDefined();
+  });
+
+  test("Create a weekly checkin with all fields", async () => {
+    const res = await authenticatedApi("/api/weekly-checkins", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mood: 7,
+        most_excited_person: "Alice",
+        one_thing_to_change: "Be more consistent",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.checkin).toBeDefined();
+    expect(data.checkin.mood).toBe(7);
+    expect(data.checkin.most_excited_person).toBe("Alice");
+    expect(data.checkin.one_thing_to_change).toBe("Be more consistent");
+  });
+
+  test("Create weekly checkin fails without mood", async () => {
+    const res = await authenticatedApi("/api/weekly-checkins", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        most_excited_person: "Bob",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Get latest weekly checkin", async () => {
+    const res = await authenticatedApi(
+      "/api/weekly-checkins/latest",
+      authToken
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.checkin === null || data.checkin !== undefined).toBe(true);
+    if (data.checkin) {
+      expect(data.checkin.id).toBeDefined();
+      expect(data.checkin.mood).toBeDefined();
+      expect(data.checkin.created_at).toBeDefined();
+    }
+  });
+
   // ========== Places Autocomplete Tests ==========
   test("Get place autocomplete suggestions with input", async () => {
     const res = await authenticatedApi(
@@ -1749,6 +1861,16 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 401);
   });
 
+  test("Unauthenticated POST /api/persons/{id}/conversation-starters returns 401", async () => {
+    const res = await api(
+      "/api/persons/00000000-0000-0000-0000-000000000000/conversation-starters",
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 401);
+  });
+
   test("Unauthenticated GET /api/dates returns 401", async () => {
     const res = await api("/api/dates");
     await expectStatus(res, 401);
@@ -1773,6 +1895,11 @@ describe("API Integration Tests", () => {
 
   test("Unauthenticated GET /api/analytics returns 401", async () => {
     const res = await api("/api/analytics");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/analytics/weekly-summary returns 401", async () => {
+    const res = await api("/api/analytics/weekly-summary");
     await expectStatus(res, 401);
   });
 
@@ -1905,6 +2032,22 @@ describe("API Integration Tests", () => {
 
   test("Unauthenticated GET /api/reminders/feed returns 401", async () => {
     const res = await api("/api/reminders/feed");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/weekly-checkins returns 401", async () => {
+    const res = await api("/api/weekly-checkins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mood: 8,
+      }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/weekly-checkins/latest returns 401", async () => {
+    const res = await api("/api/weekly-checkins/latest");
     await expectStatus(res, 401);
   });
 
