@@ -202,7 +202,7 @@ function Chip({
 
 // ─── Person row card ──────────────────────────────────────────────────────────
 
-function PersonCard({ item, index }: { item: Person; index: number }) {
+const PersonCard = React.memo(function PersonCard({ item, index }: { item: Person; index: number }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
   const translateX = useRef(new Animated.Value(0)).current;
@@ -360,7 +360,7 @@ function PersonCard({ item, index }: { item: Person; index: number }) {
       </View>
     </Animated.View>
   );
-}
+});
 
 // ─── Skeleton row ─────────────────────────────────────────────────────────────
 
@@ -842,6 +842,10 @@ export default function RosterScreen() {
             renderItem={({ item, index }) => <PersonCard item={item} index={index} />}
             contentContainerStyle={{ paddingTop: 8, paddingBottom: 120 }}
             showsVerticalScrollIndicator={false}
+            removeClippedSubviews={true}
+            maxToRenderPerBatch={8}
+            windowSize={10}
+            initialNumToRender={6}
             ListEmptyComponent={
               <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 40, paddingHorizontal: 32 }}>
                 <Text style={{ fontSize: 32, marginBottom: 12 }}>💝</Text>

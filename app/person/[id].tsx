@@ -293,7 +293,7 @@ const QUICK_MESSAGES = [
 
 // ─── sub-components ──────────────────────────────────────────────────────────
 
-function SectionHeader({ label }: { label: string }) {
+const SectionHeader = React.memo(function SectionHeader({ label }: { label: string }) {
   return (
     <Text style={{
       fontSize: 11,
@@ -306,9 +306,9 @@ function SectionHeader({ label }: { label: string }) {
       {label}
     </Text>
   );
-}
+});
 
-function PillTag({ label, color = '#555555', bg = '#F5F5F5' }: { label: string; color?: string; bg?: string }) {
+const PillTag = React.memo(function PillTag({ label, color = '#555555', bg = '#F5F5F5' }: { label: string; color?: string; bg?: string }) {
   return (
     <View style={{
       backgroundColor: bg,
@@ -319,9 +319,9 @@ function PillTag({ label, color = '#555555', bg = '#F5F5F5' }: { label: string; 
       <Text style={{ color, fontSize: 11, fontWeight: '500' }}>{label}</Text>
     </View>
   );
-}
+});
 
-function ReadOnlySlider({ label, value, excluded, onToggleExclude }: {
+const ReadOnlySlider = React.memo(function ReadOnlySlider({ label, value, excluded, onToggleExclude }: {
   label: string; value?: number; excluded?: boolean; onToggleExclude?: () => void
 }) {
   const val = value ?? 0;
@@ -359,9 +359,9 @@ function ReadOnlySlider({ label, value, excluded, onToggleExclude }: {
       )}
     </View>
   );
-}
+});
 
-function EditableSlider({ label, value, onChange, excluded, onToggleExclude }: {
+const EditableSlider = React.memo(function EditableSlider({ label, value, onChange, excluded, onToggleExclude }: {
   label: string; value?: number; onChange: (v: number) => void; excluded?: boolean; onToggleExclude?: () => void
 }) {
   const val = value ?? 5;
@@ -422,7 +422,7 @@ function EditableSlider({ label, value, onChange, excluded, onToggleExclude }: {
       )}
     </View>
   );
-}
+});
 
 // Circular score ring using SVG-like approach with border
 function ScoreRing({ score, color, size = 48 }: { score: number; color: string; size?: number }) {
