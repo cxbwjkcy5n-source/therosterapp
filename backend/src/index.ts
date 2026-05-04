@@ -27,7 +27,15 @@ export const app = await createApplication(schema);
 export type App = typeof app;
 
 // Enable authentication with email/password and OAuth providers
-app.withAuth();
+app.withAuth({
+  trustedOrigins: [
+    'roster://',
+    'https://bqwfnumg43sdjmd5mdarg4jau4ey73ch.app.specular.dev',
+    'http://localhost:8081',
+    'http://localhost:8082',
+    'exp://',
+  ],
+});
 
 // Enable file storage for uploads
 app.withStorage();
