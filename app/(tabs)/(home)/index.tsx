@@ -147,7 +147,7 @@ function CircleScore({ score, size }: { score: number | null; size: number }) {
         )}
       </Svg>
       {score !== null ? (
-        <Text style={{ fontSize: 13, fontWeight: '700', color: '#1A1A1A' }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: RED }}>
           {score % 1 === 0 ? `${score}/10` : `${score.toFixed(1)}/10`}
         </Text>
       ) : (
@@ -182,11 +182,12 @@ function Chip({
   selected: boolean;
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
   return (
     <Pressable
       onPress={onPress}
       style={{
-        backgroundColor: selected ? RED : '#F5F5F5',
+        backgroundColor: selected ? RED : colors.surface,
         borderRadius: 20,
         paddingHorizontal: 12,
         paddingVertical: 6,
@@ -194,7 +195,7 @@ function Chip({
         marginBottom: 8,
       }}
     >
-      <Text style={{ fontSize: 13, fontWeight: '500', color: selected ? '#fff' : '#444' }}>
+      <Text style={{ fontSize: 13, fontWeight: '500', color: selected ? '#fff' : colors.textSecondary }}>
         {label}
       </Text>
     </Pressable>
@@ -204,6 +205,7 @@ function Chip({
 // ─── Person row card ──────────────────────────────────────────────────────────
 
 const PersonCard = React.memo(function PersonCard({ item, index }: { item: Person; index: number }) {
+  const { colors } = useTheme();
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
   const translateX = useRef(new Animated.Value(0)).current;
@@ -268,7 +270,7 @@ const PersonCard = React.memo(function PersonCard({ item, index }: { item: Perso
               router.push(`/person/${item.id}`);
             }}
             style={{
-              backgroundColor: '#fff',
+              backgroundColor: colors.background,
               borderRadius: 16,
               padding: 16,
               flexDirection: 'row',
@@ -308,7 +310,7 @@ const PersonCard = React.memo(function PersonCard({ item, index }: { item: Perso
 
             {/* Name + category */}
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A', marginBottom: 5 }} numberOfLines={1}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 5 }} numberOfLines={1}>
                 {item.name}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -323,26 +325,26 @@ const PersonCard = React.memo(function PersonCard({ item, index }: { item: Perso
                       item.dating_status === 'on_hold' ? '#FF9800' : 'transparent',
                   }} />
                 ) : null}
-                <View style={{ alignSelf: 'flex-start', backgroundColor: '#F5F5F5', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Text style={{ fontSize: 11, color: categoryLabel ? '#666' : '#CCCCCC', fontWeight: '500' }}>{categoryLabel || '—'}</Text>
+                <View style={{ alignSelf: 'flex-start', backgroundColor: colors.surface, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ fontSize: 11, color: categoryLabel ? colors.textSecondary : colors.textTertiary, fontWeight: '500' }}>{categoryLabel || '—'}</Text>
                 </View>
               </View>
               {/* Info row */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5, flexWrap: 'wrap', minHeight: 18 }}>
                 {item.location ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                    <Text style={{ fontSize: 11, color: '#999' }}>📍</Text>
-                    <Text style={{ fontSize: 12, color: '#888', fontWeight: '400' }} numberOfLines={1}>{item.location}</Text>
+                    <Text style={{ fontSize: 11, color: colors.textTertiary }}>📍</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, fontWeight: '400' }} numberOfLines={1}>{item.location}</Text>
                   </View>
                 ) : null}
                 {item.interest_level != null ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                    <Text style={{ fontSize: 11, color: '#999' }}>⚡</Text>
-                    <Text style={{ fontSize: 12, color: '#888', fontWeight: '400' }}>{item.interest_level} interest</Text>
+                    <Text style={{ fontSize: 11, color: colors.textTertiary }}>⚡</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, fontWeight: '400' }}>{item.interest_level} interest</Text>
                   </View>
                 ) : null}
                 {item.created_at ? (
-                  <Text style={{ fontSize: 12, color: '#AAAAAA', fontWeight: '400' }}>{formatTalkingDuration(item.created_at)}</Text>
+                  <Text style={{ fontSize: 12, color: colors.textTertiary, fontWeight: '400' }}>{formatTalkingDuration(item.created_at)}</Text>
                 ) : null}
               </View>
             </View>
@@ -366,6 +368,7 @@ const PersonCard = React.memo(function PersonCard({ item, index }: { item: Perso
 // ─── Skeleton row ─────────────────────────────────────────────────────────────
 
 function SkeletonRow() {
+  const { colors } = useTheme();
   const opacity = useRef(new Animated.Value(0.3)).current;
   useEffect(() => {
     Animated.loop(
@@ -382,7 +385,7 @@ function SkeletonRow() {
         opacity,
         marginHorizontal: 16,
         marginVertical: 5,
-        backgroundColor: '#F5F5F5',
+        backgroundColor: colors.surface,
         borderRadius: 16,
         height: 80,
       }}
@@ -669,7 +672,7 @@ export default function RosterScreen() {
         style={{
           marginHorizontal: 16,
           marginTop: -16,
-          backgroundColor: '#fff',
+          backgroundColor: colors.background,
           borderRadius: 12,
           shadowColor: '#000',
           shadowOpacity: 0.10,
@@ -688,7 +691,7 @@ export default function RosterScreen() {
             paddingHorizontal: 14,
           }}
         >
-          <Search size={18} color="#999" style={{ marginRight: 8 }} />
+          <Search size={18} color={colors.textTertiary} style={{ marginRight: 8 }} />
           <TextInput
             value={searchQuery}
             onChangeText={(t) => {
@@ -696,8 +699,8 @@ export default function RosterScreen() {
               setSearchQuery(t);
             }}
             placeholder="Search your roster..."
-            placeholderTextColor="#999"
-            style={{ flex: 1, fontSize: 14, color: '#1A1A1A' }}
+            placeholderTextColor={colors.textTertiary}
+            style={{ flex: 1, fontSize: 14, color: colors.text }}
             returnKeyType="search"
           />
           <Pressable
@@ -707,7 +710,7 @@ export default function RosterScreen() {
             }}
             style={{ padding: 4 }}
           >
-            <SlidersHorizontal size={18} color={filterOpen ? RED : '#999'} />
+            <SlidersHorizontal size={18} color={filterOpen ? RED : colors.textTertiary} />
           </Pressable>
         </View>
 
@@ -715,10 +718,10 @@ export default function RosterScreen() {
         <Animated.View style={{ maxHeight: filterMaxHeight, overflow: 'hidden', opacity: filterOpacity }}>
           <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
             {/* Divider */}
-            <View style={{ height: 1, backgroundColor: '#F0F0F0', marginBottom: 12 }} />
+            <View style={{ height: 1, backgroundColor: colors.divider, marginBottom: 12 }} />
 
             {/* Sort by */}
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#999', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
               Sort by
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
@@ -736,7 +739,7 @@ export default function RosterScreen() {
             </ScrollView>
 
             {/* Category */}
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#999', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
               Category
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -812,10 +815,10 @@ export default function RosterScreen() {
         </View>
       ) : error ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-          <Text style={{ color: COLORS.danger, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
+          <Text style={{ color: RED, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
             Couldn't load your roster
           </Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 20 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 20 }}>
             Check your connection and try again
           </Text>
           <AnimatedPressable

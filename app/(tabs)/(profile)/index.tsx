@@ -34,7 +34,6 @@ import {
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
-import { COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
@@ -119,9 +118,9 @@ function getInitials(name?: string) {
 }
 
 
-function TagInput({ label, tags, onAdd, onRemove, color = COLORS.primary, editing }: {
+function TagInput({ label, tags, onAdd, onRemove, color, editing, colors }: {
   label: string; tags: string[]; onAdd: (t: string) => void; onRemove: (t: string) => void;
-  color?: string; editing: boolean;
+  color: string; editing: boolean; colors: ReturnType<typeof useTheme>['colors'];
 }) {
   const [input, setInput] = useState('');
   const handleAdd = () => {
@@ -134,26 +133,26 @@ function TagInput({ label, tags, onAdd, onRemove, color = COLORS.primary, editin
   };
   return (
     <View style={{ marginBottom: 16 }}>
-      <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>{label}</Text>
+      <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>{label}</Text>
       {editing && (
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
           <TextInput
             value={input}
             onChangeText={setInput}
             placeholder={`Add ${label.toLowerCase()}...`}
-            placeholderTextColor={COLORS.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             onSubmitEditing={handleAdd}
             returnKeyType="done"
             style={{
               flex: 1,
-              backgroundColor: COLORS.surfaceSecondary,
+              backgroundColor: colors.surfaceSecondary,
               borderRadius: 10,
               paddingHorizontal: 12,
               paddingVertical: 10,
-              color: COLORS.text,
+              color: colors.text,
               fontSize: 14,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: colors.border,
             }}
           />
           <AnimatedPressable
@@ -202,30 +201,31 @@ function TagInput({ label, tags, onAdd, onRemove, color = COLORS.primary, editin
   );
 }
 
-function FormField({ label, value, onChangeText, placeholder, keyboardType, multiline, autoCapitalize }: {
+function FormField({ label, value, onChangeText, placeholder, keyboardType, multiline, autoCapitalize, colors }: {
   label: string; value: string; onChangeText: (v: string) => void; placeholder?: string;
   keyboardType?: any; multiline?: boolean; autoCapitalize?: any;
+  colors: ReturnType<typeof useTheme>['colors'];
 }) {
   return (
     <View style={{ marginBottom: 14 }}>
-      <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>{label}</Text>
+      <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder || label}
-        placeholderTextColor={COLORS.textTertiary}
+        placeholderTextColor={colors.textTertiary}
         keyboardType={keyboardType}
         multiline={multiline}
         autoCapitalize={autoCapitalize || 'sentences'}
         style={{
-          backgroundColor: COLORS.surfaceSecondary,
+          backgroundColor: colors.surfaceSecondary,
           borderRadius: 12,
           paddingHorizontal: 14,
           paddingVertical: multiline ? 12 : 13,
-          color: COLORS.text,
+          color: colors.text,
           fontSize: 15,
           borderWidth: 1,
-          borderColor: COLORS.border,
+          borderColor: colors.border,
           minHeight: multiline ? 80 : undefined,
           textAlignVertical: multiline ? 'top' : undefined,
         }}
@@ -236,7 +236,7 @@ function FormField({ label, value, onChangeText, placeholder, keyboardType, mult
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
-  const { isDark, toggleDark } = useTheme();
+  const { isDark, toggleDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [analytics, setAnalytics] = useState<Analytics>({});
   const [notifications, setNotifications] = useState(true);
@@ -405,13 +405,13 @@ export default function ProfileScreen() {
   const totalDates = analytics.total_dates ?? 0;
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen
         options={{
           title: 'Profile',
           headerShown: true,
-          headerStyle: { backgroundColor: COLORS.background },
-          headerTintColor: COLORS.text,
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.text,
           headerShadowVisible: false,
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -423,18 +423,18 @@ export default function ProfileScreen() {
                       width: 36,
                       height: 36,
                       borderRadius: 18,
-                      backgroundColor: COLORS.surface,
+                      backgroundColor: colors.surface,
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <X size={16} color={COLORS.textSecondary} />
+                    <X size={16} color={colors.textSecondary} />
                   </AnimatedPressable>
                   <AnimatedPressable
                     onPress={handleSave}
                     disabled={saving}
                     style={{
-                      backgroundColor: COLORS.primary,
+                      backgroundColor: colors.primary,
                       borderRadius: 10,
                       paddingHorizontal: 14,
                       paddingVertical: 7,
@@ -460,14 +460,14 @@ export default function ProfileScreen() {
                     width: 36,
                     height: 36,
                     borderRadius: 18,
-                    backgroundColor: COLORS.surface,
+                    backgroundColor: colors.surface,
                     alignItems: 'center',
                     justifyContent: 'center',
                     borderWidth: 1,
-                    borderColor: COLORS.border,
+                    borderColor: colors.border,
                   }}
                 >
-                  <Pencil size={16} color={COLORS.textSecondary} />
+                  <Pencil size={16} color={colors.textSecondary} />
                 </AnimatedPressable>
               )}
             </View>
@@ -486,7 +486,7 @@ export default function ProfileScreen() {
         <View style={{
           marginHorizontal: 16, marginTop: 8, marginBottom: 16,
           borderRadius: 16, overflow: 'hidden',
-          backgroundColor: COLORS.surface,
+          backgroundColor: colors.surface,
           shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 2 }, elevation: 3,
         }}>
           {/* Photo area */}
@@ -494,8 +494,8 @@ export default function ProfileScreen() {
             {typeof photoSource === 'string' && photoSource.length > 10 ? (
               <RNImage source={{ uri: photoSource }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             ) : (
-              <View style={{ width: '100%', height: '100%', backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 56, fontWeight: '700', color: COLORS.primary }}>{initials}</Text>
+              <View style={{ width: '100%', height: '100%', backgroundColor: colors.primaryMuted, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 56, fontWeight: '700', color: colors.primary }}>{initials}</Text>
               </View>
             )}
             {editing && (
@@ -523,48 +523,48 @@ export default function ProfileScreen() {
                 value={editData.displayName || ''}
                 onChangeText={(v) => update('displayName', v)}
                 placeholder={user?.name || 'Display name'}
-                placeholderTextColor={COLORS.textTertiary}
+                placeholderTextColor={colors.textTertiary}
                 style={{
-                  color: COLORS.text, fontSize: 20, fontWeight: '700',
-                  backgroundColor: COLORS.surfaceSecondary, borderRadius: 10,
+                  color: colors.text, fontSize: 20, fontWeight: '700',
+                  backgroundColor: colors.surfaceSecondary, borderRadius: 10,
                   paddingHorizontal: 14, paddingVertical: 8,
-                  borderWidth: 1, borderColor: COLORS.border,
+                  borderWidth: 1, borderColor: colors.border,
                   textAlign: 'center', marginBottom: 4, minWidth: 180,
                 }}
               />
             ) : (
-              <Text style={{ fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: 4 }}>
+              <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 4 }}>
                 {displayData.displayName || user?.name || 'Anonymous'}
               </Text>
             )}
-            <Text style={{ fontSize: 14, color: COLORS.textSecondary }}>{user?.email || ''}</Text>
+            <Text style={{ fontSize: 14, color: colors.textSecondary }}>{user?.email || ''}</Text>
           </View>
         </View>
 
         {/* Stats row */}
         <View style={{ flexDirection: 'row', marginHorizontal: 16, gap: 10, marginBottom: 24 }}>
           {[
-            { label: 'Active', value: totalActive, color: COLORS.primary },
-            { label: 'Benched', value: totalBenched, color: COLORS.accent },
-            { label: 'Dates', value: totalDates, color: COLORS.success },
+            { label: 'Active', value: totalActive, color: colors.primary },
+            { label: 'Benched', value: totalBenched, color: colors.accent },
+            { label: 'Dates', value: totalDates, color: colors.success },
           ].map((stat) => (
             <View
               key={stat.label}
               style={{
                 flex: 1,
-                backgroundColor: COLORS.surface,
+                backgroundColor: colors.surface,
                 borderRadius: 14,
                 padding: 14,
                 alignItems: 'center',
                 borderWidth: 1,
-                borderColor: COLORS.border,
-                shadowColor: COLORS.primary,
+                borderColor: colors.border,
+                shadowColor: colors.primary,
                 shadowOpacity: 0.06,
                 shadowRadius: 8,
               }}
             >
               <Text style={{ fontSize: 22, fontWeight: '800', color: stat.color }}>{stat.value}</Text>
-              <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>{stat.label}</Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>{stat.label}</Text>
             </View>
           ))}
         </View>
@@ -575,27 +575,27 @@ export default function ProfileScreen() {
           {/* About card */}
           <View
             style={{
-              backgroundColor: COLORS.surface,
+              backgroundColor: colors.surface,
               borderRadius: 16,
               padding: 16,
               borderWidth: 1,
-              borderColor: COLORS.border,
-              shadowColor: COLORS.primary,
+              borderColor: colors.border,
+              shadowColor: colors.primary,
               shadowOpacity: 0.06,
               shadowRadius: 12,
             }}
           >
-            <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>About Me</Text>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>About Me</Text>
 
             {editing ? (
               <>
-                <FormField label="Bio" value={editData.bio || ''} onChangeText={(v) => update('bio', v)} placeholder="Tell people about yourself..." multiline />
+                <FormField label="Bio" value={editData.bio || ''} onChangeText={(v) => update('bio', v)} placeholder="Tell people about yourself..." multiline colors={colors} />
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                   <View style={{ flex: 1 }}>
-                    <FormField label="Age" value={editData.age?.toString() || ''} onChangeText={(v) => update('age', v ? parseInt(v, 10) : undefined)} placeholder="e.g. 28" keyboardType="numeric" />
+                    <FormField label="Age" value={editData.age?.toString() || ''} onChangeText={(v) => update('age', v ? parseInt(v, 10) : undefined)} placeholder="e.g. 28" keyboardType="numeric" colors={colors} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>Birthday</Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 7 }}>Birthday</Text>
                     <BirthdayPicker
                       value={editData.birthday || ''}
                       onChange={(v) => {
@@ -611,47 +611,47 @@ export default function ProfileScreen() {
                 </View>
                 {editData.zodiac ? (
                   <View style={{ marginBottom: 14 }}>
-                    <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 6 }}>Zodiac (auto)</Text>
-                    <View style={{ backgroundColor: COLORS.primaryMuted, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignSelf: 'flex-start' }}>
-                      <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '600' }}>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 6 }}>Zodiac (auto)</Text>
+                    <View style={{ backgroundColor: colors.primaryMuted, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, alignSelf: 'flex-start' }}>
+                      <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
                         {ZODIAC_SIGNS.find(z => z.value === editData.zodiac)?.label || editData.zodiac}
                       </Text>
                     </View>
                   </View>
                 ) : null}
-                <FormField label="Location" value={editData.location || ''} onChangeText={(v) => update('location', v)} placeholder="Your city or neighborhood" />
-                <FormField label="Occupation" value={editData.occupation || ''} onChangeText={(v) => update('occupation', v)} placeholder="What do you do?" />
+                <FormField label="Location" value={editData.location || ''} onChangeText={(v) => update('location', v)} placeholder="Your city or neighborhood" colors={colors} />
+                <FormField label="Occupation" value={editData.occupation || ''} onChangeText={(v) => update('occupation', v)} placeholder="What do you do?" colors={colors} />
               </>
             ) : (
               <View style={{ gap: 10 }}>
                 {displayData.bio ? (
-                  <Text style={{ color: COLORS.text, fontSize: 15, lineHeight: 22 }}>{displayData.bio}</Text>
+                  <Text style={{ color: colors.text, fontSize: 15, lineHeight: 22 }}>{displayData.bio}</Text>
                 ) : (
-                  <Text style={{ color: COLORS.textTertiary, fontSize: 14, fontStyle: 'italic' }}>No bio yet. Tap edit to add one.</Text>
+                  <Text style={{ color: colors.textTertiary, fontSize: 14, fontStyle: 'italic' }}>No bio yet. Tap edit to add one.</Text>
                 )}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
                   {displayData.age ? (
-                    <View style={{ backgroundColor: COLORS.primaryMuted, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
-                      <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '600' }}>{displayData.age} yrs</Text>
+                    <View style={{ backgroundColor: colors.primaryMuted, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                      <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>{displayData.age} yrs</Text>
                     </View>
                   ) : null}
                   {displayData.zodiac ? (
-                    <View style={{ backgroundColor: COLORS.primaryMuted, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
-                      <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '600' }}>
+                    <View style={{ backgroundColor: colors.primaryMuted, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                      <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
                         {ZODIAC_SIGNS.find((z) => z.value === displayData.zodiac)?.label || displayData.zodiac}
                       </Text>
                     </View>
                   ) : null}
                   {displayData.location ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.surfaceSecondary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
-                      <MapPin size={12} color={COLORS.textSecondary} />
-                      <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{displayData.location}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surfaceSecondary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                      <MapPin size={12} color={colors.textSecondary} />
+                      <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{displayData.location}</Text>
                     </View>
                   ) : null}
                   {displayData.occupation ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.surfaceSecondary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
-                      <Briefcase size={12} color={COLORS.textSecondary} />
-                      <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{displayData.occupation}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.surfaceSecondary, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }}>
+                      <Briefcase size={12} color={colors.textSecondary} />
+                      <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{displayData.occupation}</Text>
                     </View>
                   ) : null}
                 </View>
@@ -662,30 +662,30 @@ export default function ProfileScreen() {
           {/* Contact card */}
           <View
             style={{
-              backgroundColor: COLORS.surface,
+              backgroundColor: colors.surface,
               borderRadius: 16,
               padding: 16,
               borderWidth: 1,
-              borderColor: COLORS.border,
-              shadowColor: COLORS.primary,
+              borderColor: colors.border,
+              shadowColor: colors.primary,
               shadowOpacity: 0.06,
               shadowRadius: 12,
             }}
           >
-            <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>Contact & Social</Text>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>Contact & Social</Text>
             {editing ? (
               <>
-                <FormField label="Phone Number" value={editData.phoneNumber || ''} onChangeText={(v) => update('phoneNumber', v)} placeholder="+1 (555) 000-0000" keyboardType="phone-pad" autoCapitalize="none" />
-                <FormField label="Instagram" value={editData.instagram || ''} onChangeText={(v) => update('instagram', v)} placeholder="@handle" autoCapitalize="none" />
-                <FormField label="TikTok" value={editData.tiktok || ''} onChangeText={(v) => update('tiktok', v)} placeholder="@handle" autoCapitalize="none" />
-                <FormField label="X / Twitter" value={editData.twitterX || ''} onChangeText={(v) => update('twitterX', v)} placeholder="@handle" autoCapitalize="none" />
+                <FormField label="Phone Number" value={editData.phoneNumber || ''} onChangeText={(v) => update('phoneNumber', v)} placeholder="+1 (555) 000-0000" keyboardType="phone-pad" autoCapitalize="none" colors={colors} />
+                <FormField label="Instagram" value={editData.instagram || ''} onChangeText={(v) => update('instagram', v)} placeholder="@handle" autoCapitalize="none" colors={colors} />
+                <FormField label="TikTok" value={editData.tiktok || ''} onChangeText={(v) => update('tiktok', v)} placeholder="@handle" autoCapitalize="none" colors={colors} />
+                <FormField label="X / Twitter" value={editData.twitterX || ''} onChangeText={(v) => update('twitterX', v)} placeholder="@handle" autoCapitalize="none" colors={colors} />
               </>
             ) : (
               <View style={{ gap: 10 }}>
                 {displayData.phoneNumber ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <Phone size={16} color={COLORS.textSecondary} />
-                    <Text style={{ color: COLORS.text, fontSize: 15 }}>{displayData.phoneNumber}</Text>
+                    <Phone size={16} color={colors.textSecondary} />
+                    <Text style={{ color: colors.text, fontSize: 15 }}>{displayData.phoneNumber}</Text>
                   </View>
                 ) : null}
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -696,17 +696,17 @@ export default function ProfileScreen() {
                     </View>
                   ) : null}
                   {displayData.tiktok ? (
-                    <View style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: COLORS.border }}>
-                      <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>TikTok @{displayData.tiktok}</Text>
+                    <View style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: colors.border }}>
+                      <Text style={{ color: colors.text, fontSize: 13, fontWeight: '500' }}>TikTok @{displayData.tiktok}</Text>
                     </View>
                   ) : null}
                   {displayData.twitterX ? (
-                    <View style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: COLORS.border }}>
-                      <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>X @{displayData.twitterX}</Text>
+                    <View style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, borderColor: colors.border }}>
+                      <Text style={{ color: colors.text, fontSize: 13, fontWeight: '500' }}>X @{displayData.twitterX}</Text>
                     </View>
                   ) : null}
                   {!displayData.phoneNumber && !displayData.instagram && !displayData.tiktok && !displayData.twitterX && (
-                    <Text style={{ color: COLORS.textTertiary, fontSize: 14, fontStyle: 'italic' }}>No contact info yet.</Text>
+                    <Text style={{ color: colors.textTertiary, fontSize: 14, fontStyle: 'italic' }}>No contact info yet.</Text>
                   )}
                 </View>
               </View>
@@ -716,32 +716,34 @@ export default function ProfileScreen() {
           {/* Tags card */}
           <View
             style={{
-              backgroundColor: COLORS.surface,
+              backgroundColor: colors.surface,
               borderRadius: 16,
               padding: 16,
               borderWidth: 1,
-              borderColor: COLORS.border,
-              shadowColor: COLORS.primary,
+              borderColor: colors.border,
+              shadowColor: colors.primary,
               shadowOpacity: 0.06,
               shadowRadius: 12,
             }}
           >
-            <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>Interests & Flags</Text>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 14 }}>Interests & Flags</Text>
             <TagInput
               label="Favorite Foods"
               tags={displayData.favoriteFoods || []}
               onAdd={(t) => update('favoriteFoods', [...(editData.favoriteFoods || []), t])}
               onRemove={(t) => update('favoriteFoods', (editData.favoriteFoods || []).filter((f) => f !== t))}
-              color={COLORS.accent}
+              color={colors.accent}
               editing={editing}
+              colors={colors}
             />
             <TagInput
               label="Hobbies"
               tags={displayData.hobbies || []}
               onAdd={(t) => update('hobbies', [...(editData.hobbies || []), t])}
               onRemove={(t) => update('hobbies', (editData.hobbies || []).filter((h) => h !== t))}
-              color={COLORS.primary}
+              color={colors.primary}
               editing={editing}
+              colors={colors}
             />
 
           </View>
@@ -749,7 +751,7 @@ export default function ProfileScreen() {
           {/* Settings */}
           <Text
             style={{
-              color: COLORS.textSecondary,
+              color: colors.textSecondary,
               fontSize: 12,
               fontWeight: '600',
               letterSpacing: 0.8,
@@ -764,10 +766,10 @@ export default function ProfileScreen() {
 
           <View
             style={{
-              backgroundColor: COLORS.surface,
+              backgroundColor: colors.surface,
               borderRadius: 16,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: colors.border,
               overflow: 'hidden',
             }}
           >
@@ -777,13 +779,13 @@ export default function ProfileScreen() {
                 alignItems: 'center',
                 padding: 16,
                 borderBottomWidth: 1,
-                borderBottomColor: COLORS.divider,
+                borderBottomColor: colors.divider,
               }}
             >
-              <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: COLORS.accentMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                <Bell size={18} color={COLORS.accent} />
+              <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: colors.accentMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                <Bell size={18} color={colors.accent} />
               </View>
-              <Text style={{ flex: 1, color: COLORS.text, fontSize: 15 }}>Notifications</Text>
+              <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>Notifications</Text>
               <Switch
                 value={notifications}
                 onValueChange={(v) => {
@@ -791,7 +793,7 @@ export default function ProfileScreen() {
                   setNotifications(v);
                   apiPut('/api/preferences', { notifications_enabled: v }).catch((e: any) => console.error('[Profile] Failed to save notifications pref:', e));
                 }}
-                trackColor={{ false: COLORS.surfaceSecondary, true: COLORS.primary }}
+                trackColor={{ false: colors.surfaceSecondary, true: colors.primary }}
                 thumbColor="#fff"
               />
             </View>
@@ -802,20 +804,20 @@ export default function ProfileScreen() {
                 alignItems: 'center',
                 padding: 16,
                 borderBottomWidth: 1,
-                borderBottomColor: COLORS.divider,
+                borderBottomColor: colors.divider,
               }}
             >
               <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(100,100,200,0.15)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                 <Moon size={18} color="#8B8BFF" />
               </View>
-              <Text style={{ flex: 1, color: COLORS.text, fontSize: 15 }}>Dark mode</Text>
+              <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>Dark mode</Text>
               <Switch
                 value={darkMode}
                 onValueChange={(v) => {
                   console.log('[Profile] Dark mode toggled:', v);
                   toggleDark();
                 }}
-                trackColor={{ false: COLORS.surfaceSecondary, true: COLORS.primary }}
+                trackColor={{ false: colors.surfaceSecondary, true: colors.primary }}
                 thumbColor="#fff"
               />
             </View>
@@ -826,22 +828,22 @@ export default function ProfileScreen() {
                 router.push('/analytics');
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.divider }}>
-                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: COLORS.successMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                  <BarChart2 size={18} color={COLORS.success} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: colors.successMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <BarChart2 size={18} color={colors.success} />
                 </View>
-                <Text style={{ flex: 1, color: COLORS.text, fontSize: 15 }}>Insights</Text>
-                <ChevronRight size={18} color={COLORS.textTertiary} />
+                <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>Insights</Text>
+                <ChevronRight size={18} color={colors.textTertiary} />
               </View>
             </AnimatedPressable>
 
             <AnimatedPressable onPress={() => { console.log('[Profile] Share profile pressed'); router.push('/share-profile'); }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.divider }}>
-                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                  <Share2 size={18} color={COLORS.primary} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: colors.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Share2 size={18} color={colors.primary} />
                 </View>
-                <Text style={{ flex: 1, color: COLORS.text, fontSize: 15 }}>My Share Code</Text>
-                <ChevronRight size={18} color={COLORS.textTertiary} />
+                <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>My Share Code</Text>
+                <ChevronRight size={18} color={colors.textTertiary} />
               </View>
             </AnimatedPressable>
 
@@ -849,12 +851,12 @@ export default function ProfileScreen() {
                 console.log('[Profile] Privacy Policy pressed');
                 router.push('/privacy');
               }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: COLORS.divider }}>
-                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                  <Shield size={18} color={COLORS.primary} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: colors.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Shield size={18} color={colors.primary} />
                 </View>
-                <Text style={{ flex: 1, color: COLORS.text, fontSize: 15 }}>Privacy Policy</Text>
-                <ChevronRight size={18} color={COLORS.textTertiary} />
+                <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>Privacy Policy</Text>
+                <ChevronRight size={18} color={colors.textTertiary} />
               </View>
             </AnimatedPressable>
 
@@ -865,11 +867,11 @@ export default function ProfileScreen() {
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
-                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: COLORS.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                  <FileText size={18} color={COLORS.primary} />
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: colors.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <FileText size={18} color={colors.primary} />
                 </View>
-                <Text style={{ flex: 1, color: COLORS.text, fontSize: 15 }}>Legal</Text>
-                <ChevronRight size={18} color={COLORS.textTertiary} />
+                <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>Legal</Text>
+                <ChevronRight size={18} color={colors.textTertiary} />
               </View>
             </AnimatedPressable>
           </View>
@@ -877,7 +879,7 @@ export default function ProfileScreen() {
           <AnimatedPressable onPress={handleSignOut} style={{ marginTop: 4, marginBottom: 8 }}>
             <View
               style={{
-                backgroundColor: COLORS.surface,
+                backgroundColor: colors.surface,
                 borderRadius: 16,
                 padding: 16,
                 flexDirection: 'row',
@@ -888,15 +890,15 @@ export default function ProfileScreen() {
                 gap: 10,
               }}
             >
-              <LogOut size={18} color={COLORS.primary} />
-              <Text style={{ color: COLORS.primary, fontSize: 15, fontWeight: '600' }}>Sign out</Text>
+              <LogOut size={18} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600' }}>Sign out</Text>
             </View>
           </AnimatedPressable>
 
           <AnimatedPressable onPress={handleDeleteAccount} style={{ marginTop: 4, marginBottom: 8 }}>
             <View
               style={{
-                backgroundColor: COLORS.surface,
+                backgroundColor: colors.surface,
                 borderRadius: 16,
                 padding: 16,
                 flexDirection: 'row',
@@ -907,8 +909,8 @@ export default function ProfileScreen() {
                 gap: 10,
               }}
             >
-              <Trash2 size={16} color={COLORS.textTertiary} />
-              <Text style={{ color: COLORS.textTertiary, fontSize: 14, fontWeight: '500' }}>Delete Account</Text>
+              <Trash2 size={16} color={colors.textTertiary} />
+              <Text style={{ color: colors.textTertiary, fontSize: 14, fontWeight: '500' }}>Delete Account</Text>
             </View>
           </AnimatedPressable>
         </View>

@@ -1732,10 +1732,10 @@ export default function PersonDetailScreen() {
                       const asset = result.assets[0];
                       console.log('[PersonDetail] Photo selected, uploading...');
                       try {
-                        const uploadRes = await apiPost<{ url: string }>('/api/upload', {
-                          image: `data:image/jpeg;base64,${asset.base64}`,
+                        const uploadRes = await apiPost<{ photo_url: string }>('/api/upload-photo', {
+                          base64: asset.base64,
                         });
-                        const photoUrl = uploadRes.url;
+                        const photoUrl = uploadRes.photo_url;
                         console.log('[PersonDetail] Photo uploaded, saving to person:', photoUrl.slice(0, 40));
                         await apiPost(`/api/persons/${id}/photos`, {
                           photo_url: photoUrl,

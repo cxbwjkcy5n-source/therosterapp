@@ -15,7 +15,7 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { COLORS } from '@/constants/Colors';
 import { registerForPushNotifications } from '@/utils/notifications';
-import { apiGet } from '@/utils/api';
+import { apiGet, apiPut } from '@/utils/api';
 
 const DevErrorBoundary = __DEV__
   ? ErrorBoundary
@@ -172,13 +172,24 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
       if (!onboardingChecked.current) {
         onboardingChecked.current = true;
         apiGet<{ completed: boolean; step?: number }>('/api/onboarding/state')
-          .then((state) => {
+          .then(async (state) => {
             console.log('[AppContent] Onboarding state:', state);
             if (state?.completed) {
               router.replace('/(tabs)/(home)');
-            } else {
-              router.replace('/onboarding');
+              return;
             }
+            // Check if user already has data — if so, skip onboarding
+            try {
+              const personsRes = await apiGet<{ persons: any[] }>('/api/persons');
+              if (personsRes?.persons?.length > 0) {
+                console.log('[AppContent] Existing user with persons, skipping onboarding');
+                apiPut('/api/onboarding/state', { completed: true }).catch(() => {});
+                router.replace('/(tabs)/(home)');
+                return;
+              }
+            } catch {}
+            // Truly new user
+            router.replace('/onboarding');
           })
           .catch((e) => {
             console.log('[AppContent] Could not check onboarding state, going to home:', e?.message);
