@@ -234,6 +234,7 @@ export function registerAIRoutes(app: App) {
           required: ['message'],
           properties: {
             message: { type: 'string' },
+            person_id: { type: ['string', 'null'], format: 'uuid' },
             history: {
               type: 'array',
               items: {
@@ -254,6 +255,7 @@ export function registerAIRoutes(app: App) {
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
@@ -261,6 +263,7 @@ export function registerAIRoutes(app: App) {
       request: FastifyRequest<{
         Body: {
           message: string;
+          person_id?: string;
           history?: Array<{ role: 'user' | 'assistant'; content: string }>;
         };
       }>,
@@ -269,11 +272,44 @@ export function registerAIRoutes(app: App) {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
-      const { message, history } = request.body;
-      app.logger.info({ userId: session.user.id, message }, 'Getting AI chat response');
+      const { message, person_id, history } = request.body;
+      app.logger.info({ userId: session.user.id, message, personId: person_id }, 'Getting AI chat response');
 
-      const systemPrompt =
+      let systemPrompt =
         'You are Nova, a warm and insightful dating coach. Give specific, actionable advice tailored to the user\'s question. Be empathetic, direct, and helpful. Never give the same generic response — always respond to what the user actually asked.';
+
+      // If person_id provided, fetch their info and include context
+      if (person_id) {
+        const person = await app.db.query.persons.findFirst({
+          where: eq(schema.persons.id, person_id),
+        });
+
+        if (!person) {
+          app.logger.warn({ userId: session.user.id, personId: person_id }, 'Person not found');
+          return reply.status(404).send({ error: 'Person not found' });
+        }
+
+        if (person.userId !== session.user.id) {
+          app.logger.warn({ userId: session.user.id, personId: person_id }, 'Access denied to person');
+          return reply.status(403).send({ error: 'Access denied' });
+        }
+
+        // Build person context
+        const personContext = [
+          `Person: ${person.name}`,
+          person.age ? `Age: ${person.age}` : null,
+          person.location ? `Location: ${person.location}` : null,
+          person.hobbies && person.hobbies.length > 0 ? `Hobbies: ${person.hobbies.join(', ')}` : null,
+          person.favoriteFoods && person.favoriteFoods.length > 0 ? `Favorite Foods: ${person.favoriteFoods.join(', ')}` : null,
+          person.connectionType ? `Connection Type: ${person.connectionType}` : null,
+          person.greenFlags && person.greenFlags.length > 0 ? `Green Flags: ${person.greenFlags.join(', ')}` : null,
+          person.redFlags && person.redFlags.length > 0 ? `Red Flags: ${person.redFlags.join(', ')}` : null,
+        ]
+          .filter(Boolean)
+          .join('. ');
+
+        systemPrompt = `You are Nova, a warm and insightful dating coach. You're helping the user navigate their relationship with ${person.name}. Context about this person: ${personContext}. Give specific, actionable advice tailored to this person and the user's question. Be empathetic, direct, and helpful. Never give the same generic response — always respond to what the user actually asked.`;
+      }
 
       // Build messages array: history + new message (system prompt passed separately)
       const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
@@ -313,11 +349,11 @@ export function registerAIRoutes(app: App) {
           content: text,
         });
 
-        app.logger.info({ userId: session.user.id }, 'AI chat response generated');
+        app.logger.info({ userId: session.user.id, personId: person_id }, 'AI chat response generated');
         app.logger.info({ userId: session.user.id }, 'Chat messages saved to history');
         return { reply: text };
       } catch (error) {
-        app.logger.error({ err: error, userId: session.user.id }, 'Failed to get AI response');
+        app.logger.error({ err: error, userId: session.user.id, personId: person_id }, 'Failed to get AI response');
         throw error;
       }
     }

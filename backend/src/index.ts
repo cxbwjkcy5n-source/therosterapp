@@ -16,6 +16,9 @@ import { registerSafetyCheckinsRoutes } from './routes/safety-checkins.js';
 import { registerShareRoutes } from './routes/share.js';
 import { registerPreferencesRoutes } from './routes/preferences.js';
 import { registerWeeklyCheckinsRoutes } from './routes/weekly-checkins.js';
+import { registerOnboardingRoutes } from './routes/onboarding.js';
+import { registerStreaksRoutes } from './routes/streaks.js';
+import { registerPushTokensRoutes } from './routes/push-tokens.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -61,6 +64,9 @@ registerSafetyCheckinsRoutes(app);
 registerShareRoutes(app);
 registerPreferencesRoutes(app);
 registerWeeklyCheckinsRoutes(app);
+registerOnboardingRoutes(app);
+registerStreaksRoutes(app);
+registerPushTokensRoutes(app);
 
 await app.run();
 app.logger.info('Application running');

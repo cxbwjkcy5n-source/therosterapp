@@ -2,6 +2,7 @@ import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { eq, desc } from 'drizzle-orm';
 import * as schema from '../db/schema/schema.js';
+import { sql } from 'drizzle-orm';
 
 export function registerWeeklyCheckinsRoutes(app: App) {
   const requireAuth = app.requireAuth();
@@ -66,6 +67,58 @@ export function registerWeeklyCheckinsRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id, mood }, 'Creating weekly checkin');
 
+      // Handle streak calculation
+      const now = new Date();
+      const existingStreak = await app.db.query.streaks.findFirst({
+        where: eq(schema.streaks.userId, session.user.id),
+      });
+
+      let currentStreak = 1;
+      let longestStreak = 1;
+
+      if (existingStreak) {
+        longestStreak = existingStreak.longestStreak;
+
+        if (existingStreak.lastCheckinAt) {
+          const daysSinceLastCheckin = Math.floor(
+            (now.getTime() - new Date(existingStreak.lastCheckinAt).getTime()) / (1000 * 60 * 60 * 24)
+          );
+
+          if (daysSinceLastCheckin > 14) {
+            // Reset streak
+            currentStreak = 1;
+          } else if (daysSinceLastCheckin >= 7) {
+            // Increment streak
+            currentStreak = existingStreak.currentStreak + 1;
+          } else {
+            // No change
+            currentStreak = existingStreak.currentStreak;
+          }
+        }
+
+        // Update longest streak
+        longestStreak = Math.max(currentStreak, existingStreak.longestStreak);
+
+        // Update existing streak
+        await app.db
+          .update(schema.streaks)
+          .set({
+            currentStreak,
+            longestStreak,
+            lastCheckinAt: now,
+            updatedAt: now,
+          })
+          .where(eq(schema.streaks.userId, session.user.id));
+      } else {
+        // Create new streak
+        await app.db.insert(schema.streaks).values({
+          userId: session.user.id,
+          currentStreak: 1,
+          longestStreak: 1,
+          lastCheckinAt: now,
+        });
+      }
+
       const [checkin] = await app.db
         .insert(schema.weeklyCheckins)
         .values({
@@ -76,7 +129,7 @@ export function registerWeeklyCheckinsRoutes(app: App) {
         })
         .returning();
 
-      app.logger.info({ userId: session.user.id, checkinId: checkin.id }, 'Weekly checkin created');
+      app.logger.info({ userId: session.user.id, checkinId: checkin.id, currentStreak, longestStreak }, 'Weekly checkin created');
       reply.status(201);
       return {
         checkin: {
