@@ -91,20 +91,12 @@ export function registerPlacesRoutes(app: App) {
         };
       }
 
-      // If API key is not configured, return empty predictions for testing
-      if (!hasGeocodeFarmKey()) {
-        app.logger.info({ input }, 'Returning empty predictions (GEOCODE_FARM_API_KEY not configured)');
-        return {
-          predictions: [],
-        };
-      }
-
       try {
         const apiKey = process.env.GEOCODE_FARM_API_KEY!;
         const encodedInput = encodeURIComponent(input);
 
         // Build Geocode Farm API URL
-        const urlString = `https://api.geocode.farm/forward/?key=${apiKey}&addr=${encodedInput}&country=US&lang=en`;
+        const urlString = `https://api.geocode.farm/forward/?key=${apiKey}&addr=${encodedInput}&lang=en`;
 
         app.logger.info({ input, url: urlString }, 'Calling Geocode Farm API');
 
@@ -127,7 +119,7 @@ export function registerPlacesRoutes(app: App) {
           let mainText: string;
           let secondaryText: string;
 
-          if (result.ADDRESS && result.ADDRESS.city) {
+          if (result.ADDRESS?.city) {
             // Use ADDRESS.city if present
             mainText = result.ADDRESS.city;
           } else {
@@ -136,9 +128,12 @@ export function registerPlacesRoutes(app: App) {
             mainText = parts[0].trim();
           }
 
-          if (result.ADDRESS && result.ADDRESS.admin_1 && result.ADDRESS.country) {
+          const adminState = result.ADDRESS?.admin_1;
+          const country = result.ADDRESS?.country;
+
+          if (adminState && country) {
             // Use ADDRESS.admin_1 + ", " + ADDRESS.country if both present
-            secondaryText = `${result.ADDRESS.admin_1}, ${result.ADDRESS.country}`;
+            secondaryText = `${adminState}, ${country}`;
           } else {
             // Otherwise use everything after first comma in formatted_address
             const parts = result.formatted_address.split(',');

@@ -1475,68 +1475,60 @@ export function registerPersonsRoutes(app: App) {
         weakestTrait = sorted[sorted.length - 1].name;
       }
 
-      // Build prompt from person ratings with non-null values
-      const ratingStrings = traits.map(t => `${t.name.toLowerCase()} ${t.score}/10`).join(', ');
-      const prompt = `Generate a 2-3 sentence compatibility summary for someone named ${person.name}. Their ratings: ${ratingStrings}. Write a warm, insightful summary that highlights their strengths and potential as a partner. Return ONLY the summary text, nothing else.`;
+      // Determine summary
+      let summary: string;
 
-      // Check if API key is available
-      if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === '') {
-        app.logger.info({ userId: session.user.id, personId: id }, 'OPENAI_API_KEY not set, using default report');
-        const defaultSummary = `${person.name} shows strong potential as a partner. With an overall compatibility score of ${overallScore}, they demonstrate qualities that suggest a meaningful connection is possible.`;
-        app.logger.info({ userId: session.user.id, personId: id }, 'Compatibility report generated (default)');
-        return {
-          report: {
-            overall_score: overallScore,
-            summary: defaultSummary,
-            strongest_trait: strongestTrait,
-            weakest_trait: weakestTrait,
-            traits,
-          },
-        };
-      }
+      if (traits.length === 0) {
+        // No valid ratings - return default message
+        summary = 'Add some ratings to generate your compatibility report.';
+        app.logger.info({ userId: session.user.id, personId: id }, 'No ratings available, using default message');
+      } else {
+        // Build rating text for AI prompt
+        const ratingsText = traits.map(t => `${t.name.toLowerCase()}: ${t.score}/10`).join(', ');
+        const prompt = `You are a dating coach. Based on these ratings for ${person.name}: ${ratingsText}. Write a 2-3 sentence compatibility summary. Be honest, insightful, and direct. Do not use bullet points.`;
 
-      try {
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [
-              {
-                role: 'user',
-                content: prompt,
-              },
-            ],
-            temperature: 0.7,
-          }),
-        });
+        try {
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [
+                {
+                  role: 'user',
+                  content: prompt,
+                },
+              ],
+              temperature: 0.7,
+            }),
+          });
 
-        if (!response.ok) {
-          const error = await response.text();
-          app.logger.error({ userId: session.user.id, personId: id, statusCode: response.status, error }, 'AI API error');
-          return reply.status(500).send({ error: 'Failed to generate compatibility report' });
+          if (response.ok) {
+            const data = (await response.json()) as any;
+            summary = data.choices[0]?.message?.content || 'Unable to generate summary.';
+          } else {
+            app.logger.warn({ userId: session.user.id, personId: id, statusCode: response.status }, 'AI API error');
+            summary = 'Unable to generate summary.';
+          }
+        } catch (error) {
+          app.logger.error({ err: error, userId: session.user.id, personId: id }, 'Error calling AI API');
+          summary = 'Unable to generate summary.';
         }
-
-        const data = (await response.json()) as any;
-        const summary = data.choices[0]?.message?.content || '';
-
-        app.logger.info({ userId: session.user.id, personId: id }, 'Compatibility report generated');
-        return {
-          report: {
-            overall_score: overallScore,
-            summary,
-            strongest_trait: strongestTrait,
-            weakest_trait: weakestTrait,
-            traits,
-          },
-        };
-      } catch (error) {
-        app.logger.error({ err: error, userId: session.user.id, personId: id }, 'Error generating compatibility report');
-        return reply.status(500).send({ error: 'Failed to generate compatibility report' });
       }
+
+      app.logger.info({ userId: session.user.id, personId: id }, 'Compatibility report generated');
+      return {
+        report: {
+          overall_score: overallScore,
+          summary,
+          strongest_trait: strongestTrait,
+          weakest_trait: weakestTrait,
+          traits,
+        },
+      };
     }
   );
 
