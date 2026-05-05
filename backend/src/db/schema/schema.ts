@@ -52,6 +52,7 @@ export const persons = pgTable('persons', {
   name: text('name').notNull(),
   location: text('location').notNull(),
   photoUrl: text('photo_url'),
+  nickname: text('nickname'),
   age: integer('age'),
   birthday: text('birthday'),
   zodiac: zodiacEnum('zodiac'),

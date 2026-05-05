@@ -41,17 +41,28 @@ export function registerStorageRoutes(app: App) {
       const userId = session.user.id;
       const { base64, person_id } = request.body;
 
-      // Strip any existing data URI prefix to get raw base64
+      // Extract mime type from data URI prefix if present, otherwise default to jpeg
+      let mimeType = 'image/jpeg';
       let rawBase64 = base64;
-      if (base64.includes(',')) {
+
+      if (base64.includes('data:')) {
+        // Data URI format: "data:image/png;base64,..." or "data:image/jpeg;base64,..."
+        const mimeMatch = base64.match(/data:([^;]+);/);
+        if (mimeMatch && mimeMatch[1]) {
+          mimeType = mimeMatch[1];
+        }
+
+        // Extract raw base64 after the comma
         const commaIndex = base64.indexOf(',');
-        rawBase64 = base64.substring(commaIndex + 1);
+        if (commaIndex !== -1) {
+          rawBase64 = base64.substring(commaIndex + 1);
+        }
       }
 
-      app.logger.info({ userId }, `[upload-photo] Received base64 length: ${rawBase64.length}`);
+      app.logger.info({ userId }, `[upload-photo] Received base64 length: ${rawBase64.length}, mime type: ${mimeType}`);
 
-      // Reconstruct full data URI
-      const photoUrl = `data:image/jpeg;base64,${rawBase64}`;
+      // Reconstruct full data URI with detected mime type
+      const photoUrl = `data:${mimeType};base64,${rawBase64}`;
 
       // Always upsert into user_profiles for the authenticated user
       await app.db

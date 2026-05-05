@@ -486,12 +486,11 @@ describe("API Integration Tests", () => {
     );
     await expectStatus(res, 201);
     const data = await res.json();
-    expect(data.photo).toBeDefined();
-    expect(data.photo.id).toBeDefined();
-    expect(data.photo.personId).toBe(personId);
-    expect(data.photo.photoUrl).toBe("https://example.com/photo1.jpg");
-    expect(data.photo.sortOrder).toBe(1);
-    photoId = data.photo.id;
+    expect(data.id).toBeDefined();
+    expect(data.personId).toBe(personId);
+    expect(data.photoUrl).toBe("https://example.com/photo1.jpg");
+    expect(data.sortOrder).toBe(1);
+    photoId = data.id;
   });
 
   test("Upload photo fails without required photo_url", async () => {
@@ -1216,6 +1215,20 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 200);
     const data = await res.json();
     expect(data.reply).toBeDefined();
+  });
+
+  test("Send message via /api/chat/message endpoint", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "What should I ask on a first date?",
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.reply).toBeDefined();
+    expect(typeof data.reply).toBe("string");
   });
 
   test("Get updated chat messages", async () => {

@@ -222,6 +222,140 @@ export function registerAIRoutes(app: App) {
     }
   );
 
+  // POST /api/chat/message - Send a message with AI coach response and store in history
+  app.fastify.post(
+    '/api/chat/message',
+    {
+      schema: {
+        description: 'Send a message to the dating coach AI and get a response',
+        tags: ['chat'],
+        body: {
+          type: 'object',
+          required: ['message'],
+          properties: {
+            message: { type: 'string' },
+            person_id: { type: ['string', 'null'], format: 'uuid' },
+            history: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  role: { type: 'string', enum: ['user', 'assistant'] },
+                  content: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              reply: { type: 'string' },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Body: {
+          message: string;
+          person_id?: string;
+          history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+        };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { message, person_id, history } = request.body;
+      app.logger.info({ userId: session.user.id, message, personId: person_id }, 'Getting AI chat response');
+
+      let systemPrompt =
+        'You are a supportive, insightful dating coach. Give practical, empathetic advice about dating and relationships. Be concise (2-4 sentences max per response).';
+
+      // If person_id provided, fetch their info and include context
+      if (person_id) {
+        const person = await app.db.query.persons.findFirst({
+          where: eq(schema.persons.id, person_id),
+        });
+
+        if (!person) {
+          app.logger.warn({ userId: session.user.id, personId: person_id }, 'Person not found');
+          return reply.status(404).send({ error: 'Person not found' });
+        }
+
+        if (person.userId !== session.user.id) {
+          app.logger.warn({ userId: session.user.id, personId: person_id }, 'Access denied to person');
+          return reply.status(403).send({ error: 'Access denied' });
+        }
+
+        // Build person context with specific format
+        const hobbiesStr = person.hobbies && person.hobbies.length > 0 ? person.hobbies.join(', ') : 'not specified';
+        const greenFlagsStr = person.greenFlags && person.greenFlags.length > 0 ? person.greenFlags.join(', ') : 'not specified';
+        const redFlagsStr = person.redFlags && person.redFlags.length > 0 ? person.redFlags.join(', ') : 'not specified';
+        const ageStr = person.age ? `${person.age} years old` : 'age not specified';
+        const locationStr = person.location || 'location not specified';
+        const interestLevelStr = person.interestLevel !== null ? person.interestLevel : 'not rated';
+        const communicationStr = person.communication !== null ? person.communication : 'not rated';
+        const overallChemistryStr = person.overallChemistry !== null ? person.overallChemistry : 'not rated';
+
+        const personContext = `The user is asking about ${person.name}, ${ageStr}, located in ${locationStr}. Context: hobbies=${hobbiesStr}, green_flags=${greenFlagsStr}, red_flags=${redFlagsStr}, interest_level=${interestLevelStr}, communication=${communicationStr}, overall_chemistry=${overallChemistryStr}.`;
+        systemPrompt = personContext + ' ' + systemPrompt;
+      }
+
+      // Build messages array: history + new message
+      const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+
+      if (history && Array.isArray(history)) {
+        messages.push(
+          ...history.map((msg) => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+          }))
+        );
+      }
+
+      messages.push({
+        role: 'user',
+        content: message,
+      });
+
+      try {
+        const { text } = await generateText({
+          model: gateway('openai/gpt-4o-mini'),
+          system: systemPrompt,
+          messages,
+        });
+
+        // Save user message to chat history
+        await app.db.insert(schema.chatMessages).values({
+          userId: session.user.id,
+          role: 'user',
+          content: message,
+        });
+
+        // Save assistant message to chat history
+        await app.db.insert(schema.chatMessages).values({
+          userId: session.user.id,
+          role: 'assistant',
+          content: text,
+        });
+
+        app.logger.info({ userId: session.user.id, personId: person_id }, 'AI chat response generated');
+        app.logger.info({ userId: session.user.id }, 'Chat messages saved to history');
+        return { reply: text };
+      } catch (error) {
+        app.logger.error({ err: error, userId: session.user.id, personId: person_id }, 'Failed to get AI response');
+        throw error;
+      }
+    }
+  );
+
   // POST /api/chat - Send a message to the dating coach AI
   app.fastify.post(
     '/api/chat',
