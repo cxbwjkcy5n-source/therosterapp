@@ -1129,4 +1129,451 @@ export function registerPersonsRoutes(app: App) {
       }
     }
   );
+
+  // GET /api/persons/:id/photos - Get all photos for a person
+  app.fastify.get(
+    '/api/persons/:id/photos',
+    {
+      schema: {
+        description: 'Get all photos for a person',
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              photos: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    personId: { type: 'string', format: 'uuid' },
+                    photoUrl: { type: 'string' },
+                    sortOrder: { type: 'integer' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      app.logger.info({ userId: session.user.id, personId: id }, 'Getting photos for person');
+
+      // Verify ownership
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      const photos = await app.db.query.personPhotos.findMany({
+        where: eq(schema.personPhotos.personId, id),
+        orderBy: schema.personPhotos.sortOrder,
+      });
+
+      app.logger.info({ userId: session.user.id, personId: id, count: photos.length }, 'Photos retrieved');
+      return { photos };
+    }
+  );
+
+  // POST /api/persons/:id/photos - Upload a new photo
+  app.fastify.post(
+    '/api/persons/:id/photos',
+    {
+      schema: {
+        description: 'Upload a new photo for a person',
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['photo_url'],
+          properties: {
+            photo_url: { type: 'string' },
+            sort_order: { type: ['integer', 'null'] },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              photo: {
+                type: 'object',
+                properties: {
+                  id: { type: 'string', format: 'uuid' },
+                  personId: { type: 'string', format: 'uuid' },
+                  photoUrl: { type: 'string' },
+                  sortOrder: { type: 'integer' },
+                  createdAt: { type: 'string', format: 'date-time' },
+                },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Body: { photo_url: string; sort_order?: number };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      const { photo_url, sort_order } = request.body;
+
+      app.logger.info({ userId: session.user.id, personId: id }, 'Uploading photo');
+
+      // Verify ownership
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      const [photo] = await app.db
+        .insert(schema.personPhotos)
+        .values({
+          userId: session.user.id,
+          personId: id,
+          photoUrl: photo_url,
+          sortOrder: sort_order ?? 0,
+        })
+        .returning();
+
+      app.logger.info({ userId: session.user.id, personId: id, photoId: photo.id }, 'Photo uploaded');
+      reply.status(201);
+      return {
+        photo: {
+          id: photo.id,
+          personId: photo.personId,
+          photoUrl: photo.photoUrl,
+          sortOrder: photo.sortOrder,
+          createdAt: photo.createdAt,
+        },
+      };
+    }
+  );
+
+  // DELETE /api/persons/:personId/photos/:photoId - Delete a photo
+  app.fastify.delete(
+    '/api/persons/:personId/photos/:photoId',
+    {
+      schema: {
+        description: 'Delete a photo for a person',
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['personId', 'photoId'],
+          properties: {
+            personId: { type: 'string', format: 'uuid' },
+            photoId: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Params: { personId: string; photoId: string };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { personId, photoId } = request.params;
+      app.logger.info({ userId: session.user.id, personId, photoId }, 'Deleting photo');
+
+      // Verify ownership
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, personId), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      // Verify photo ownership
+      const photo = await app.db.query.personPhotos.findFirst({
+        where: eq(schema.personPhotos.id, photoId),
+      });
+
+      if (!photo || photo.personId !== personId) {
+        app.logger.warn({ userId: session.user.id, photoId }, 'Photo not found');
+        return reply.status(404).send({ error: 'Photo not found' });
+      }
+
+      await app.db.delete(schema.personPhotos).where(eq(schema.personPhotos.id, photoId));
+
+      app.logger.info({ userId: session.user.id, personId, photoId }, 'Photo deleted');
+      return { success: true };
+    }
+  );
+
+  // GET /api/persons/:id/compatibility-report - Get AI compatibility report
+  app.fastify.get(
+    '/api/persons/:id/compatibility-report',
+    {
+      schema: {
+        description: 'Get AI-generated compatibility report for a person',
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              report: {
+                type: 'object',
+                properties: {
+                  personId: { type: 'string', format: 'uuid' },
+                  personName: { type: 'string' },
+                  summary: { type: 'string' },
+                  ratings: {
+                    type: 'object',
+                    properties: {
+                      attractiveness: { type: ['integer', 'null'] },
+                      sexualChemistry: { type: ['integer', 'null'] },
+                      communication: { type: ['integer', 'null'] },
+                      overallChemistry: { type: ['integer', 'null'] },
+                      consistency: { type: ['integer', 'null'] },
+                      emotionalAvailability: { type: ['integer', 'null'] },
+                      datePlanning: { type: ['integer', 'null'] },
+                      alignment: { type: ['integer', 'null'] },
+                      interestLevel: { type: ['integer', 'null'] },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+          500: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      app.logger.info({ userId: session.user.id, personId: id }, 'Generating compatibility report');
+
+      // Fetch the person
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      // Build prompt from person ratings
+      const ratings = {
+        attractiveness: person.attractiveness,
+        sexualChemistry: person.sexualChemistry,
+        communication: person.communication,
+        overallChemistry: person.overallChemistry,
+        consistency: person.consistency,
+        emotionalAvailability: person.emotionalAvailability,
+        datePlanning: person.datePlanning,
+        alignment: person.alignment,
+        interestLevel: person.interestLevel,
+      };
+
+      const prompt = `Generate a 2-3 sentence compatibility summary for someone named ${person.name}. Their ratings: attractiveness ${ratings.attractiveness}/10, sexual chemistry ${ratings.sexualChemistry}/10, communication ${ratings.communication}/10, overall chemistry ${ratings.overallChemistry}/10, consistency ${ratings.consistency}/10, emotional availability ${ratings.emotionalAvailability}/10, date planning ${ratings.datePlanning}/10, alignment ${ratings.alignment}/10, interest level ${ratings.interestLevel}/10. Write a warm, insightful summary that highlights their strengths and potential as a partner. Return ONLY the summary text, nothing else.`;
+
+      // Check if API key is available
+      if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === '') {
+        app.logger.info({ userId: session.user.id, personId: id }, 'OPENAI_API_KEY not set, using default report');
+        const defaultSummary = `${person.name} shows strong potential as a partner. Their communication style and emotional availability suggest they're ready for a meaningful connection. Overall, there's great chemistry and alignment.`;
+        app.logger.info({ userId: session.user.id, personId: id }, 'Compatibility report generated (default)');
+        return {
+          report: {
+            personId: person.id,
+            personName: person.name,
+            summary: defaultSummary,
+            ratings,
+          },
+        };
+      }
+
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: 0.7,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          app.logger.error({ userId: session.user.id, personId: id, statusCode: response.status, error }, 'AI API error');
+          return reply.status(500).send({ error: 'Failed to generate compatibility report' });
+        }
+
+        const data = (await response.json()) as any;
+        const summary = data.choices[0]?.message?.content || '';
+
+        app.logger.info({ userId: session.user.id, personId: id }, 'Compatibility report generated');
+        return {
+          report: {
+            personId: person.id,
+            personName: person.name,
+            summary,
+            ratings,
+          },
+        };
+      } catch (error) {
+        app.logger.error({ err: error, userId: session.user.id, personId: id }, 'Error generating compatibility report');
+        return reply.status(500).send({ error: 'Failed to generate compatibility report' });
+      }
+    }
+  );
+
+  // GET /api/persons/:id/dates - Get all dates for a person
+  app.fastify.get(
+    '/api/persons/:id/dates',
+    {
+      schema: {
+        description: "Get all dates associated with a person",
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              dates: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    title: { type: 'string' },
+                    location: { type: ['string', 'null'] },
+                    dateTime: { type: ['string', 'null'] },
+                    budget: { type: ['string', 'null'] },
+                    status: { type: 'string' },
+                    rating: { type: ['integer', 'null'] },
+                    wentWell: { type: ['string', 'null'] },
+                    wentPoorly: { type: ['string', 'null'] },
+                    wantAnotherDate: { type: ['boolean', 'null'] },
+                    createdAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      app.logger.info({ userId: session.user.id, personId: id }, 'Getting dates for person');
+
+      // Verify person exists and belongs to user
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      const dates = await app.db.query.dates.findMany({
+        where: eq(schema.dates.personId, id),
+        orderBy: schema.dates.createdAt,
+      });
+
+      app.logger.info({ userId: session.user.id, personId: id, count: dates.length }, 'Dates retrieved');
+      return {
+        dates: dates.map((date) => ({
+          id: date.id,
+          title: date.title,
+          location: date.location,
+          dateTime: date.dateTime,
+          budget: date.budget,
+          status: date.status,
+          rating: date.rating,
+          wentWell: date.wentWell,
+          wentPoorly: date.wentPoorly,
+          wantAnotherDate: date.wantAnotherDate,
+          createdAt: date.createdAt,
+        })),
+      };
+    }
+  );
 }
