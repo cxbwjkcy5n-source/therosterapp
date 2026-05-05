@@ -36,7 +36,7 @@ export function registerPlacesRoutes(app: App) {
           required: ['input'],
           properties: {
             input: { type: 'string', description: 'Address text to search' },
-            sessiontoken: { type: ['string', 'null'], description: 'Session token (ignored, for compatibility)' },
+            sessiontoken: { type: 'string', description: 'Session token (ignored, for compatibility)' },
           },
         },
         response: {

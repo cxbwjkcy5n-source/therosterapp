@@ -36,7 +36,10 @@ app.withAuth({
     'https://bqwfnumg43sdjmd5mdarg4jau4ey73ch.app.specular.dev',
     'http://localhost:8081',
     'http://localhost:8082',
+    'http://localhost:19006',
     'exp://',
+    'exp://localhost:8081',
+    'exp://localhost:19000',
   ],
 });
 
