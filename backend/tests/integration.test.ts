@@ -2482,9 +2482,12 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 401);
   });
 
-  test("Unauthenticated GET /api/places/autocomplete returns 401", async () => {
+  test("Unauthenticated GET /api/places/autocomplete returns 200", async () => {
     const res = await api("/api/places/autocomplete?input=test");
-    await expectStatus(res, 401);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.predictions).toBeDefined();
+    expect(Array.isArray(data.predictions)).toBe(true);
   });
 
   test("Unauthenticated GET /api/profile returns 401", async () => {

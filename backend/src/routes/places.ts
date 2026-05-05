@@ -34,8 +34,6 @@ function hasGeocodeFarmKey(): boolean {
 }
 
 export function registerPlacesRoutes(app: App) {
-  const requireAuth = app.requireAuth();
-
   // GET /api/places/autocomplete - Get place autocomplete suggestions
   app.fastify.get(
     '/api/places/autocomplete',
@@ -48,6 +46,7 @@ export function registerPlacesRoutes(app: App) {
           required: ['input'],
           properties: {
             input: { type: 'string', description: 'Address text to search' },
+            sessiontoken: { type: ['string', 'null'], description: 'Session token (ignored, for compatibility)' },
           },
         },
         response: {
@@ -73,56 +72,30 @@ export function registerPlacesRoutes(app: App) {
               },
             },
           },
-          400: { type: 'object', properties: { error: { type: 'string' } } },
-          401: { type: 'object', properties: { error: { type: 'string' } } },
-          500: { type: 'object', properties: { error: { type: 'string' } } },
-          502: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
     async (
-      request: FastifyRequest<{ Querystring: { input?: string } }>,
+      request: FastifyRequest<{ Querystring: { input?: string; sessiontoken?: string } }>,
       reply: FastifyReply
     ) => {
-      const session = await requireAuth(request, reply);
-      if (!session) return;
-
       const { input } = request.query;
 
-      app.logger.info({ userId: session.user.id, input }, 'Getting place autocomplete suggestions');
+      app.logger.info({ input }, 'Getting place autocomplete suggestions');
 
       // Check if input is provided
       if (!input || input.trim() === '') {
-        app.logger.warn({ userId: session.user.id }, 'input is required');
-        return reply.status(400).send({ error: 'input is required' });
+        app.logger.warn({}, 'input is required');
+        return {
+          predictions: [],
+        };
       }
 
-      // If API key is not configured, return mock predictions for testing
+      // If API key is not configured, return empty predictions for testing
       if (!hasGeocodeFarmKey()) {
-        const mockPredictions = [
-          {
-            place_id: 'mock_place_1',
-            description: `${input} (mock)`,
-            structured_formatting: {
-              main_text: input,
-              secondary_text: 'Mock Location',
-            },
-          },
-          {
-            place_id: 'mock_place_2',
-            description: `${input} City (mock)`,
-            structured_formatting: {
-              main_text: `${input} City`,
-              secondary_text: 'Mock State, Mock Country',
-            },
-          },
-        ];
-        app.logger.info(
-          { userId: session.user.id, input },
-          'Returning mock place predictions (GEOCODE_FARM_API_KEY not configured)'
-        );
+        app.logger.info({ input }, 'Returning empty predictions (GEOCODE_FARM_API_KEY not configured)');
         return {
-          predictions: mockPredictions,
+          predictions: [],
         };
       }
 
@@ -131,44 +104,44 @@ export function registerPlacesRoutes(app: App) {
         const encodedInput = encodeURIComponent(input);
 
         // Build Geocode Farm API URL
-        const urlString = `https://www.geocode.farm/v3/json/forward/?addr=${encodedInput}&key=${apiKey}&country=US&count=5`;
+        const urlString = `https://api.geocode.farm/forward/?key=${apiKey}&addr=${encodedInput}&country=US&lang=en`;
+
+        app.logger.info({ input, url: urlString }, 'Calling Geocode Farm API');
 
         // Call Geocode Farm API
         const response = await fetch(urlString);
-        const data = (await response.json()) as GeocodeFarmResponse;
+        const data = (await response.json()) as any;
 
-        app.logger.info(
-          { userId: session.user.id, status: data.STATUS.access },
-          'Geocode Farm API response received'
-        );
+        app.logger.info({ input, status: data.geocoding_results?.RESULTS?.length }, 'Geocode Farm API response received');
 
-        // Check response status
-        if (data.STATUS.access !== 'SUCCESS') {
-          app.logger.info({ userId: session.user.id }, 'No results from Geocode Farm API');
+        // Check if results exist
+        if (!data.geocoding_results?.RESULTS || data.geocoding_results.RESULTS.length === 0) {
+          app.logger.info({ input }, 'No results from Geocode Farm API');
           return {
             predictions: [],
           };
         }
 
-        // Transform results to predictions format
-        const predictions: Prediction[] = (data.RESULTS || []).map((result) => {
+        // Transform results to predictions format (up to 5 results)
+        const predictions: Prediction[] = (data.geocoding_results.RESULTS || []).slice(0, 5).map((result: any) => {
           let mainText: string;
           let secondaryText: string;
 
-          if (result.ADDRESS) {
-            // If ADDRESS fields exist, construct from components
-            const streetNumber = result.ADDRESS.street_number || '';
-            const streetName = result.ADDRESS.street_name || '';
-            mainText = (streetNumber + ' ' + streetName).trim();
-
-            const locality = result.ADDRESS.locality || '';
-            const admin1 = result.ADDRESS.admin_1 || '';
-            const postalCode = result.ADDRESS.postal_code || '';
-            secondaryText = [locality, admin1, postalCode].filter(Boolean).join(', ');
+          if (result.ADDRESS && result.ADDRESS.city) {
+            // Use ADDRESS.city if present
+            mainText = result.ADDRESS.city;
           } else {
-            // Otherwise split on first comma
+            // Otherwise use first comma-separated part of formatted_address
             const parts = result.formatted_address.split(',');
             mainText = parts[0].trim();
+          }
+
+          if (result.ADDRESS && result.ADDRESS.admin_1 && result.ADDRESS.country) {
+            // Use ADDRESS.admin_1 + ", " + ADDRESS.country if both present
+            secondaryText = `${result.ADDRESS.admin_1}, ${result.ADDRESS.country}`;
+          } else {
+            // Otherwise use everything after first comma in formatted_address
+            const parts = result.formatted_address.split(',');
             secondaryText = parts.slice(1).join(',').trim();
           }
 
@@ -182,17 +155,16 @@ export function registerPlacesRoutes(app: App) {
           };
         });
 
-        app.logger.info(
-          { userId: session.user.id, count: predictions.length },
-          'Place predictions retrieved'
-        );
+        app.logger.info({ input, count: predictions.length }, 'Place predictions retrieved');
 
         return {
           predictions,
         };
       } catch (error) {
-        app.logger.error({ userId: session.user.id, err: error }, 'Failed to get place autocomplete');
-        return reply.status(500).send({ error: 'Internal server error' });
+        app.logger.error({ err: error, input }, 'Failed to get place autocomplete');
+        return {
+          predictions: [],
+        };
       }
     }
   );

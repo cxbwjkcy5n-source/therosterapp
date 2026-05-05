@@ -1310,6 +1310,7 @@ export function registerPersonsRoutes(app: App) {
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
+          403: { type: 'object', properties: { error: { type: 'string' } } },
           404: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
@@ -1326,7 +1327,7 @@ export function registerPersonsRoutes(app: App) {
       const { personId, photoId } = request.params;
       app.logger.info({ userId: session.user.id, personId, photoId }, 'Deleting photo');
 
-      // Verify ownership
+      // Verify person ownership
       const person = await app.db.query.persons.findFirst({
         where: and(eq(schema.persons.id, personId), eq(schema.persons.userId, session.user.id)),
       });
@@ -1336,14 +1337,26 @@ export function registerPersonsRoutes(app: App) {
         return reply.status(404).send({ error: 'Person not found' });
       }
 
-      // Verify photo ownership
+      // Verify photo exists
       const photo = await app.db.query.personPhotos.findFirst({
         where: eq(schema.personPhotos.id, photoId),
       });
 
-      if (!photo || photo.personId !== personId) {
+      if (!photo) {
         app.logger.warn({ userId: session.user.id, photoId }, 'Photo not found');
         return reply.status(404).send({ error: 'Photo not found' });
+      }
+
+      // Verify photo belongs to the person
+      if (photo.personId !== personId) {
+        app.logger.warn({ userId: session.user.id, photoId, expectedPersonId: personId, actualPersonId: photo.personId }, 'Photo does not belong to person');
+        return reply.status(404).send({ error: 'Photo not found' });
+      }
+
+      // Verify user owns the photo
+      if (photo.userId !== session.user.id) {
+        app.logger.warn({ userId: session.user.id, photoId, photoUserId: photo.userId }, 'User does not own photo');
+        return reply.status(403).send({ error: 'Access denied' });
       }
 
       await app.db.delete(schema.personPhotos).where(eq(schema.personPhotos.id, photoId));
