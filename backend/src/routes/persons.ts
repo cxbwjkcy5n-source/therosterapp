@@ -75,6 +75,7 @@ function toSnakePerson(person: any) {
     dating_status: person.datingStatus,
     tags: person.tags,
     things_i_like: person.thingsILike,
+    career: person.career,
     is_benched: person.isBenched,
     bench_reason: person.benchReason,
     nickname: person.nickname,
@@ -139,6 +140,7 @@ export function registerPersonsRoutes(app: App) {
                     dating_status: { type: ['string', 'null'] },
                     tags: { type: ['array', 'null'], items: { type: 'string' } },
                     things_i_like: { type: ['string', 'null'] },
+                    career: { type: ['string', 'null'] },
                     is_benched: { type: 'boolean' },
                     bench_reason: { type: ['string', 'null'] },
                     nickname: { type: ['string', 'null'] },
@@ -336,6 +338,7 @@ export function registerPersonsRoutes(app: App) {
                   dating_status: { type: ['string', 'null'] },
                   tags: { type: ['array', 'null'], items: { type: 'string' } },
                   things_i_like: { type: ['string', 'null'] },
+                  career: { type: ['string', 'null'] },
                   is_benched: { type: 'boolean' },
                   bench_reason: { type: ['string', 'null'] },
                   created_at: { type: 'string', format: 'date-time' },
@@ -434,6 +437,7 @@ export function registerPersonsRoutes(app: App) {
             tags: { type: ['array', 'null'], items: { type: 'string' } },
             thingsILike: { type: ['string', 'null'] },
             things_i_like: { type: ['string', 'null'] },
+            career: { type: ['string', 'null'] },
             isBenched: { type: 'boolean' },
             is_benched: { type: 'boolean' },
             benchReason: { type: ['string', 'null'] },
@@ -478,6 +482,7 @@ export function registerPersonsRoutes(app: App) {
                   datingStatus: { type: ['string', 'null'] },
                   tags: { type: ['array', 'null'], items: { type: 'string' } },
                   thingsILike: { type: ['string', 'null'] },
+                  career: { type: ['string', 'null'] },
                   isBenched: { type: 'boolean' },
                   benchReason: { type: ['string', 'null'] },
                   createdAt: { type: 'string', format: 'date-time' },
@@ -547,6 +552,7 @@ export function registerPersonsRoutes(app: App) {
       let datingStatus = getFieldValue('dating_status', 'datingStatus');
       let tags = getFieldValue('tags', 'tags');
       let thingsILike = getFieldValue('things_i_like', 'thingsILike');
+      let career = getFieldValue('career', 'career');
 
       // SPECIAL CASE: Unbenching fast path
       if (isBenched === false) {
@@ -634,6 +640,7 @@ export function registerPersonsRoutes(app: App) {
           datingStatus: datingStatus !== undefined ? datingStatus : sql`dating_status`,
           tags: tags !== undefined ? tags : sql`tags`,
           thingsILike: thingsILike !== undefined ? thingsILike : sql`things_i_like`,
+          career: career !== undefined ? career : sql`career`,
           isBenched: isBenched !== undefined ? isBenched : sql`is_benched`,
           benchReason: benchReason !== undefined ? benchReason : sql`bench_reason`,
           updatedAt: new Date(),
@@ -1387,21 +1394,18 @@ export function registerPersonsRoutes(app: App) {
               report: {
                 type: 'object',
                 properties: {
-                  personId: { type: 'string', format: 'uuid' },
-                  personName: { type: 'string' },
+                  overall_score: { type: 'number' },
                   summary: { type: 'string' },
-                  ratings: {
-                    type: 'object',
-                    properties: {
-                      attractiveness: { type: ['integer', 'null'] },
-                      sexualChemistry: { type: ['integer', 'null'] },
-                      communication: { type: ['integer', 'null'] },
-                      overallChemistry: { type: ['integer', 'null'] },
-                      consistency: { type: ['integer', 'null'] },
-                      emotionalAvailability: { type: ['integer', 'null'] },
-                      datePlanning: { type: ['integer', 'null'] },
-                      alignment: { type: ['integer', 'null'] },
-                      interestLevel: { type: ['integer', 'null'] },
+                  strongest_trait: { type: ['string', 'null'] },
+                  weakest_trait: { type: ['string', 'null'] },
+                  traits: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        score: { type: 'integer' },
+                      },
                     },
                   },
                 },
@@ -1431,32 +1435,62 @@ export function registerPersonsRoutes(app: App) {
         return reply.status(404).send({ error: 'Person not found' });
       }
 
-      // Build prompt from person ratings
-      const ratings = {
-        attractiveness: person.attractiveness,
-        sexualChemistry: person.sexualChemistry,
-        communication: person.communication,
-        overallChemistry: person.overallChemistry,
-        consistency: person.consistency,
-        emotionalAvailability: person.emotionalAvailability,
-        datePlanning: person.datePlanning,
-        alignment: person.alignment,
-        interestLevel: person.interestLevel,
-      };
+      // Map rating keys with their display names
+      const ratingKeys: Array<[string, string]> = [
+        ['interestLevel', 'Interest Level'],
+        ['attractiveness', 'Attractiveness'],
+        ['sexualChemistry', 'Sexual Chemistry'],
+        ['communication', 'Communication'],
+        ['overallChemistry', 'Overall Chemistry'],
+        ['consistency', 'Consistency'],
+        ['emotionalAvailability', 'Emotional Availability'],
+        ['datePlanning', 'Date Planning'],
+        ['alignment', 'Alignment'],
+      ];
 
-      const prompt = `Generate a 2-3 sentence compatibility summary for someone named ${person.name}. Their ratings: attractiveness ${ratings.attractiveness}/10, sexual chemistry ${ratings.sexualChemistry}/10, communication ${ratings.communication}/10, overall chemistry ${ratings.overallChemistry}/10, consistency ${ratings.consistency}/10, emotional availability ${ratings.emotionalAvailability}/10, date planning ${ratings.datePlanning}/10, alignment ${ratings.alignment}/10, interest level ${ratings.interestLevel}/10. Write a warm, insightful summary that highlights their strengths and potential as a partner. Return ONLY the summary text, nothing else.`;
+      // Extract rating values and filter out nulls
+      const traits: Array<{ name: string; score: number }> = [];
+      let totalScore = 0;
+
+      for (const [key, displayName] of ratingKeys) {
+        const value = (person as any)[key];
+        const numValue = typeof value === 'number' && !isNaN(value) ? value : null;
+
+        if (numValue !== null) {
+          traits.push({ name: displayName, score: numValue });
+          totalScore += numValue;
+        }
+      }
+
+      // Calculate overall score
+      const overallScore = traits.length > 0 ? Math.round((totalScore / traits.length) * 10) / 10 : 0;
+
+      // Find strongest and weakest traits
+      let strongestTrait: string | null = null;
+      let weakestTrait: string | null = null;
+
+      if (traits.length > 0) {
+        const sorted = [...traits].sort((a, b) => b.score - a.score);
+        strongestTrait = sorted[0].name;
+        weakestTrait = sorted[sorted.length - 1].name;
+      }
+
+      // Build prompt from person ratings with non-null values
+      const ratingStrings = traits.map(t => `${t.name.toLowerCase()} ${t.score}/10`).join(', ');
+      const prompt = `Generate a 2-3 sentence compatibility summary for someone named ${person.name}. Their ratings: ${ratingStrings}. Write a warm, insightful summary that highlights their strengths and potential as a partner. Return ONLY the summary text, nothing else.`;
 
       // Check if API key is available
       if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === '') {
         app.logger.info({ userId: session.user.id, personId: id }, 'OPENAI_API_KEY not set, using default report');
-        const defaultSummary = `${person.name} shows strong potential as a partner. Their communication style and emotional availability suggest they're ready for a meaningful connection. Overall, there's great chemistry and alignment.`;
+        const defaultSummary = `${person.name} shows strong potential as a partner. With an overall compatibility score of ${overallScore}, they demonstrate qualities that suggest a meaningful connection is possible.`;
         app.logger.info({ userId: session.user.id, personId: id }, 'Compatibility report generated (default)');
         return {
           report: {
-            personId: person.id,
-            personName: person.name,
+            overall_score: overallScore,
             summary: defaultSummary,
-            ratings,
+            strongest_trait: strongestTrait,
+            weakest_trait: weakestTrait,
+            traits,
           },
         };
       }
@@ -1492,10 +1526,11 @@ export function registerPersonsRoutes(app: App) {
         app.logger.info({ userId: session.user.id, personId: id }, 'Compatibility report generated');
         return {
           report: {
-            personId: person.id,
-            personName: person.name,
+            overall_score: overallScore,
             summary,
-            ratings,
+            strongest_trait: strongestTrait,
+            weakest_trait: weakestTrait,
+            traits,
           },
         };
       } catch (error) {
