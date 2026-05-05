@@ -1,6 +1,8 @@
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, count, sql } from 'drizzle-orm';
+import { generateText } from 'ai';
+import { gateway } from '@specific-dev/framework';
 import * as schema from '../db/schema/schema.js';
 
 interface PersonInput {
@@ -1476,47 +1478,27 @@ export function registerPersonsRoutes(app: App) {
       }
 
       // Determine summary
-      let summary: string;
+      let summary: string = 'Add some ratings to generate a full compatibility summary.';
 
-      if (traits.length === 0) {
-        // No valid ratings - return default message
-        summary = 'Add some ratings to generate your compatibility report.';
-        app.logger.info({ userId: session.user.id, personId: id }, 'No ratings available, using default message');
-      } else {
-        // Build rating text for AI prompt
-        const ratingsText = traits.map(t => `${t.name.toLowerCase()}: ${t.score}/10`).join(', ');
-        const prompt = `You are a dating coach. Based on these ratings for ${person.name}: ${ratingsText}. Write a 2-3 sentence compatibility summary. Be honest, insightful, and direct. Do not use bullet points.`;
-
+      // Only generate AI summary if we have 3+ valid ratings
+      if (traits.length >= 3) {
         try {
-          const response = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              messages: [
-                {
-                  role: 'user',
-                  content: prompt,
-                },
-              ],
-              temperature: 0.7,
-            }),
+          const ratingsText = traits.map(t => `${t.name.toLowerCase()}: ${t.score}/10`).join(', ');
+          const prompt = `You are a dating coach. Based on these ratings for ${person.name}: ${ratingsText}. Overall score: ${overallScore}/10. Write a 2-3 sentence compatibility summary. Be honest, insightful, and direct. Do not use bullet points.`;
+
+          const { text } = await generateText({
+            model: gateway('openai/gpt-4o-mini'),
+            prompt,
           });
 
-          if (response.ok) {
-            const data = (await response.json()) as any;
-            summary = data.choices[0]?.message?.content || 'Unable to generate summary.';
-          } else {
-            app.logger.warn({ userId: session.user.id, personId: id, statusCode: response.status }, 'AI API error');
-            summary = 'Unable to generate summary.';
-          }
+          summary = text;
+          app.logger.info({ userId: session.user.id, personId: id }, 'AI summary generated');
         } catch (error) {
-          app.logger.error({ err: error, userId: session.user.id, personId: id }, 'Error calling AI API');
-          summary = 'Unable to generate summary.';
+          app.logger.warn({ err: error, userId: session.user.id, personId: id }, 'Failed to generate AI summary, using fallback');
+          // Keep the default summary if AI fails
         }
+      } else {
+        app.logger.info({ userId: session.user.id, personId: id, ratingCount: traits.length }, 'Not enough ratings for AI summary');
       }
 
       app.logger.info({ userId: session.user.id, personId: id }, 'Compatibility report generated');
