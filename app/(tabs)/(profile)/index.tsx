@@ -35,6 +35,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet, apiPut, apiPost, authenticatedDelete } from '@/utils/api';
@@ -235,10 +236,11 @@ function FormField({ label, value, onChangeText, placeholder, keyboardType, mult
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
+  const { isDark, toggleDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [analytics, setAnalytics] = useState<Analytics>({});
   const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const darkMode = isDark;
   const [profile, setProfile] = useState<UserProfile>({});
   const [editData, setEditData] = useState<UserProfile>({});
   const [editing, setEditing] = useState(false);
@@ -268,7 +270,6 @@ export default function ProfileScreen() {
         setEditData(profileData);
         setAnalytics(analyticsData);
         setNotifications(prefs.notifications_enabled);
-        setDarkMode(prefs.dark_mode_enabled);
         setLoadingProfile(false);
         Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
       });
@@ -812,8 +813,7 @@ export default function ProfileScreen() {
                 value={darkMode}
                 onValueChange={(v) => {
                   console.log('[Profile] Dark mode toggled:', v);
-                  setDarkMode(v);
-                  apiPut('/api/preferences', { dark_mode_enabled: v }).catch((e: any) => console.error('[Profile] Failed to save dark mode pref:', e));
+                  toggleDark();
                 }}
                 trackColor={{ false: COLORS.surfaceSecondary, true: COLORS.primary }}
                 thumbColor="#fff"

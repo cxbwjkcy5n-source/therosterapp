@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Send, MessageCircle } from 'lucide-react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet, apiPost } from '@/utils/api';
@@ -21,6 +23,12 @@ interface ChatMessage {
   created_at: string;
 }
 
+interface PersonContext {
+  id: string;
+  name: string;
+  photo_url?: string;
+}
+
 const SUGGESTED_PROMPTS = [
   'How do I know if someone likes me?',
   'Tips for a first date',
@@ -29,27 +37,42 @@ const SUGGESTED_PROMPTS = [
 
 export default function CoachScreen() {
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ personId?: string }>();
+  const personId = params.personId;
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [personContext, setPersonContext] = useState<PersonContext | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     console.log('[Coach] Loading chat history from GET /api/chat/history');
-    apiGet<{ messages: ChatMessage[] }>('/api/chat/history')
+    const loadHistory = apiGet<{ messages: ChatMessage[] }>('/api/chat/history')
       .then((data) => {
         console.log('[Coach] Loaded', data.messages?.length ?? 0, 'messages');
         setMessages(data.messages || []);
       })
-      .catch((e) => console.error('[Coach] Failed to load history:', e))
-      .finally(() => setInitialLoading(false));
-  }, []);
+      .catch((e) => console.error('[Coach] Failed to load history:', e));
+
+    const loadPerson = personId
+      ? apiGet<any>(`/api/persons/${personId}`)
+          .then((data) => {
+            const p = data?.person ?? data;
+            console.log('[Coach] Loaded person context:', p?.name, 'id:', p?.id);
+            setPersonContext({ id: p.id, name: p.name, photo_url: p.photo_url });
+          })
+          .catch((e) => console.log('[Coach] Could not load person context (non-fatal):', e?.message))
+      : Promise.resolve();
+
+    Promise.all([loadHistory, loadPerson]).finally(() => setInitialLoading(false));
+  }, [personId]);
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
-    console.log('[Coach] Sending message:', trimmed.slice(0, 50));
+    console.log('[Coach] Sending message:', trimmed.slice(0, 50), personId ? `(context: person ${personId})` : '');
     setInput('');
 
     const tempUserMsg: ChatMessage = {
@@ -63,12 +86,13 @@ export default function CoachScreen() {
     setLoading(true);
 
     try {
-      console.log('[Coach] POST /api/chat with message and history');
+      console.log('[Coach] POST /api/chat/message with message and history');
       const history = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
-      const result = await apiPost<{ reply: string }>('/api/chat', {
-        message: trimmed,
-        history,
-      });
+      const body: Record<string, any> = { message: trimmed, history };
+      if (personId) {
+        body.person_id = personId;
+      }
+      const result = await apiPost<{ reply: string }>('/api/chat/message', body);
       console.log('[Coach] Got reply from AI:', result?.reply?.slice(0, 60));
 
       const assistantMsg: ChatMessage = {
@@ -195,12 +219,52 @@ export default function CoachScreen() {
     </View>
   );
 
+  const personInitial = personContext?.name ? personContext.name[0].toUpperCase() : '?';
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: COLORS.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
+      {/* Person context banner */}
+      {personContext && (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            backgroundColor: 'rgba(168,85,247,0.08)',
+            borderBottomWidth: 1,
+            borderBottomColor: 'rgba(168,85,247,0.15)',
+          }}
+        >
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: 'rgba(168,85,247,0.2)',
+              overflow: 'hidden',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {personContext.photo_url ? (
+              <Image source={{ uri: personContext.photo_url }} style={{ width: 32, height: 32 }} contentFit="cover" />
+            ) : (
+              <Text style={{ color: '#A855F7', fontWeight: '700', fontSize: 14 }}>{personInitial}</Text>
+            )}
+          </View>
+          <Text style={{ color: '#A855F7', fontSize: 13, fontWeight: '600', flex: 1 }}>
+            {'💬 Coaching about '}
+            <Text style={{ fontWeight: '700' }}>{personContext.name}</Text>
+          </Text>
+        </View>
+      )}
+
       {initialLoading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={COLORS.primary} />
@@ -233,7 +297,9 @@ export default function CoachScreen() {
                 maxWidth: 260,
               }}
             >
-              Ask me anything about dating, relationships, or how to navigate your love life.
+              {personContext
+                ? `Ask me anything about ${personContext.name} or your dating life.`
+                : 'Ask me anything about dating, relationships, or how to navigate your love life.'}
             </Text>
             <View style={{ gap: 10, width: '100%' }}>
               {SUGGESTED_PROMPTS.map((prompt) => (

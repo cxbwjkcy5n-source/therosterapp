@@ -113,7 +113,7 @@ function SliderInput({ label, value, onChange, excluded, onToggleExclude }: {
       </View>
       <View style={{ position: 'relative', height: 20, justifyContent: 'center' }}>
         <View style={{ height: 4, backgroundColor: '#E8E8E8', borderRadius: 2, overflow: 'hidden' }}>
-          {!excluded && <View style={{ height: 4, width: fillPct, backgroundColor: '#E53935', borderRadius: 2 }} />}
+          {!excluded && <View style={{ height: 4, width: fillPct as any, backgroundColor: '#E53935', borderRadius: 2 }} />}
         </View>
         {!excluded && (
           <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, flexDirection: 'row' }}>

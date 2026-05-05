@@ -8,9 +8,10 @@ import {
   ActivityIndicator,
   Animated,
   Linking,
+  Share,
 } from 'react-native';
 import { router } from 'expo-router';
-import { X, Sparkles, ExternalLink, ChevronDown, Check } from 'lucide-react-native';
+import { X, Sparkles, ExternalLink, ChevronDown, Check, Share2 } from 'lucide-react-native';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
@@ -341,9 +342,36 @@ export default function DatePlanScreen() {
         {/* Results */}
         {ideas.length > 0 && (
           <View style={{ gap: 12 }}>
-            <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700' }}>
-              Date Ideas ✨
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700' }}>
+                Date Ideas ✨
+              </Text>
+              <Pressable
+                onPress={async () => {
+                  console.log('[DatePlan] Share button pressed, sharing', ideas.length, 'ideas');
+                  const ideaLines = ideas.map((idea) => `• ${idea.title}: ${idea.description}`).join('\n');
+                  const message = `Hey! I was thinking we could:\n\n${ideaLines}\n\nWhat do you think? 😊`;
+                  try {
+                    await Share.share({ message });
+                    console.log('[DatePlan] Share sheet opened successfully');
+                  } catch (e) {
+                    console.error('[DatePlan] Share failed:', e);
+                  }
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: COLORS.accentMuted,
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                }}
+              >
+                <Share2 size={15} color={COLORS.accent} />
+                <Text style={{ color: COLORS.accent, fontSize: 13, fontWeight: '600' }}>Share</Text>
+              </Pressable>
+            </View>
             {ideas.map((idea, index) => (
               <View
                 key={index}

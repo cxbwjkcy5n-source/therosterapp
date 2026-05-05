@@ -47,6 +47,7 @@ export default function DateReviewScreen() {
   const [wentWell, setWentWell] = useState('');
   const [wentPoorly, setWentPoorly] = useState('');
   const [wantAnother, setWantAnother] = useState(false);
+  const [privateNotes, setPrivateNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -68,6 +69,8 @@ export default function DateReviewScreen() {
         if (wentPoorlyVal) setWentPoorly(wentPoorlyVal);
         const wantAnotherVal = d?.want_another_date ?? d?.wantAnotherDate;
         if (wantAnotherVal != null) setWantAnother(wantAnotherVal);
+        const notesVal = d?.notes;
+        if (notesVal) setPrivateNotes(notesVal);
       })
       .catch((e) => {
         console.error('[DateReview] Failed to load existing review:', e);
@@ -85,7 +88,7 @@ export default function DateReviewScreen() {
       Alert.alert('Rating required', 'Please select a star rating before submitting.');
       return;
     }
-    console.log('[DateReview] Submitting review for date:', dateId, 'rating:', rating, 'wantAnother:', wantAnother);
+    console.log('[DateReview] Submitting review for date:', dateId, 'rating:', rating, 'wantAnother:', wantAnother, 'hasNotes:', !!privateNotes.trim());
     setSubmitting(true);
     try {
       console.log('[DateReview] PATCH /api/dates/' + dateId + '/review');
@@ -94,6 +97,7 @@ export default function DateReviewScreen() {
         went_well: wentWell.trim() || null,
         went_poorly: wentPoorly.trim() || null,
         want_another_date: wantAnother,
+        notes: privateNotes.trim() || null,
       });
       console.log('[DateReview] Review submitted successfully');
       router.back();
@@ -259,6 +263,52 @@ export default function DateReviewScreen() {
             value={wentPoorly}
             onChangeText={setWentPoorly}
             placeholder="Awkward silences, venue wasn't great..."
+            placeholderTextColor={COLORS.textTertiary}
+            multiline
+            style={{
+              backgroundColor: COLORS.background,
+              borderRadius: 12,
+              paddingHorizontal: 14,
+              paddingVertical: 12,
+              color: COLORS.text,
+              fontSize: 15,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              minHeight: 80,
+              textAlignVertical: 'top',
+            }}
+          />
+        </View>
+
+        {/* Private Notes */}
+        <View
+          style={{
+            backgroundColor: COLORS.surface,
+            borderRadius: 16,
+            padding: 16,
+            borderWidth: 1,
+            borderColor: COLORS.border,
+            marginBottom: 16,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Text style={{ fontSize: 16 }}>🔒</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700' }}>
+                Private Notes
+              </Text>
+              <Text style={{ color: COLORS.textTertiary, fontSize: 12, marginTop: 1 }}>
+                Never shown in analytics
+              </Text>
+            </View>
+          </View>
+          <TextInput
+            value={privateNotes}
+            onChangeText={(v) => {
+              console.log('[DateReview] Private notes updated, length:', v.length);
+              setPrivateNotes(v);
+            }}
+            placeholder="Personal thoughts, things to remember..."
             placeholderTextColor={COLORS.textTertiary}
             multiline
             style={{

@@ -8,14 +8,16 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  PanResponder,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Users } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
-import { apiGet, apiPut } from '@/utils/api';
+import { apiGet, apiPut, apiDelete } from '@/utils/api';
 import type { ImageSourcePropType } from 'react-native';
 
 interface Person {
@@ -48,113 +50,165 @@ function formatBenchedDate(updatedAt?: string) {
   return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
-function BenchCard({ item, onUnbench }: { item: Person; onUnbench: (p: Person) => void }) {
+function BenchCard({ item, onUnbench, onArchive }: { item: Person; onUnbench: (p: Person) => void; onArchive: (p: Person) => void }) {
   const hasPhoto = !!item.photo_url;
   const initials = getInitials(item.name);
   const benchedDateLabel = formatBenchedDate(item.updated_at);
   const benchedOnText = benchedDateLabel ? `Benched on ${benchedDateLabel}` : '';
+  const translateX = useRef(new Animated.Value(0)).current;
+  const [swiped, setSwiped] = useState(false);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
+      onPanResponderMove: (_, g) => {
+        if (g.dx < 0) {
+          translateX.setValue(Math.max(-100, g.dx));
+        }
+      },
+      onPanResponderRelease: (_, g) => {
+        if (g.dx < -80) {
+          console.log('[Bench] Swipe left — revealing archive for:', item.id, item.name);
+          Animated.spring(translateX, { toValue: -80, useNativeDriver: true }).start();
+          setSwiped(true);
+        } else {
+          Animated.spring(translateX, { toValue: 0, useNativeDriver: true }).start();
+          setSwiped(false);
+        }
+      },
+    })
+  ).current;
 
   return (
-    <View
-      style={{
-        backgroundColor: '#fff',
-        borderRadius: 14,
-        padding: 14,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: COLORS.border,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-        shadowOffset: { width: 0, height: 2 },
-        elevation: 1,
-      }}
-    >
-      {/* Avatar */}
-      <Pressable onPress={() => {
-        console.log('[Bench] Navigating to person:', item.id);
-        router.push(`/person/${item.id}`);
-      }}>
-        <View
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 26,
-            borderWidth: 2,
-            borderColor: '#E53935',
-            overflow: 'hidden',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#FFF0F0',
-          }}
-        >
-          {hasPhoto ? (
-            <Image
-              source={resolveImageSource(item.photo_url)}
-              style={{ width: 52, height: 52 }}
-              contentFit="cover"
-            />
-          ) : (
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#E53935' }}>
-              {initials}
-            </Text>
-          )}
-        </View>
-      </Pressable>
-
-      {/* Info */}
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 2 }}>
-          <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A' }} numberOfLines={1}>
-            {item.name}
-          </Text>
-          {item.bench_reason ? (
-            <View style={{ backgroundColor: '#F0F0F0', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-              <Text style={{ fontSize: 11, color: '#888', fontWeight: '500' }} numberOfLines={1}>
-                {item.bench_reason}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-        {benchedOnText ? (
-          <Text style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>
-            {benchedOnText}
-          </Text>
-        ) : null}
-
-        {/* Move Back button */}
+    <View style={{ position: 'relative', overflow: 'hidden', borderRadius: 14, marginBottom: 10 }}>
+      {/* Archive button revealed on swipe */}
+      <View
+        style={{
+          position: 'absolute',
+          right: 0,
+          top: 0,
+          bottom: 0,
+          width: 80,
+          backgroundColor: '#E53935',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 14,
+        }}
+      >
         <Pressable
           onPress={() => {
-            console.log('[Bench] Move Back to Roster pressed for:', item.id, item.name);
-            onUnbench(item);
+            console.log('[Bench] Archive button tapped for:', item.id, item.name);
+            onArchive(item);
           }}
-          style={{
-            marginTop: 8,
-            height: 36,
-            borderRadius: 20,
-            borderWidth: 1.5,
-            borderColor: '#E53935',
-            alignItems: 'center',
-            justifyContent: 'center',
-            alignSelf: 'flex-start',
-            paddingHorizontal: 16,
-          }}
+          style={{ alignItems: 'center', justifyContent: 'center', flex: 1, width: '100%' }}
         >
-          <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '600' }}>
-            Move Back to Roster
-          </Text>
+          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>Archive</Text>
         </Pressable>
       </View>
+
+      <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
+        <View
+          style={{
+            backgroundColor: '#fff',
+            borderRadius: 14,
+            padding: 14,
+            borderWidth: 1,
+            borderColor: COLORS.border,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            shadowColor: '#000',
+            shadowOpacity: 0.04,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 1,
+          }}
+        >
+          {/* Avatar */}
+          <Pressable onPress={() => {
+            console.log('[Bench] Navigating to person:', item.id);
+            router.push(`/person/${item.id}`);
+          }}>
+            <View
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 26,
+                borderWidth: 2,
+                borderColor: '#E53935',
+                overflow: 'hidden',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#FFF0F0',
+              }}
+            >
+              {hasPhoto ? (
+                <Image
+                  source={resolveImageSource(item.photo_url)}
+                  style={{ width: 52, height: 52 }}
+                  contentFit="cover"
+                />
+              ) : (
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#E53935' }}>
+                  {initials}
+                </Text>
+              )}
+            </View>
+          </Pressable>
+
+          {/* Info */}
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 2 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A' }} numberOfLines={1}>
+                {item.name}
+              </Text>
+              {item.bench_reason ? (
+                <View style={{ backgroundColor: '#F0F0F0', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ fontSize: 11, color: '#888', fontWeight: '500' }} numberOfLines={1}>
+                    {item.bench_reason}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            {benchedOnText ? (
+              <Text style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>
+                {benchedOnText}
+              </Text>
+            ) : null}
+
+            {/* Move Back button */}
+            <Pressable
+              onPress={() => {
+                console.log('[Bench] Move Back to Roster pressed for:', item.id, item.name);
+                onUnbench(item);
+              }}
+              style={{
+                marginTop: 8,
+                height: 36,
+                borderRadius: 20,
+                borderWidth: 1.5,
+                borderColor: '#E53935',
+                alignItems: 'center',
+                justifyContent: 'center',
+                alignSelf: 'flex-start',
+                paddingHorizontal: 16,
+              }}
+            >
+              <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '600' }}>
+                Move Back to Roster
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Animated.View>
     </View>
   );
 }
 
-function AnimatedBenchCard({ item, index, onUnbench }: { item: Person; index: number; onUnbench: (p: Person) => void }) {
+function AnimatedBenchCard({ item, index, onUnbench, onArchive }: { item: Person; index: number; onUnbench: (p: Person) => void; onArchive: (p: Person) => void }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
+  const fadeOut = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -164,15 +218,22 @@ function AnimatedBenchCard({ item, index, onUnbench }: { item: Person; index: nu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleArchive = (p: Person) => {
+    Animated.timing(fadeOut, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+      onArchive(p);
+    });
+  };
+
   return (
-    <Animated.View style={{ opacity, transform: [{ translateY }] }}>
-      <BenchCard item={item} onUnbench={onUnbench} />
+    <Animated.View style={{ opacity: Animated.multiply(opacity, fadeOut), transform: [{ translateY }] }}>
+      <BenchCard item={item} onUnbench={onUnbench} onArchive={handleArchive} />
     </Animated.View>
   );
 }
 
 export default function BenchScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [persons, setPersons] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -233,25 +294,52 @@ export default function BenchScreen() {
     }
   }, [loadPersons]);
 
+  const handleArchive = useCallback(async (person: Person) => {
+    console.log('[Bench] Archiving (deleting) person:', person.id, person.name);
+    Alert.alert(
+      'Archive Person',
+      `Remove ${person.name} from your roster permanently?`,
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => console.log('[Bench] Archive cancelled for:', person.id) },
+        {
+          text: 'Archive',
+          style: 'destructive',
+          onPress: async () => {
+            console.log('[Bench] Archive confirmed for:', person.id);
+            setPersons((prev) => prev.filter((p) => p.id !== person.id));
+            try {
+              await apiDelete(`/api/persons/${person.id}`);
+              console.log('[Bench] Person archived successfully:', person.id);
+            } catch (e) {
+              console.error('[Bench] Failed to archive person:', e);
+              Alert.alert('Error', 'Could not archive. Try again.');
+              loadPersons();
+            }
+          },
+        },
+      ]
+    );
+  }, [loadPersons]);
+
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
 
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : error ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-          <Text style={{ color: COLORS.danger, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
+          <Text style={{ color: colors.danger, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
             Couldn't load bench
           </Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 20 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 20 }}>
             Check your connection and try again
           </Text>
           <AnimatedPressable
             onPress={() => loadPersons()}
             style={{
-              backgroundColor: COLORS.primary,
+              backgroundColor: colors.primary,
               borderRadius: 12,
               paddingHorizontal: 24,
               paddingVertical: 12,
@@ -275,10 +363,10 @@ export default function BenchScreen() {
           >
             <Users size={32} color="#E53935" />
           </View>
-          <Text style={{ color: '#1A1A1A', fontSize: 18, fontWeight: '700', marginBottom: 8 }}>
+          <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: 8 }}>
             Your bench is empty
           </Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 14, textAlign: 'center', maxWidth: 260 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', maxWidth: 260 }}>
             People you bench will appear here
           </Text>
         </View>
@@ -287,7 +375,7 @@ export default function BenchScreen() {
           data={persons}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
-            <AnimatedBenchCard item={item} index={index} onUnbench={handleUnbench} />
+            <AnimatedBenchCard item={item} index={index} onUnbench={handleUnbench} onArchive={handleArchive} />
           )}
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           contentInsetAdjustmentBehavior="automatic"
@@ -296,7 +384,7 @@ export default function BenchScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={COLORS.primary}
+              tintColor={colors.primary}
             />
           }
         />

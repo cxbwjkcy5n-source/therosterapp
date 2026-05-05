@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, Pressable, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Bell, Calendar, Zap, ChevronRight } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { COLORS } from '@/constants/Colors';
 import { apiGet } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Notifications from 'expo-notifications';
 
 interface UpcomingDate {
   id: string;
@@ -29,6 +30,49 @@ function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
+async function scheduleRemindersFromFeed(upcomingDates: UpcomingDate[], nudges: Nudge[]) {
+  if (Platform.OS === 'web') return;
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    console.log('[Reminders] Cleared all scheduled notifications');
+
+    // Schedule date notifications (1 day before)
+    for (const d of upcomingDates) {
+      const dateMs = new Date(d.date_time).getTime();
+      const oneDayBefore = dateMs - 24 * 60 * 60 * 1000;
+      if (oneDayBefore > Date.now()) {
+        const formattedTime = new Date(d.date_time).toLocaleString('en-US', {
+          month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+        });
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `📅 Date with ${d.person_name}`,
+            body: formattedTime,
+            sound: true,
+          },
+          trigger: { date: new Date(oneDayBefore) } as any,
+        });
+        console.log('[Reminders] Scheduled date notification for:', d.person_name, 'at', new Date(oneDayBefore).toISOString());
+      }
+    }
+
+    // Schedule nudge notifications (immediate / informational)
+    for (const n of nudges) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: n.person_name,
+          body: n.message,
+          sound: true,
+        },
+        trigger: null,
+      });
+      console.log('[Reminders] Scheduled nudge notification for:', n.person_name);
+    }
+  } catch (e) {
+    console.error('[Reminders] Failed to schedule notifications:', e);
+  }
+}
+
 export default function RemindersScreen() {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
@@ -40,8 +84,11 @@ export default function RemindersScreen() {
     apiGet<{ upcoming_dates: UpcomingDate[]; nudges: Nudge[] }>('/api/reminders/feed')
       .then((data) => {
         console.log('[Reminders] Loaded', data.upcoming_dates?.length ?? 0, 'dates,', data.nudges?.length ?? 0, 'nudges');
-        setUpcomingDates(data.upcoming_dates || []);
-        setNudges(data.nudges || []);
+        const dates = data.upcoming_dates || [];
+        const nudgeList = data.nudges || [];
+        setUpcomingDates(dates);
+        setNudges(nudgeList);
+        scheduleRemindersFromFeed(dates, nudgeList);
       })
       .catch((e) => console.error('[Reminders] Failed to load:', e))
       .finally(() => setLoading(false));

@@ -18,6 +18,7 @@ import { Bell, Search, SlidersHorizontal } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import Svg, { Circle } from 'react-native-svg';
 import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet } from '@/utils/api';
@@ -393,6 +394,7 @@ function SkeletonRow() {
 
 export default function RosterScreen() {
   const { user, loading: authLoading } = useAuth();
+  const { colors } = useTheme();
   const [persons, setPersons] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -403,6 +405,7 @@ export default function RosterScreen() {
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [checkinBannerDismissed, setCheckinBannerDismissed] = useState(false);
+  const [currentStreak, setCurrentStreak] = useState<number>(0);
   const filterHeight = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(async () => {
@@ -430,6 +433,18 @@ export default function RosterScreen() {
     useCallback(() => {
       setCheckinBannerDismissed(false);
       loadData();
+      if (user) {
+        console.log('[Roster] Fetching streak from /api/streaks/me');
+        apiGet<{ current_streak: number; longest_streak: number }>('/api/streaks/me')
+          .then((data) => {
+            const streak = data?.current_streak ?? 0;
+            console.log('[Roster] Current streak:', streak);
+            setCurrentStreak(streak);
+          })
+          .catch((e) => {
+            console.log('[Roster] Could not fetch streak (non-fatal):', e?.message);
+          });
+      }
       if (user) {
         apiGet<{ checkin: { created_at: string } | null }>('/api/weekly-checkins/latest')
           .then((res) => {
@@ -561,7 +576,7 @@ export default function RosterScreen() {
     .slice(0, 5);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
 
       {/* ── Red header ── */}
       <SafeAreaView edges={['top']} style={{ backgroundColor: RED }}>
@@ -617,6 +632,24 @@ export default function RosterScreen() {
             <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 1 }}>
               Here's your dating overview
             </Text>
+            {currentStreak >= 1 && (
+              <View
+                style={{
+                  marginTop: 6,
+                  alignSelf: 'flex-start',
+                  backgroundColor: '#FF6D00',
+                  borderRadius: 20,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>
+                  {'🔥 '}
+                  {currentStreak}
+                  {'-week streak'}
+                </Text>
+              </View>
+            )}
           </View>
 
           <Pressable

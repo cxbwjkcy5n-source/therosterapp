@@ -40,7 +40,21 @@ export default function WeeklyCheckinScreen() {
         one_thing_to_change: oneThingToChange.trim() || undefined,
       });
       console.log('[WeeklyCheckin] Check-in saved successfully');
-      Alert.alert('Done!', 'Your weekly check-in has been saved.', [{ text: 'OK', onPress: () => router.back() }]);
+
+      // Fetch updated streak
+      let streakMessage = '';
+      try {
+        const streakData = await apiGet<{ current_streak: number; longest_streak: number }>('/api/streaks/me');
+        const currentStreak = streakData?.current_streak ?? 0;
+        console.log('[WeeklyCheckin] Updated streak:', currentStreak);
+        if (currentStreak >= 1) {
+          streakMessage = `\n\n🔥 You're on a ${currentStreak}-week streak!`;
+        }
+      } catch (e) {
+        console.log('[WeeklyCheckin] Could not fetch streak (non-fatal):', e);
+      }
+
+      Alert.alert('Done!', `Your weekly check-in has been saved.${streakMessage}`, [{ text: 'OK', onPress: () => router.back() }]);
     } catch (e) {
       console.error('[WeeklyCheckin] Failed to save check-in:', e);
       Alert.alert('Error', 'Could not save your check-in. Please try again.');

@@ -8,11 +8,14 @@ import * as SplashScreen from 'expo-splash-screen';
 import { SystemBars } from 'react-native-edge-to-edge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ThemeProvider, DefaultTheme } from '@react-navigation/native';
+import { ThemeProvider as NavThemeProvider, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { COLORS } from '@/constants/Colors';
+import { registerForPushNotifications } from '@/utils/notifications';
+import { apiGet } from '@/utils/api';
 
 const DevErrorBoundary = __DEV__
   ? ErrorBoundary
@@ -144,9 +147,18 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
 function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplashDone: () => void }) {
   const { user, loading, isReady } = useAuth();
   const hasNavigated = useRef(false); // only navigate once on initial load
+  const onboardingChecked = useRef(false);
 
   // Show red placeholder while splash is playing OR while auth is still loading
   const showPlaceholder = showSplash || loading;
+
+  // Register push notifications once user is authenticated
+  useEffect(() => {
+    if (user) {
+      console.log('[AppContent] User authenticated, registering push notifications');
+      registerForPushNotifications();
+    }
+  }, [user]);
 
   // One-shot guard: fires exactly once when auth finishes loading for the first time.
   // Never re-fires after navigation — prevents the sign-in redirect loop.
@@ -155,8 +167,24 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
     hasNavigated.current = true;
 
     if (user) {
-      console.log('[AppContent] Session found on startup, navigating to home');
-      router.replace('/(tabs)/(home)');
+      console.log('[AppContent] Session found on startup, checking onboarding state');
+      // Check onboarding state before navigating
+      if (!onboardingChecked.current) {
+        onboardingChecked.current = true;
+        apiGet<{ completed: boolean; step?: number }>('/api/onboarding/state')
+          .then((state) => {
+            console.log('[AppContent] Onboarding state:', state);
+            if (state?.completed) {
+              router.replace('/(tabs)/(home)');
+            } else {
+              router.replace('/onboarding');
+            }
+          })
+          .catch((e) => {
+            console.log('[AppContent] Could not check onboarding state, going to home:', e?.message);
+            router.replace('/(tabs)/(home)');
+          });
+      }
     } else {
       console.log('[AppContent] No session on startup, navigating to auth');
       router.replace('/auth-screen');
@@ -171,6 +199,14 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
             <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
             <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false, headerBackTitle: '', title: '', gestureEnabled: false }} />
+            <Stack.Screen
+              name="onboarding"
+              options={{
+                headerShown: false,
+                presentation: 'fullScreenModal',
+                gestureEnabled: false,
+              }}
+            />
             <Stack.Screen
               name="person"
               options={{
@@ -457,12 +493,14 @@ export default function RootLayout() {
       <StatusBar style="dark" animated />
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <ThemeProvider value={AppLightTheme}>
-            <AuthProvider>
-              <AppContent showSplash={showSplash} onSplashDone={() => setShowSplash(false)} />
-              <SystemBars style="dark" />
-            </AuthProvider>
-          </ThemeProvider>
+          <NavThemeProvider value={AppLightTheme}>
+            <ThemeProvider>
+              <AuthProvider>
+                <AppContent showSplash={showSplash} onSplashDone={() => setShowSplash(false)} />
+                <SystemBars style="dark" />
+              </AuthProvider>
+            </ThemeProvider>
+          </NavThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </DevErrorBoundary>

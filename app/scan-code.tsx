@@ -103,7 +103,7 @@ export default function ScanCodeScreen() {
         <Text style={{ fontSize: 22, fontWeight: '700', color: COLORS.text }}>Enter Code Manually</Text>
         <AnimatedPressable
           onPress={() => { console.log('[ScanCode] Manual entry close pressed'); router.back(); }}
-          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.card, alignItems: 'center', justifyContent: 'center' }}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center' }}
         >
           <X size={18} color={COLORS.text} />
         </AnimatedPressable>
@@ -113,7 +113,7 @@ export default function ScanCodeScreen() {
       </Text>
       <TextInput
         style={{
-          backgroundColor: COLORS.card,
+          backgroundColor: COLORS.surface,
           color: COLORS.text,
           borderRadius: 12,
           paddingHorizontal: 16,

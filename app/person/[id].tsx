@@ -874,6 +874,21 @@ export default function PersonDetailScreen() {
   const [starters, setStarters] = useState<string[]>([]);
   const [startersModalVisible, setStartersModalVisible] = useState(false);
 
+  // compatibility report
+  const [compatReportLoading, setCompatReportLoading] = useState(false);
+  const [compatReport, setCompatReport] = useState<{
+    overall_score: number;
+    summary: string;
+    strongest_trait: string;
+    weakest_trait: string;
+    traits?: { name: string; score: number }[];
+  } | null>(null);
+  const [compatReportVisible, setCompatReportVisible] = useState(false);
+
+  // person photos
+  const [personPhotos, setPersonPhotos] = useState<{ id: string; photo_url: string; sort_order?: number }[]>([]);
+  const [photosLoading, setPhotosLoading] = useState(false);
+
   // edit date
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
 
@@ -912,6 +927,21 @@ export default function PersonDetailScreen() {
       console.error('[PersonDetail] Failed to load dates:', e);
     } finally {
       setLoadingDates(false);
+    }
+  }, [id]);
+
+  const loadPersonPhotos = useCallback(async () => {
+    if (!id) return;
+    console.log('[PersonDetail] Loading photos for person:', id);
+    setPhotosLoading(true);
+    try {
+      const data = await apiGet<{ photos: { id: string; photo_url: string; sort_order?: number }[] }>(`/api/persons/${id}/photos`);
+      console.log('[PersonDetail] Loaded', data.photos?.length ?? 0, 'photos');
+      setPersonPhotos(data.photos || []);
+    } catch (e) {
+      console.error('[PersonDetail] Failed to load person photos:', e);
+    } finally {
+      setPhotosLoading(false);
     }
   }, [id]);
 
@@ -961,8 +991,11 @@ export default function PersonDetailScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (id) loadDates();
-    }, [id, loadDates])
+      if (id) {
+        loadDates();
+        loadPersonPhotos();
+      }
+    }, [id, loadDates, loadPersonPhotos])
   );
 
   // ── actions ──────────────────────────────────────────────────────────────
@@ -1543,6 +1576,15 @@ export default function PersonDetailScreen() {
             },
           });
 
+          // Dating Coach — always available
+          nextStepActions.push({
+            label: '🤖 Dating Coach',
+            onPress: () => {
+              console.log('[PersonDetail] Next Step: Dating Coach pressed for person:', displayData.id);
+              router.push({ pathname: '/coach', params: { personId: displayData.id } });
+            },
+          });
+
           // End it — always available
           nextStepActions.push({
             label: '🚪 End it',
@@ -1598,6 +1640,125 @@ export default function PersonDetailScreen() {
               </>
             )}
           </AnimatedPressable>
+
+          {/* Compatibility Report button */}
+          <AnimatedPressable
+            onPress={async () => {
+              console.log('[PersonDetail] Compatibility Report pressed for person:', displayData.id);
+              setCompatReportLoading(true);
+              try {
+                const res = await apiGet<{
+                  overall_score: number;
+                  summary: string;
+                  strongest_trait: string;
+                  weakest_trait: string;
+                  traits?: { name: string; score: number }[];
+                }>(`/api/persons/${displayData.id}/compatibility-report`);
+                console.log('[PersonDetail] Compatibility report loaded, score:', res.overall_score);
+                setCompatReport(res);
+                setCompatReportVisible(true);
+              } catch (e) {
+                console.error('[PersonDetail] Failed to get compatibility report:', e);
+                Alert.alert('Error', 'Could not load compatibility report. Try again.');
+              } finally {
+                setCompatReportLoading(false);
+              }
+            }}
+            style={{ backgroundColor: 'rgba(229,57,53,0.08)', borderRadius: 12, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 10 }}
+          >
+            {compatReportLoading ? (
+              <ActivityIndicator color={RED} size="small" />
+            ) : (
+              <>
+                <Text style={{ fontSize: 16 }}>📊</Text>
+                <Text style={{ color: RED, fontSize: 14, fontWeight: '700' }}>Compatibility Report</Text>
+              </>
+            )}
+          </AnimatedPressable>
+        </View>
+
+        {/* Photos section */}
+        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+          <SectionHeader label="Photos" />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
+            {photosLoading ? (
+              <ActivityIndicator color={RED} style={{ marginVertical: 20 }} />
+            ) : (
+              <>
+                {personPhotos.slice(0, 5).map((photo) => (
+                  <Pressable
+                    key={photo.id}
+                    onLongPress={() => {
+                      console.log('[PersonDetail] Long press on photo:', photo.id);
+                      Alert.alert('Delete Photo', 'Remove this photo?', [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: async () => {
+                            console.log('[PersonDetail] Deleting photo:', photo.id);
+                            try {
+                              await apiDelete(`/api/persons/${id}/photos/${photo.id}`);
+                              setPersonPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+                              console.log('[PersonDetail] Photo deleted:', photo.id);
+                            } catch (e) {
+                              console.error('[PersonDetail] Failed to delete photo:', e);
+                              Alert.alert('Error', 'Could not delete photo.');
+                            }
+                          },
+                        },
+                      ]);
+                    }}
+                  >
+                    <Image
+                      source={{ uri: photo.photo_url }}
+                      style={{ width: 80, height: 80, borderRadius: 12 }}
+                      contentFit="cover"
+                    />
+                  </Pressable>
+                ))}
+                {personPhotos.length < 5 && (
+                  <Pressable
+                    onPress={async () => {
+                      console.log('[PersonDetail] Add photo pressed');
+                      const result = await ImagePicker.launchImageLibraryAsync({
+                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                        allowsEditing: true,
+                        aspect: [1, 1],
+                        quality: 0.7,
+                        base64: true,
+                      });
+                      if (result.canceled || !result.assets?.[0]) return;
+                      const asset = result.assets[0];
+                      console.log('[PersonDetail] Photo selected, uploading...');
+                      try {
+                        const uploadRes = await apiPost<{ url: string }>('/api/upload', {
+                          image: `data:image/jpeg;base64,${asset.base64}`,
+                        });
+                        const photoUrl = uploadRes.url;
+                        console.log('[PersonDetail] Photo uploaded, saving to person:', photoUrl.slice(0, 40));
+                        await apiPost(`/api/persons/${id}/photos`, {
+                          photo_url: photoUrl,
+                          sort_order: personPhotos.length,
+                        });
+                        loadPersonPhotos();
+                      } catch (e) {
+                        console.error('[PersonDetail] Failed to upload photo:', e);
+                        Alert.alert('Error', 'Could not upload photo.');
+                      }
+                    }}
+                    style={{
+                      width: 80, height: 80, borderRadius: 12,
+                      backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#E0E0E0',
+                      borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <Plus size={24} color="#AAAAAA" />
+                  </Pressable>
+                )}
+              </>
+            )}
+          </ScrollView>
         </View>
 
         {/* Dating Timeline */}
@@ -1715,10 +1876,11 @@ export default function PersonDetailScreen() {
   };
 
   const renderDatesTab = () => {
+    // Sort oldest first for timeline
     const sortedDates = [...dates].sort((a, b) => {
       const da = new Date(a.date_time || a.created_at).getTime();
       const db = new Date(b.date_time || b.created_at).getTime();
-      return db - da;
+      return da - db;
     });
 
     return (
@@ -1734,172 +1896,63 @@ export default function PersonDetailScreen() {
             <Text style={{ color: '#999999', fontSize: 14, textAlign: 'center' }}>Log your first date below</Text>
           </View>
         ) : (
-          sortedDates.map((d, index) => {
-            const isExpanded = expandedDateId === d.id;
-            const typeLabel = d.type ? (d.type.charAt(0).toUpperCase() + d.type.slice(1)) : 'Date';
-            const dateTimeStr = formatDateTimeLabel(d.date_time || d.created_at);
-            const overallVal = d.rating ?? 0;
-            const overallStr = String(overallVal);
-            const hasRating = !!d.rating;
-            const wantAnotherLabel = d.want_another_date != null ? (d.want_another_date ? 'Yes' : 'No') : null;
-            const badgeNum = String(index + 1);
+          <View style={{ paddingLeft: 8 }}>
+            {sortedDates.map((d, index) => {
+              const isLast = index === sortedDates.length - 1;
+              const typeLabel = d.type ? (d.type.charAt(0).toUpperCase() + d.type.slice(1)) : 'Date';
+              const dateTimeStr = formatDateTimeLabel(d.date_time || d.created_at);
+              const overallVal = d.rating ?? 0;
+              const overallStr = String(overallVal);
+              const hasRating = !!d.rating;
+              const wentWellSnippet = d.went_well ? d.went_well.slice(0, 60) + (d.went_well.length > 60 ? '…' : '') : null;
 
-            const wantAnotherBg = d.want_another_date ? '#4CAF50' : '#999999';
-
-            return (
-              <Pressable
-                key={d.id}
-                onPress={() => {
-                  console.log('[PersonDetail] Date card toggled:', d.id, 'expanded:', !isExpanded);
-                  setExpandedDateId(isExpanded ? null : d.id);
-                }}
-              >
-                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, overflow: 'hidden', ...CARD_SHADOW }}>
-                  {/* Header row */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}>
-                    {/* Number badge */}
-                    <View style={{
-                      width: 28, height: 28, borderRadius: 14,
-                      backgroundColor: RED, alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '700' }}>
-                        {'#'}
-                        <Text>{badgeNum}</Text>
-                      </Text>
-                    </View>
-
-                    {/* Center info */}
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: '#1A1A1A', fontSize: 15, fontWeight: '700', marginBottom: 3 }}>{typeLabel}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                          <Calendar size={11} color="#999999" />
-                          <Text style={{ color: '#999999', fontSize: 12 }}>{dateTimeStr}</Text>
-                        </View>
-                        {d.location ? (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                            <Text style={{ color: '#CCCCCC', fontSize: 12 }}>•</Text>
-                            <MapPin size={11} color="#999999" />
-                            <Text style={{ color: '#999999', fontSize: 12 }} numberOfLines={1}>{d.location}</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                    </View>
-
-                    {/* Right: star + score + chevron */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      {hasRating ? (
-                        <>
-                          <Text style={{ fontSize: 14 }}>⭐</Text>
-                          <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '700' }}>{overallStr}</Text>
-                        </>
-                      ) : (
-                        <Text style={{ color: '#CCCCCC', fontSize: 13, fontWeight: '600' }}>—</Text>
-                      )}
-                      {isExpanded ? <ChevronUp size={16} color="#999999" /> : <ChevronDown size={16} color="#999999" />}
-                    </View>
+              return (
+                <View key={d.id} style={{ flexDirection: 'row', gap: 12 }}>
+                  {/* Timeline left column */}
+                  <View style={{ alignItems: 'center', width: 20 }}>
+                    <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: RED, marginTop: 16, borderWidth: 2, borderColor: '#fff', shadowColor: RED, shadowOpacity: 0.4, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 }} />
+                    {!isLast && (
+                      <View style={{ width: 2, flex: 1, backgroundColor: '#EEEEEE', marginTop: 4, minHeight: 40 }} />
+                    )}
                   </View>
 
-                  {/* Expanded content */}
-                  {isExpanded && (
-                    <View style={{ paddingHorizontal: 14, paddingBottom: 0 }}>
-                      <View style={{ height: 1, backgroundColor: '#F0F0F0', marginBottom: 14 }} />
-
-                      {/* Overall rating */}
-                      {hasRating ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                          <Text style={{ fontSize: 16 }}>⭐</Text>
-                          <Text style={{ color: '#1A1A1A', fontSize: 13, flex: 1 }}>Overall Rating</Text>
-                          <ScoreRing score={overallVal} color="#F5A623" size={36} />
+                  {/* Card */}
+                  <View style={{ flex: 1, marginBottom: isLast ? 0 : 16 }}>
+                    <Pressable
+                      onPress={() => {
+                        console.log('[PersonDetail] Date timeline entry tapped, navigating to review:', d.id);
+                        router.push({ pathname: '/date-review', params: { dateId: d.id, personName: person?.name ?? '', personPhoto: person?.photo_url ?? '' } });
+                      }}
+                    >
+                      <View style={{ backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, ...CARD_SHADOW }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <Text style={{ color: '#1A1A1A', fontSize: 15, fontWeight: '700' }}>{typeLabel}</Text>
+                          {hasRating ? (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                              <Text style={{ fontSize: 13 }}>⭐</Text>
+                              <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '700' }}>{overallStr}</Text>
+                            </View>
+                          ) : (
+                            <Text style={{ color: '#CCCCCC', fontSize: 12 }}>No rating yet</Text>
+                          )}
                         </View>
-                      ) : null}
-
-                      {/* Went well */}
-                      {d.went_well ? (
-                        <View style={{ backgroundColor: 'rgba(76,175,80,0.08)', borderRadius: 10, padding: 10, marginBottom: 10 }}>
-                          <Text style={{ color: '#2E7D32', fontSize: 12, fontWeight: '600', marginBottom: 3 }}>Went well</Text>
-                          <Text style={{ color: '#1A1A1A', fontSize: 13, lineHeight: 18 }}>{d.went_well}</Text>
-                        </View>
-                      ) : null}
-
-                      {/* Could be better */}
-                      {d.went_poorly ? (
-                        <View style={{ backgroundColor: 'rgba(229,57,53,0.08)', borderRadius: 10, padding: 10, marginBottom: 10 }}>
-                          <Text style={{ color: RED, fontSize: 12, fontWeight: '600', marginBottom: 3 }}>Could be better</Text>
-                          <Text style={{ color: '#1A1A1A', fontSize: 13, lineHeight: 18 }}>{d.went_poorly}</Text>
-                        </View>
-                      ) : null}
-
-                      {/* Want another date */}
-                      {wantAnotherLabel ? (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                          <Text style={{ color: '#1A1A1A', fontSize: 14 }}>Want another date?</Text>
-                          <View style={{ backgroundColor: wantAnotherBg, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5 }}>
-                            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>{wantAnotherLabel}</Text>
+                        <Text style={{ color: '#999999', fontSize: 12, marginBottom: d.location || wentWellSnippet ? 6 : 0 }}>{dateTimeStr}</Text>
+                        {d.location ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: wentWellSnippet ? 4 : 0 }}>
+                            <MapPin size={11} color="#AAAAAA" />
+                            <Text style={{ color: '#AAAAAA', fontSize: 12 }} numberOfLines={1}>{d.location}</Text>
                           </View>
-                        </View>
-                      ) : null}
-
-                      {/* Notes */}
-                      {d.notes ? (
-                        <Text style={{ color: '#555555', fontSize: 13, fontStyle: 'italic', lineHeight: 19, marginBottom: 14 }}>
-                          {d.notes}
-                        </Text>
-                      ) : null}
-
-                      {/* Rate & Review / Edit Review button */}
-                      <Pressable
-                        onPress={() => {
-                          console.log('[PersonDetail] Rate & Review pressed for dateId:', d.id, 'hasRating:', hasRating);
-                          router.push({ pathname: '/date-review', params: { dateId: d.id, personName: person?.name ?? '', personPhoto: person?.photo_url ?? '' } });
-                        }}
-                        style={{
-                          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-                          backgroundColor: hasRating ? 'rgba(229,57,53,0.08)' : RED,
-                          borderRadius: 10, paddingVertical: 10, marginBottom: 10,
-                        }}
-                      >
-                        <Star size={15} color={hasRating ? RED : '#fff'} />
-                        <Text style={{ color: hasRating ? RED : '#fff', fontSize: 14, fontWeight: '600' }}>
-                          {hasRating ? 'Edit Review' : 'Rate & Review'}
-                        </Text>
-                      </Pressable>
-
-                      {/* Edit / Delete buttons */}
-                      <View style={{ flexDirection: 'row', gap: 0, marginHorizontal: -14, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
-                        <Pressable
-                          onPress={() => {
-                            console.log('[PersonDetail] Edit date pressed:', d.id);
-                            setEditingDateId(d.id);
-                          }}
-                          style={{
-                            flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-                            borderRightWidth: 1, borderRightColor: '#F0F0F0',
-                          }}
-                        >
-                          <Pencil size={15} color="#1A1A1A" />
-                          <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '600' }}>Edit</Text>
-                        </Pressable>
-                        <Pressable
-                          onPress={() => {
-                            console.log('[PersonDetail] Delete date pressed:', d.id);
-                            handleDeleteDate(d.id);
-                          }}
-                          style={{
-                            flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-                            backgroundColor: RED, borderBottomRightRadius: 16,
-                          }}
-                        >
-                          <Trash2 size={15} color="#FFFFFF" />
-                          <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '600' }}>Delete</Text>
-                        </Pressable>
+                        ) : null}
+                        {wentWellSnippet ? (
+                          <Text style={{ color: '#4CAF50', fontSize: 12, fontStyle: 'italic' }} numberOfLines={2}>{wentWellSnippet}</Text>
+                        ) : null}
                       </View>
-                    </View>
-                  )}
+                    </Pressable>
+                  </View>
                 </View>
-              </Pressable>
-            );
-          })
+              );
+            })}
+          </View>
         )}
 
         {/* Log New Date sticky button */}
@@ -2774,6 +2827,83 @@ export default function PersonDetailScreen() {
             >
               <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Done</Text>
             </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      {/* ── Compatibility Report Modal ──────────────────────────────────────── */}
+      <Modal visible={compatReportVisible} transparent animationType="slide" onRequestClose={() => setCompatReportVisible(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={() => setCompatReportVisible(false)}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '85%' }}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 }}>📊 Compatibility Report</Text>
+              {compatReport && (
+                <>
+                  {/* Overall score */}
+                  <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                    <Text style={{ fontSize: 56, fontWeight: '800', color: RED, letterSpacing: -2 }}>
+                      {Number(compatReport.overall_score).toFixed(1)}
+                    </Text>
+                    <Text style={{ fontSize: 18, color: RED, fontWeight: '600', marginTop: -4 }}>/10</Text>
+                  </View>
+
+                  {/* Trait bars */}
+                  {compatReport.traits && compatReport.traits.length > 0 && (
+                    <View style={{ marginBottom: 16 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 12 }}>Traits</Text>
+                      {compatReport.traits.map((trait) => {
+                        const traitScore = Number(trait.score);
+                        const fillPct = `${(traitScore / 10) * 100}%` as any;
+                        const traitScoreStr = String(traitScore);
+                        return (
+                          <View key={trait.name} style={{ marginBottom: 12 }}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <Text style={{ color: '#444', fontSize: 13, fontWeight: '500' }}>{trait.name}</Text>
+                              <Text style={{ color: RED, fontSize: 13, fontWeight: '700' }}>{traitScoreStr}</Text>
+                            </View>
+                            <View style={{ height: 6, backgroundColor: '#F0F0F0', borderRadius: 3, overflow: 'hidden' }}>
+                              <View style={{ height: 6, width: fillPct, backgroundColor: RED, borderRadius: 3 }} />
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+
+                  {/* Summary */}
+                  {compatReport.summary ? (
+                    <View style={{ backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                      <Text style={{ color: '#1A1A1A', fontSize: 14, lineHeight: 21 }}>{compatReport.summary}</Text>
+                    </View>
+                  ) : null}
+
+                  {/* Strongest / Weakest */}
+                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 8 }}>
+                    {compatReport.strongest_trait ? (
+                      <View style={{ flex: 1, backgroundColor: 'rgba(34,197,94,0.1)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(34,197,94,0.2)' }}>
+                        <Text style={{ color: '#22C55E', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Strongest</Text>
+                        <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '600' }}>{compatReport.strongest_trait}</Text>
+                      </View>
+                    ) : null}
+                    {compatReport.weakest_trait ? (
+                      <View style={{ flex: 1, backgroundColor: 'rgba(229,57,53,0.08)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(229,57,53,0.15)' }}>
+                        <Text style={{ color: RED, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Weakest</Text>
+                        <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '600' }}>{compatReport.weakest_trait}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </>
+              )}
+              <Pressable
+                onPress={() => {
+                  console.log('[PersonDetail] Compatibility report modal closed');
+                  setCompatReportVisible(false);
+                }}
+                style={{ marginTop: 16, backgroundColor: RED, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Done</Text>
+              </Pressable>
+            </ScrollView>
           </View>
         </Pressable>
       </Modal>
