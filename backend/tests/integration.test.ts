@@ -1997,7 +1997,7 @@ describe("API Integration Tests", () => {
   // ========== Places Autocomplete Tests ==========
   test("Get place autocomplete suggestions with input", async () => {
     const res = await authenticatedApi(
-      "/api/places/autocomplete?q=New%20York",
+      "/api/places/autocomplete?input=New%20York",
       authToken
     );
     await expectStatus(res, 200);
@@ -2008,7 +2008,7 @@ describe("API Integration Tests", () => {
 
   test("Get place autocomplete with input and sessiontoken", async () => {
     const res = await authenticatedApi(
-      "/api/places/autocomplete?q=San%20Francisco&sessiontoken=test-session-123",
+      "/api/places/autocomplete?input=San%20Francisco&sessiontoken=test-session-123",
       authToken
     );
     await expectStatus(res, 200);
@@ -2484,7 +2484,7 @@ describe("API Integration Tests", () => {
   });
 
   test("Unauthenticated GET /api/places/autocomplete returns 200", async () => {
-    const res = await api("/api/places/autocomplete?q=test");
+    const res = await api("/api/places/autocomplete?input=test");
     await expectStatus(res, 200);
     const data = await res.json();
     expect(data.predictions).toBeDefined();

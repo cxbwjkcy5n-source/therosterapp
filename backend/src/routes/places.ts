@@ -33,9 +33,10 @@ export function registerPlacesRoutes(app: App) {
         tags: ['places'],
         querystring: {
           type: 'object',
-          required: ['q'],
+          required: ['input'],
           properties: {
-            q: { type: 'string', description: 'Search query' },
+            input: { type: 'string', description: 'Address text to search' },
+            sessiontoken: { type: ['string', 'null'], description: 'Session token (ignored, for compatibility)' },
           },
         },
         response: {
@@ -65,28 +66,28 @@ export function registerPlacesRoutes(app: App) {
       },
     },
     async (
-      request: FastifyRequest<{ Querystring: { q?: string } }>,
+      request: FastifyRequest<{ Querystring: { input?: string; sessiontoken?: string } }>,
       reply: FastifyReply
     ) => {
-      const { q } = request.query;
+      const { input } = request.query;
 
-      app.logger.info({ query: q }, 'Getting place autocomplete suggestions');
+      app.logger.info({ query: input }, 'Getting place autocomplete suggestions');
 
       // Check if query is provided
-      if (!q || q.trim() === '') {
-        app.logger.warn({}, 'q parameter is required');
+      if (!input || input.trim() === '') {
+        app.logger.warn({}, 'input parameter is required');
         return {
           predictions: [],
         };
       }
 
       try {
-        const encodedQuery = encodeURIComponent(q);
+        const encodedQuery = encodeURIComponent(input);
 
         // Call Nominatim API
         const urlString = `https://nominatim.openstreetmap.org/search?q=${encodedQuery}&format=json&limit=5&addressdetails=1`;
 
-        app.logger.info({ query: q, url: urlString }, 'Calling Nominatim API');
+        app.logger.info({ query: input, url: urlString }, 'Calling Nominatim API');
 
         const response = await fetch(urlString, {
           headers: {
@@ -96,7 +97,7 @@ export function registerPlacesRoutes(app: App) {
         });
 
         if (!response.ok) {
-          app.logger.warn({ query: q, statusCode: response.status }, 'Nominatim API error');
+          app.logger.warn({ query: input, statusCode: response.status }, 'Nominatim API error');
           return {
             predictions: [],
           };
@@ -104,10 +105,10 @@ export function registerPlacesRoutes(app: App) {
 
         const data = (await response.json()) as NominatimResult[];
 
-        app.logger.info({ query: q, resultCount: data.length }, 'Nominatim API response received');
+        app.logger.info({ query: input, resultCount: data.length }, 'Nominatim API response received');
 
         if (!Array.isArray(data) || data.length === 0) {
-          app.logger.info({ query: q }, 'No results from Nominatim API');
+          app.logger.info({ query: input }, 'No results from Nominatim API');
           return {
             predictions: [],
           };
@@ -147,13 +148,13 @@ export function registerPlacesRoutes(app: App) {
           };
         });
 
-        app.logger.info({ query: q, count: predictions.length }, 'Place predictions retrieved');
+        app.logger.info({ query: input, count: predictions.length }, 'Place predictions retrieved');
 
         return {
           predictions,
         };
       } catch (error) {
-        app.logger.error({ err: error, query: q }, 'Failed to get place autocomplete');
+        app.logger.error({ err: error, query: input }, 'Failed to get place autocomplete');
         return {
           predictions: [],
         };
