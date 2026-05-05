@@ -3,7 +3,7 @@ import { View, Text, ScrollView, ActivityIndicator, Pressable, Platform } from '
 import { router } from 'expo-router';
 import { Bell, Calendar, Zap, ChevronRight } from 'lucide-react-native';
 import { Image } from 'expo-image';
-import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { apiGet } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
@@ -75,6 +75,7 @@ async function scheduleRemindersFromFeed(upcomingDates: UpcomingDate[], nudges: 
 
 export default function RemindersScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [loading, setLoading] = useState(true);
   const [upcomingDates, setUpcomingDates] = useState<UpcomingDate[]>([]);
   const [nudges, setNudges] = useState<Nudge[]>([]);
@@ -109,11 +110,11 @@ export default function RemindersScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
 
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <ScrollView
@@ -125,7 +126,7 @@ export default function RemindersScreen() {
             style={{
               fontSize: 12,
               fontWeight: '700',
-              color: '#999',
+              color: colors.textTertiary,
               textTransform: 'uppercase',
               letterSpacing: 1.2,
               marginBottom: 10,
@@ -137,17 +138,17 @@ export default function RemindersScreen() {
           {upcomingDates.length === 0 ? (
             <View
               style={{
-                backgroundColor: '#fff',
+                backgroundColor: colors.surface,
                 borderRadius: 14,
                 padding: 16,
                 marginBottom: 20,
                 borderWidth: 1,
-                borderColor: COLORS.border,
+                borderColor: colors.border,
                 alignItems: 'center',
               }}
             >
-              <Calendar size={28} color="#CCC" style={{ marginBottom: 8 }} />
-              <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>No upcoming dates scheduled</Text>
+              <Calendar size={28} color={colors.textTertiary} style={{ marginBottom: 8 }} />
+              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>No upcoming dates scheduled</Text>
             </View>
           ) : (
             <View style={{ marginBottom: 20, gap: 10 }}>
@@ -162,14 +163,14 @@ export default function RemindersScreen() {
                       router.push('/date-plan');
                     }}
                     style={{
-                      backgroundColor: '#fff',
+                      backgroundColor: colors.surface,
                       borderRadius: 14,
                       padding: 14,
                       flexDirection: 'row',
                       alignItems: 'center',
                       gap: 12,
                       borderWidth: 1,
-                      borderColor: COLORS.border,
+                      borderColor: colors.border,
                       shadowColor: '#000',
                       shadowOpacity: 0.04,
                       shadowRadius: 6,
@@ -182,7 +183,7 @@ export default function RemindersScreen() {
                         width: 44,
                         height: 44,
                         borderRadius: 22,
-                        backgroundColor: COLORS.primaryMuted,
+                        backgroundColor: colors.primaryMuted,
                         alignItems: 'center',
                         justifyContent: 'center',
                         overflow: 'hidden',
@@ -195,26 +196,26 @@ export default function RemindersScreen() {
                           contentFit="cover"
                         />
                       ) : (
-                        <Text style={{ color: COLORS.primary, fontWeight: '700', fontSize: 15 }}>{initials}</Text>
+                        <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 15 }}>{initials}</Text>
                       )}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A' }} numberOfLines={1}>
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }} numberOfLines={1}>
                         {d.title}
                       </Text>
-                      <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 2 }}>
+                      <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
                         {d.person_name}
                       </Text>
-                      <Text style={{ fontSize: 12, color: COLORS.textSecondary, marginTop: 1 }}>
+                      <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 1 }}>
                         {formattedDate}
                       </Text>
                       {d.location ? (
-                        <Text style={{ fontSize: 12, color: COLORS.textTertiary, marginTop: 1 }} numberOfLines={1}>
+                        <Text style={{ fontSize: 12, color: colors.textTertiary, marginTop: 1 }} numberOfLines={1}>
                           {d.location}
                         </Text>
                       ) : null}
                     </View>
-                    <ChevronRight size={16} color={COLORS.textTertiary} />
+                    <ChevronRight size={16} color={colors.textTertiary} />
                   </Pressable>
                 );
               })}
@@ -226,7 +227,7 @@ export default function RemindersScreen() {
             style={{
               fontSize: 12,
               fontWeight: '700',
-              color: '#999',
+              color: colors.textTertiary,
               textTransform: 'uppercase',
               letterSpacing: 1.2,
               marginBottom: 10,
@@ -238,16 +239,16 @@ export default function RemindersScreen() {
           {nudges.length === 0 ? (
             <View
               style={{
-                backgroundColor: '#fff',
+                backgroundColor: colors.surface,
                 borderRadius: 14,
                 padding: 16,
                 borderWidth: 1,
-                borderColor: COLORS.border,
+                borderColor: colors.border,
                 alignItems: 'center',
               }}
             >
-              <Zap size={28} color="#CCC" style={{ marginBottom: 8 }} />
-              <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>You're on top of things!</Text>
+              <Zap size={28} color={colors.textTertiary} style={{ marginBottom: 8 }} />
+              <Text style={{ color: colors.textSecondary, fontSize: 14 }}>You're on top of things!</Text>
             </View>
           ) : (
             <View style={{ gap: 10 }}>
@@ -263,7 +264,7 @@ export default function RemindersScreen() {
                       router.push(`/person/${n.person_id}`);
                     }}
                     style={{
-                      backgroundColor: '#fff',
+                      backgroundColor: colors.surface,
                       borderRadius: 14,
                       padding: 14,
                       flexDirection: 'row',
@@ -300,7 +301,7 @@ export default function RemindersScreen() {
                       )}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A' }} numberOfLines={1}>
+                      <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }} numberOfLines={1}>
                         {n.person_name}
                       </Text>
                       <Text style={{ fontSize: 12, color: '#FF9800', marginTop: 2 }} numberOfLines={2}>
@@ -310,13 +311,13 @@ export default function RemindersScreen() {
                     {interestDisplay != null && (
                       <View
                         style={{
-                          backgroundColor: COLORS.primaryMuted,
+                          backgroundColor: colors.primaryMuted,
                           borderRadius: 8,
                           paddingHorizontal: 8,
                           paddingVertical: 4,
                         }}
                       >
-                        <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '700' }}>{interestDisplay}</Text>
+                        <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>{interestDisplay}</Text>
                       </View>
                     )}
                   </Pressable>

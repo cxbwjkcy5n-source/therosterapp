@@ -17,7 +17,6 @@ import { router, useFocusEffect } from 'expo-router';
 import { Bell, Search, SlidersHorizontal } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import Svg, { Circle } from 'react-native-svg';
-import { COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
@@ -836,7 +835,7 @@ export default function RosterScreen() {
           {/* Who needs attention */}
           {persons.length > 0 && needsAttention.length > 0 && (
             <View style={{ paddingTop: 16, paddingBottom: 4 }}>
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#999', textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: 16, marginBottom: 10 }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.8, paddingHorizontal: 16, marginBottom: 10 }}>
                 Who needs attention?
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
@@ -863,7 +862,7 @@ export default function RosterScreen() {
                           <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{initials}</Text>
                         )}
                       </View>
-                      <Text style={{ fontSize: 11, color: '#1A1A1A', fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{firstName}</Text>
+                      <Text style={{ fontSize: 11, color: colors.text, fontWeight: '600', textAlign: 'center' }} numberOfLines={1}>{firstName}</Text>
                       <Text style={{ fontSize: 10, color: '#FF9800', textAlign: 'center' }}>{daysStr}</Text>
                     </AnimatedPressable>
                   );
@@ -885,10 +884,10 @@ export default function RosterScreen() {
             ListEmptyComponent={
               <View style={{ alignItems: 'center', justifyContent: 'center', paddingTop: 40, paddingHorizontal: 32 }}>
                 <Text style={{ fontSize: 32, marginBottom: 12 }}>💝</Text>
-                <Text style={{ color: '#1A1A1A', fontSize: 18, fontWeight: '700', marginBottom: 6, textAlign: 'center' }}>
+                <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: 6, textAlign: 'center' }}>
                   Start tracking your dating life
                 </Text>
-                <Text style={{ color: '#999', fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 28 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 28 }}>
                   Get insights, spot patterns, and make better choices.
                 </Text>
                 {[
@@ -901,7 +900,7 @@ export default function RosterScreen() {
                       <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>{s.step}</Text>
                     </View>
                     <Text style={{ fontSize: 16 }}>{s.icon}</Text>
-                    <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '500', flex: 1 }}>{s.label}</Text>
+                    <Text style={{ color: colors.text, fontSize: 14, fontWeight: '500', flex: 1 }}>{s.label}</Text>
                   </View>
                 ))}
                 <Pressable

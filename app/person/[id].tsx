@@ -35,7 +35,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
@@ -809,6 +809,7 @@ export default function PersonDetailScreen() {
   const params = useLocalSearchParams<{ id: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   // core data
   const [person, setPerson] = useState<Person | null>(null);
@@ -1292,7 +1293,7 @@ export default function PersonDetailScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={RED} />
       </View>
     );
@@ -1300,8 +1301,8 @@ export default function PersonDetailScreen() {
 
   if (!person) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#666666' }}>Person not found</Text>
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: colors.textSecondary }}>Person not found</Text>
       </View>
     );
   }
@@ -1388,7 +1389,7 @@ export default function PersonDetailScreen() {
         )}
 
         {/* What I like about them */}
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="What I Like About Them" />
           {editing ? (
             <TextInput
@@ -1401,24 +1402,24 @@ export default function PersonDetailScreen() {
               placeholderTextColor="#BBBBBB"
               multiline
               style={{
-                backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
-                color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0',
+                backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: 14,
+                color: colors.text, fontSize: 14, borderWidth: 1, borderColor: colors.border,
                 minHeight: 80, textAlignVertical: 'top',
               }}
             />
           ) : displayData.things_i_like ? (
-            <Text style={{ color: '#1A1A1A', fontSize: 14, lineHeight: 21, fontStyle: 'italic' }}>
+            <Text style={{ color: colors.text, fontSize: 14, lineHeight: 21, fontStyle: 'italic' }}>
               {'"'}{displayData.things_i_like}{'"'}
             </Text>
           ) : (
-            <Text style={{ color: '#BBBBBB', fontSize: 14, fontStyle: 'italic' }}>
+            <Text style={{ color: colors.textTertiary, fontSize: 14, fontStyle: 'italic' }}>
               Tap edit to add what you appreciate about them...
             </Text>
           )}
         </View>
 
         {/* Status card */}
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="Status" />
           {editing ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
@@ -1459,17 +1460,17 @@ export default function PersonDetailScreen() {
                   displayData.dating_status === 'fading' ? '#9E9E9E' :
                   displayData.dating_status === 'on_hold' ? '#FF9800' : '#CCC',
               }} />
-              <Text style={{ color: '#1A1A1A', fontSize: 15, fontWeight: '600', textTransform: 'capitalize' }}>
+              <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600', textTransform: 'capitalize' }}>
                 {displayData.dating_status.replace('_', ' ')}
               </Text>
             </View>
           ) : (
-            <Text style={{ color: '#BBBBBB', fontSize: 14, fontStyle: 'italic' }}>Tap edit to set a status...</Text>
+            <Text style={{ color: colors.textTertiary, fontSize: 14, fontStyle: 'italic' }}>Tap edit to set a status...</Text>
           )}
         </View>
 
         {/* Tags card */}
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="Tags" />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: editing ? 10 : 0 }}>
             {((editing ? editData.tags : displayData.tags) as string[] | undefined || []).map((tag, i) => (
@@ -1487,7 +1488,7 @@ export default function PersonDetailScreen() {
               </View>
             ))}
             {!editing && ((displayData.tags?.length ?? 0) === 0) && (
-              <Text style={{ color: '#BBBBBB', fontSize: 14, fontStyle: 'italic' }}>Tap edit to add tags...</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 14, fontStyle: 'italic' }}>Tap edit to add tags...</Text>
             )}
           </View>
           {editing && (
@@ -1497,7 +1498,7 @@ export default function PersonDetailScreen() {
                 onChangeText={setNewTag}
                 placeholder="Add a tag (e.g. Met on Hinge)"
                 placeholderTextColor="#BBBBBB"
-                style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, borderWidth: 1, borderColor: '#E0E0E0', color: '#1A1A1A' }}
+                style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, borderWidth: 1, borderColor: colors.border, color: colors.text }}
                 onSubmitEditing={() => {
                   if (newTag.trim()) {
                     console.log('[PersonDetail] Tag added via submit:', newTag.trim());
@@ -1595,16 +1596,16 @@ export default function PersonDetailScreen() {
           });
 
           return (
-            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
               <SectionHeader label="Next Step" />
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {nextStepActions.map((action) => (
                   <Pressable
                     key={action.label}
                     onPress={action.onPress}
-                    style={{ backgroundColor: '#F5F5F5', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 }}
+                    style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 }}
                   >
-                    <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '600' }}>{action.label}</Text>
+                    <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>{action.label}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -1613,7 +1614,7 @@ export default function PersonDetailScreen() {
         })()}
 
         {/* Conversation Starters card */}
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="Conversation Starters" />
           <AnimatedPressable
             onPress={async () => {
@@ -1678,7 +1679,7 @@ export default function PersonDetailScreen() {
         </View>
 
         {/* Photos section */}
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="Photos" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
             {photosLoading ? (
@@ -1749,7 +1750,7 @@ export default function PersonDetailScreen() {
                     }}
                     style={{
                       width: 80, height: 80, borderRadius: 12,
-                      backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#E0E0E0',
+                      backgroundColor: colors.surfaceSecondary, borderWidth: 1.5, borderColor: colors.border,
                       borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
@@ -1762,7 +1763,7 @@ export default function PersonDetailScreen() {
         </View>
 
         {/* Dating Timeline */}
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="Dating Timeline" />
           {loadingDates ? (
             <ActivityIndicator color={RED} style={{ marginVertical: 12 }} />
@@ -1797,7 +1798,7 @@ export default function PersonDetailScreen() {
                       </View>
                       <View style={{ flex: 1, paddingBottom: isLast ? 0 : 4 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                          <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '600' }}>{typeLabel}</Text>
+                          <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>{typeLabel}</Text>
                           <View style={{ backgroundColor: 'rgba(229,57,53,0.1)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
                             <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>{ratingStr}</Text>
                           </View>
@@ -1806,7 +1807,7 @@ export default function PersonDetailScreen() {
                         {d.location ? (
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
                             <MapPin size={11} color="#AAAAAA" />
-                            <Text style={{ color: '#AAAAAA', fontSize: 12 }} numberOfLines={1}>{d.location}</Text>
+                            <Text style={{ color: colors.textTertiary, fontSize: 12 }} numberOfLines={1}>{d.location}</Text>
                           </View>
                         ) : null}
                       </View>
@@ -1832,7 +1833,7 @@ export default function PersonDetailScreen() {
                           ) : (
                             <MessageSquare size={12} color={dotColor} />
                           )}
-                          <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '600' }}>{i.title}</Text>
+                          <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>{i.title}</Text>
                         </View>
                         <Text style={{ color: '#999999', fontSize: 12 }}>{interactionLabel}</Text>
                       </View>
@@ -1892,7 +1893,7 @@ export default function PersonDetailScreen() {
             <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
               <Heart size={24} color={RED} />
             </View>
-            <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '600', marginBottom: 6 }}>No dates yet</Text>
+            <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600', marginBottom: 6 }}>No dates yet</Text>
             <Text style={{ color: '#999999', fontSize: 14, textAlign: 'center' }}>Log your first date below</Text>
           </View>
         ) : (
@@ -1924,13 +1925,13 @@ export default function PersonDetailScreen() {
                         router.push({ pathname: '/date-review', params: { dateId: d.id, personName: person?.name ?? '', personPhoto: person?.photo_url ?? '' } });
                       }}
                     >
-                      <View style={{ backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, ...CARD_SHADOW }}>
+                      <View style={{ backgroundColor: colors.surface, borderRadius: 14, padding: 14, ...CARD_SHADOW }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <Text style={{ color: '#1A1A1A', fontSize: 15, fontWeight: '700' }}>{typeLabel}</Text>
+                          <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>{typeLabel}</Text>
                           {hasRating ? (
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                               <Text style={{ fontSize: 13 }}>⭐</Text>
-                              <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '700' }}>{overallStr}</Text>
+                              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{overallStr}</Text>
                             </View>
                           ) : (
                             <Text style={{ color: '#CCCCCC', fontSize: 12 }}>No rating yet</Text>
@@ -1940,7 +1941,7 @@ export default function PersonDetailScreen() {
                         {d.location ? (
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: wentWellSnippet ? 4 : 0 }}>
                             <MapPin size={11} color="#AAAAAA" />
-                            <Text style={{ color: '#AAAAAA', fontSize: 12 }} numberOfLines={1}>{d.location}</Text>
+                            <Text style={{ color: colors.textTertiary, fontSize: 12 }} numberOfLines={1}>{d.location}</Text>
                           </View>
                         ) : null}
                         {wentWellSnippet ? (
@@ -1984,25 +1985,25 @@ export default function PersonDetailScreen() {
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
             <Star size={24} color={RED} />
           </View>
-          <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '600', marginBottom: 6 }}>No notes yet</Text>
+          <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600', marginBottom: 6 }}>No notes yet</Text>
           <Text style={{ color: '#999999', fontSize: 14, textAlign: 'center' }}>Add notes to remember important details</Text>
         </View>
       ) : (
         notes.map((note) => (
-          <View key={note.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
+          <View key={note.id} style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
               <Text style={{ color: '#999999', fontSize: 12 }}>{formatTimestamp(note.created_at)}</Text>
               <AnimatedPressable onPress={() => handleDeleteNote(note)}>
                 <XIcon size={16} color="#CCCCCC" />
               </AnimatedPressable>
             </View>
-            <Text style={{ color: '#1A1A1A', fontSize: 14, lineHeight: 21 }}>{note.content || ''}</Text>
+            <Text style={{ color: colors.text, fontSize: 14, lineHeight: 21 }}>{note.content || ''}</Text>
           </View>
         ))
       )}
 
       {addingNote && (
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
           <TextInput
             value={newNoteText}
             onChangeText={setNewNoteText}
@@ -2011,15 +2012,15 @@ export default function PersonDetailScreen() {
             multiline
             autoFocus
             style={{
-              backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
-              color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0',
+              backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: 14,
+              color: colors.text, fontSize: 14, borderWidth: 1, borderColor: colors.border,
               minHeight: 100, textAlignVertical: 'top', marginBottom: 12,
             }}
           />
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <AnimatedPressable onPress={() => { setAddingNote(false); setNewNoteText(''); }} style={{ flex: 1 }}>
-              <View style={{ backgroundColor: '#F5F5F5', borderRadius: 12, paddingVertical: 16, paddingHorizontal: 20, alignItems: 'center' }}>
-                <Text style={{ color: '#666666', fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+              <View style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 12, paddingVertical: 16, paddingHorizontal: 20, alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>Cancel</Text>
               </View>
             </AnimatedPressable>
             <AnimatedPressable onPress={handleSaveNote} disabled={!newNoteText.trim() || savingNote} style={{ flex: 1 }}>
@@ -2061,21 +2062,21 @@ export default function PersonDetailScreen() {
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
             <Bell size={24} color={RED} />
           </View>
-          <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '600', marginBottom: 6 }}>No reminders yet</Text>
+          <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600', marginBottom: 6 }}>No reminders yet</Text>
           <Text style={{ color: '#999999', fontSize: 14, textAlign: 'center' }}>Set reminders to stay on top of things</Text>
         </View>
       ) : (
         reminders.map((reminder) => (
-          <View key={reminder.id} style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, ...CARD_SHADOW, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View key={reminder.id} style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 16, ...CARD_SHADOW, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(229,57,53,0.08)', alignItems: 'center', justifyContent: 'center' }}>
               <Bell size={18} color={RED} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '500', marginBottom: 3 }}>{reminder.text}</Text>
+              <Text style={{ color: colors.text, fontSize: 14, fontWeight: '500', marginBottom: 3 }}>{reminder.text}</Text>
               <Text style={{ color: '#999999', fontSize: 12 }}>{formatFullDate(reminder.remind_at)}</Text>
             </View>
             <AnimatedPressable onPress={() => handleDeleteReminder(reminder)}>
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F5F5', alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
                 <Trash2 size={15} color="#CCCCCC" />
               </View>
             </AnimatedPressable>
@@ -2084,7 +2085,7 @@ export default function PersonDetailScreen() {
       )}
 
       {addingReminder && (
-        <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
+        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 16, ...CARD_SHADOW }}>
           <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', marginBottom: 8 }}>Reminder text</Text>
           <TextInput
             value={reminderText}
@@ -2093,8 +2094,8 @@ export default function PersonDetailScreen() {
             placeholderTextColor="#BBBBBB"
             autoFocus
             style={{
-              backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
-              color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 14,
+              backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: 14,
+              color: colors.text, fontSize: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 14,
             }}
           />
           <Text style={{ color: '#999999', fontSize: 12, fontWeight: '600', marginBottom: 8 }}>When</Text>
@@ -2103,11 +2104,11 @@ export default function PersonDetailScreen() {
             setShowReminderDatePicker(true);
           }}>
             <View style={{
-              backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14,
-              borderWidth: 1, borderColor: '#E0E0E0', flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14,
+              backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: 14,
+              borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14,
             }}>
               <Calendar size={16} color={RED} />
-              <Text style={{ color: '#1A1A1A', fontSize: 14 }}>{reminderDateLabel}</Text>
+              <Text style={{ color: colors.text, fontSize: 14 }}>{reminderDateLabel}</Text>
             </View>
           </AnimatedPressable>
           {showReminderDatePicker && (
@@ -2127,8 +2128,8 @@ export default function PersonDetailScreen() {
           )}
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <AnimatedPressable onPress={() => { setAddingReminder(false); setReminderText(''); }} style={{ flex: 1 }}>
-              <View style={{ backgroundColor: '#F5F5F5', borderRadius: 12, paddingVertical: 13, alignItems: 'center' }}>
-                <Text style={{ color: '#666666', fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+              <View style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 12, paddingVertical: 13, alignItems: 'center' }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>Cancel</Text>
               </View>
             </AnimatedPressable>
             <AnimatedPressable onPress={handleSaveReminder} disabled={!reminderText.trim() || savingReminder} style={{ flex: 1 }}>
@@ -2164,13 +2165,13 @@ export default function PersonDetailScreen() {
   // ── main render ───────────────────────────────────────────────────────────
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <Stack.Screen
         options={{
           title: 'Roster Details',
           headerBackVisible: false,
           gestureEnabled: false,
-          headerStyle: { backgroundColor: '#FFFFFF' },
+          headerStyle: { backgroundColor: colors.surface },
           headerTintColor: '#1A1A1A',
           headerTitleStyle: { fontWeight: '600', fontSize: 17 },
           headerShadowVisible: false,
@@ -2219,7 +2220,7 @@ export default function PersonDetailScreen() {
               {saving ? (
                 <ActivityIndicator color="#1A1A1A" size="small" />
               ) : editing ? (
-                <Text style={{ color: '#1A1A1A', fontSize: 16, fontWeight: '600' }}>Save</Text>
+                <Text style={{ color: colors.text, fontSize: 16, fontWeight: '600' }}>Save</Text>
               ) : (
                 <Pencil size={20} color="#1A1A1A" />
               )}
@@ -2236,7 +2237,7 @@ export default function PersonDetailScreen() {
       >
         {/* ── Profile Card ─────────────────────────────────────────────────── */}
         <View style={{
-          backgroundColor: '#FFFFFF',
+          backgroundColor: colors.surface,
           marginHorizontal: 16, marginTop: 0,
           borderRadius: 16,
           overflow: 'hidden',
@@ -2279,13 +2280,13 @@ export default function PersonDetailScreen() {
               value={editData.name || ''}
               onChangeText={(v) => update('name', v)}
               style={{
-                color: '#1A1A1A', fontSize: 20, fontWeight: '700', textAlign: 'center',
-                backgroundColor: '#F5F5F5', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
-                borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 10, alignSelf: 'center', minWidth: 200,
+                color: colors.text, fontSize: 20, fontWeight: '700', textAlign: 'center',
+                backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8,
+                borderWidth: 1, borderColor: colors.border, marginBottom: 10, alignSelf: 'center', minWidth: 200,
               }}
             />
           ) : (
-            <Text style={{ color: '#1A1A1A', fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 10 }}>
+            <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 10 }}>
               {displayData.name}
             </Text>
           )}
@@ -2304,7 +2305,7 @@ export default function PersonDetailScreen() {
             padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 14,
           }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '700', marginBottom: 3 }}>Compatibility Score</Text>
+              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700', marginBottom: 3 }}>Compatibility Score</Text>
               <Text style={{ color: '#999999', fontSize: 11 }}>Based on your ratings</Text>
             </View>
             <CompatibilityRing score={avgCompatibility} />
@@ -2360,7 +2361,7 @@ export default function PersonDetailScreen() {
               }}
             >
               <FontAwesome name="instagram" size={14} color="#1A1A1A" />
-              <Text style={{ color: '#1A1A1A', fontSize: 12, fontWeight: '500' }}>Insta</Text>
+              <Text style={{ color: colors.text, fontSize: 12, fontWeight: '500' }}>Insta</Text>
             </Pressable>
 
             {/* TikTok */}
@@ -2377,7 +2378,7 @@ export default function PersonDetailScreen() {
               }}
             >
               <FontAwesome name="music" size={13} color="#1A1A1A" />
-              <Text style={{ color: '#1A1A1A', fontSize: 12, fontWeight: '500' }}>TikTok</Text>
+              <Text style={{ color: colors.text, fontSize: 12, fontWeight: '500' }}>TikTok</Text>
             </Pressable>
           </View>
           </View>{/* end card content padding */}
@@ -2386,7 +2387,7 @@ export default function PersonDetailScreen() {
         {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
         {!editing && (
           <View style={{
-            backgroundColor: '#FFFFFF', marginHorizontal: 16, marginTop: 14,
+            backgroundColor: colors.surface, marginHorizontal: 16, marginTop: 14,
             borderRadius: 16, padding: 6, flexDirection: 'row', ...CARD_SHADOW,
           }}>
             {TABS.map((tab) => {
@@ -2418,7 +2419,7 @@ export default function PersonDetailScreen() {
 
         {/* Details (edit mode) — shown here so it's first when editing */}
         {editing && (
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, marginHorizontal: 16, marginTop: 14, ...CARD_SHADOW }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, marginHorizontal: 16, marginTop: 14, ...CARD_SHADOW }}>
             <SectionHeader label="Details" />
             <View style={{ gap: 12 }}>
               <View>
@@ -2428,7 +2429,7 @@ export default function PersonDetailScreen() {
                   onChangeText={(v) => update('nickname', v)}
                   placeholder="Nickname"
                   placeholderTextColor="#BBBBBB"
-                  style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
+                  style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 10, padding: 10, color: colors.text, fontSize: 14, borderWidth: 1, borderColor: colors.border }}
                 />
               </View>
               <View>
@@ -2439,7 +2440,7 @@ export default function PersonDetailScreen() {
                   keyboardType="numeric"
                   placeholder="Age"
                   placeholderTextColor="#BBBBBB"
-                  style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
+                  style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 10, padding: 10, color: colors.text, fontSize: 14, borderWidth: 1, borderColor: colors.border }}
                 />
               </View>
               <View>
@@ -2517,7 +2518,7 @@ export default function PersonDetailScreen() {
                     placeholderTextColor="#BBBBBB"
                     keyboardType={field.keyboard}
                     autoCapitalize="none"
-                    style={{ backgroundColor: '#F5F5F5', borderRadius: 10, padding: 10, color: '#1A1A1A', fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0' }}
+                    style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 10, padding: 10, color: colors.text, fontSize: 14, borderWidth: 1, borderColor: colors.border }}
                   />
                 </View>
               ))}
@@ -2528,7 +2529,7 @@ export default function PersonDetailScreen() {
         {/* ── Details (view mode) ─────────────────────────────────────── */}
         {!editing && (
           <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
-            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
               <SectionHeader label="Details" />
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 0 }}>
                 {[
@@ -2543,7 +2544,7 @@ export default function PersonDetailScreen() {
                 ].filter(f => !!f.value).map((f) => (
                   <View key={f.label} style={{ width: '50%', paddingVertical: 8, paddingRight: 8 }}>
                     <Text style={{ color: '#999999', fontSize: 11, marginBottom: 2 }}>{f.label}</Text>
-                    <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '500' }} numberOfLines={1}>{f.value}</Text>
+                    <Text style={{ color: colors.text, fontSize: 13, fontWeight: '500' }} numberOfLines={1}>{f.value}</Text>
                   </View>
                 ))}
               </View>
@@ -2561,7 +2562,7 @@ export default function PersonDetailScreen() {
           if (favTags.length === 0) return null;
           return (
             <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
-              <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+              <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
                 <SectionHeader label="Favorites" />
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {favTags.map((t) => (
@@ -2576,7 +2577,7 @@ export default function PersonDetailScreen() {
         {/* ── Flags ───────────────────────────────────────────────────── */}
         {!editing && (
           <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
-            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
               {/* Green Flags */}
               <View style={{ marginBottom: 16 }}>
                 <Text style={{ color: '#2E7D32', fontSize: 14, fontWeight: '700', marginBottom: 10 }}>🟢 Green Flags</Text>
@@ -2586,7 +2587,7 @@ export default function PersonDetailScreen() {
                       <PillTag key={flag} label={flag} color="#2E7D32" bg="rgba(46,125,50,0.08)" />
                     ))}
                     {(!displayData.green_flags || displayData.green_flags.length === 0) && (
-                      <Text style={{ color: '#BBBBBB', fontSize: 13 }}>None added yet</Text>
+                      <Text style={{ color: colors.textTertiary, fontSize: 13 }}>None added yet</Text>
                     )}
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -2595,7 +2596,7 @@ export default function PersonDetailScreen() {
                       onChangeText={setAddingGreenFlag}
                       placeholder="Add green flag..."
                       placeholderTextColor="#BBBBBB"
-                      style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0', color: '#1A1A1A' }}
+                      style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: colors.border, color: colors.text }}
                     />
                     <Pressable
                       onPress={async () => {
@@ -2646,7 +2647,7 @@ export default function PersonDetailScreen() {
               </View>
 
               {/* Divider */}
-              <View style={{ height: 1, backgroundColor: '#F0F0F0', marginBottom: 16 }} />
+              <View style={{ height: 1, backgroundColor: colors.surfaceSecondary, marginBottom: 16 }} />
 
               {/* Red Flags */}
               <View>
@@ -2657,7 +2658,7 @@ export default function PersonDetailScreen() {
                       <PillTag key={flag} label={flag} color="#E53935" bg="rgba(229,57,53,0.08)" />
                     ))}
                     {(!displayData.red_flags || displayData.red_flags.length === 0) && (
-                      <Text style={{ color: '#BBBBBB', fontSize: 13 }}>None added yet</Text>
+                      <Text style={{ color: colors.textTertiary, fontSize: 13 }}>None added yet</Text>
                     )}
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
@@ -2666,7 +2667,7 @@ export default function PersonDetailScreen() {
                       onChangeText={setAddingRedFlag}
                       placeholder="Add red flag..."
                       placeholderTextColor="#BBBBBB"
-                      style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: '#E0E0E0', color: '#1A1A1A' }}
+                      style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: colors.border, color: colors.text }}
                     />
                     <Pressable
                       onPress={async () => {
@@ -2721,7 +2722,7 @@ export default function PersonDetailScreen() {
 
         {/* ── Ratings ─────────────────────────────────────────────────── */}
         <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, ...CARD_SHADOW, overflow: 'hidden' }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, ...CARD_SHADOW, overflow: 'hidden' }}>
             {/* Header row — always visible, tappable to expand/collapse */}
             <Pressable
               onPress={() => {
@@ -2729,7 +2730,7 @@ export default function PersonDetailScreen() {
               }}
               style={{ padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
             >
-              <Text style={{ color: '#1A1A1A', fontSize: 15, fontWeight: '700' }}>Ratings</Text>
+              <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>Ratings</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 {/* Always show the overall score as a preview */}
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 1 }}>
@@ -2789,7 +2790,7 @@ export default function PersonDetailScreen() {
                 <View style={{ height: 6, backgroundColor: '#E8E8E8', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
                   <View style={{ height: 6, width: `${(avgCompatibility / 10) * 100}%` as any, backgroundColor: RED, borderRadius: 3 }} />
                 </View>
-                <Text style={{ color: '#AAAAAA', fontSize: 12 }}>Based on your ratings</Text>
+                <Text style={{ color: colors.textTertiary, fontSize: 12 }}>Based on your ratings</Text>
               </View>
             )}
           </View>
@@ -2809,12 +2810,12 @@ export default function PersonDetailScreen() {
       {/* ── Conversation Starters Modal ─────────────────────────────────────── */}
       <Modal visible={startersModalVisible} transparent animationType="slide" onRequestClose={() => setStartersModalVisible(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={() => setStartersModalVisible(false)}>
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
-            <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', marginBottom: 16 }}>✨ Conversation Starters</Text>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 16 }}>✨ Conversation Starters</Text>
             <View style={{ gap: 12 }}>
               {starters.map((s, i) => (
-                <View key={i} style={{ backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14 }}>
-                  <Text style={{ color: '#1A1A1A', fontSize: 14, lineHeight: 20 }}>{s}</Text>
+                <View key={i} style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: 14 }}>
+                  <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{s}</Text>
                 </View>
               ))}
             </View>
@@ -2834,9 +2835,9 @@ export default function PersonDetailScreen() {
       {/* ── Compatibility Report Modal ──────────────────────────────────────── */}
       <Modal visible={compatReportVisible} transparent animationType="slide" onRequestClose={() => setCompatReportVisible(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={() => setCompatReportVisible(false)}>
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '85%' }}>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '85%' }}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 }}>📊 Compatibility Report</Text>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 4 }}>📊 Compatibility Report</Text>
               {compatReport && (
                 <>
                   {/* Overall score */}
@@ -2850,7 +2851,7 @@ export default function PersonDetailScreen() {
                   {/* Trait bars */}
                   {compatReport.traits && compatReport.traits.length > 0 && (
                     <View style={{ marginBottom: 16 }}>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#999', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 12 }}>Traits</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 12 }}>Traits</Text>
                       {compatReport.traits.map((trait) => {
                         const traitScore = Number(trait.score);
                         const fillPct = `${(traitScore / 10) * 100}%` as any;
@@ -2861,7 +2862,7 @@ export default function PersonDetailScreen() {
                               <Text style={{ color: '#444', fontSize: 13, fontWeight: '500' }}>{trait.name}</Text>
                               <Text style={{ color: RED, fontSize: 13, fontWeight: '700' }}>{traitScoreStr}</Text>
                             </View>
-                            <View style={{ height: 6, backgroundColor: '#F0F0F0', borderRadius: 3, overflow: 'hidden' }}>
+                            <View style={{ height: 6, backgroundColor: colors.surfaceSecondary, borderRadius: 3, overflow: 'hidden' }}>
                               <View style={{ height: 6, width: fillPct, backgroundColor: RED, borderRadius: 3 }} />
                             </View>
                           </View>
@@ -2872,8 +2873,8 @@ export default function PersonDetailScreen() {
 
                   {/* Summary */}
                   {compatReport.summary ? (
-                    <View style={{ backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14, marginBottom: 16 }}>
-                      <Text style={{ color: '#1A1A1A', fontSize: 14, lineHeight: 21 }}>{compatReport.summary}</Text>
+                    <View style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                      <Text style={{ color: colors.text, fontSize: 14, lineHeight: 21 }}>{compatReport.summary}</Text>
                     </View>
                   ) : null}
 
@@ -2882,13 +2883,13 @@ export default function PersonDetailScreen() {
                     {compatReport.strongest_trait ? (
                       <View style={{ flex: 1, backgroundColor: 'rgba(34,197,94,0.1)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(34,197,94,0.2)' }}>
                         <Text style={{ color: '#22C55E', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Strongest</Text>
-                        <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '600' }}>{compatReport.strongest_trait}</Text>
+                        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>{compatReport.strongest_trait}</Text>
                       </View>
                     ) : null}
                     {compatReport.weakest_trait ? (
                       <View style={{ flex: 1, backgroundColor: 'rgba(229,57,53,0.08)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(229,57,53,0.15)' }}>
                         <Text style={{ color: RED, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Weakest</Text>
-                        <Text style={{ color: '#1A1A1A', fontSize: 13, fontWeight: '600' }}>{compatReport.weakest_trait}</Text>
+                        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>{compatReport.weakest_trait}</Text>
                       </View>
                     ) : null}
                   </View>

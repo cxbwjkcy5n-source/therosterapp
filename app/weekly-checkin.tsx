@@ -3,11 +3,11 @@ import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert 
 import { router } from 'expo-router';
 import { apiGet, apiPost } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
-
-const RED = '#E53935';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function WeeklyCheckinScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const [mood, setMood] = useState(7);
   const [mostExcited, setMostExcited] = useState('');
   const [oneThingToChange, setOneThingToChange] = useState('');
@@ -65,8 +65,8 @@ export default function WeeklyCheckinScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
-        <ActivityIndicator color={RED} />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator color={colors.primary} />
       </View>
     );
   }
@@ -74,12 +74,12 @@ export default function WeeklyCheckinScreen() {
   if (recentCheckin && !showAnyway) {
     const daysAgoText = recentCheckin.days === 0 ? 'today' : `${recentCheckin.days} day${recentCheckin.days === 1 ? '' : 's'} ago`;
     return (
-      <View style={{ flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
         <Text style={{ fontSize: 40, marginBottom: 16 }}>✅</Text>
-        <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', marginBottom: 8 }}>
+        <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, textAlign: 'center', marginBottom: 8 }}>
           Already checked in
         </Text>
-        <Text style={{ fontSize: 14, color: '#888', textAlign: 'center', lineHeight: 20, marginBottom: 28 }}>
+        <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 28 }}>
           {'You did your weekly check-in '}
           {daysAgoText}
           {'.'}
@@ -89,81 +89,112 @@ export default function WeeklyCheckinScreen() {
             console.log('[WeeklyCheckin] Do another check-in anyway pressed');
             setShowAnyway(true);
           }}
-          style={{ backgroundColor: '#F5F5F5', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 13, marginBottom: 12 }}
+          style={{ backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 13, marginBottom: 12 }}
         >
-          <Text style={{ color: '#1A1A1A', fontSize: 14, fontWeight: '600' }}>Do another check-in anyway</Text>
+          <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>Do another check-in anyway</Text>
         </Pressable>
         <Pressable onPress={() => {
           console.log('[WeeklyCheckin] Go back pressed from already-checked-in screen');
           router.back();
         }}>
-          <Text style={{ color: RED, fontSize: 14, fontWeight: '600' }}>Go back</Text>
+          <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>Go back</Text>
         </Pressable>
       </View>
     );
   }
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: '#fff' }} contentContainerStyle={{ padding: 24, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={{ padding: 24, paddingBottom: 60 }}
+      keyboardShouldPersistTaps="handled"
+    >
       {/* Mood */}
-      <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 6 }}>
+      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 }}>
         {'How\'s your dating life feeling? 🌡️'}
       </Text>
-      <Text style={{ fontSize: 13, color: '#888', marginBottom: 16 }}>
+      <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16 }}>
         {'Mood: '}
         {mood}
         {'/10'}
       </Text>
       <View style={{ flexDirection: 'row', gap: 6, marginBottom: 28, flexWrap: 'wrap' }}>
-        {[1,2,3,4,5,6,7,8,9,10].map((n) => (
-          <Pressable
-            key={n}
-            onPress={() => {
-              console.log('[WeeklyCheckin] Mood selected:', n);
-              setMood(n);
-            }}
-            style={{
-              width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
-              backgroundColor: mood === n ? RED : '#F5F5F5',
-              borderWidth: 1.5, borderColor: mood === n ? RED : '#E0E0E0',
-            }}
-          >
-            <Text style={{ color: mood === n ? '#fff' : '#666', fontSize: 14, fontWeight: '700' }}>{n}</Text>
-          </Pressable>
-        ))}
+        {[1,2,3,4,5,6,7,8,9,10].map((n) => {
+          const isSelected = mood === n;
+          return (
+            <Pressable
+              key={n}
+              onPress={() => {
+                console.log('[WeeklyCheckin] Mood selected:', n);
+                setMood(n);
+              }}
+              style={{
+                width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+                backgroundColor: isSelected ? colors.primary : colors.surface,
+                borderWidth: 1.5, borderColor: isSelected ? colors.primary : colors.border,
+              }}
+            >
+              <Text style={{ color: isSelected ? '#fff' : colors.textSecondary, fontSize: 14, fontWeight: '700' }}>{n}</Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {/* Most excited */}
-      <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 8 }}>
+      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 8 }}>
         {'Who are you most excited about? 💫'}
       </Text>
       <TextInput
         value={mostExcited}
         onChangeText={setMostExcited}
         placeholder="Their name or a description..."
-        placeholderTextColor="#BBBBBB"
-        style={{ backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14, fontSize: 14, color: '#1A1A1A', borderWidth: 1, borderColor: '#E0E0E0', marginBottom: 24 }}
+        placeholderTextColor={colors.textTertiary}
+        style={{
+          backgroundColor: colors.surface,
+          borderRadius: 12,
+          padding: 14,
+          fontSize: 14,
+          color: colors.text,
+          borderWidth: 1,
+          borderColor: colors.border,
+          marginBottom: 24,
+        }}
       />
 
       {/* One thing to change */}
-      <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 8 }}>
+      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 8 }}>
         {'One thing you want to change 🔄'}
       </Text>
       <TextInput
         value={oneThingToChange}
         onChangeText={setOneThingToChange}
         placeholder="Be honest with yourself..."
-        placeholderTextColor="#BBBBBB"
+        placeholderTextColor={colors.textTertiary}
         multiline
-        style={{ backgroundColor: '#F5F5F5', borderRadius: 12, padding: 14, fontSize: 14, color: '#1A1A1A', borderWidth: 1, borderColor: '#E0E0E0', minHeight: 80, textAlignVertical: 'top', marginBottom: 32 }}
+        style={{
+          backgroundColor: colors.surface,
+          borderRadius: 12,
+          padding: 14,
+          fontSize: 14,
+          color: colors.text,
+          borderWidth: 1,
+          borderColor: colors.border,
+          minHeight: 80,
+          textAlignVertical: 'top',
+          marginBottom: 32,
+        }}
       />
 
       <Pressable
         onPress={handleSubmit}
         disabled={saving}
-        style={{ backgroundColor: RED, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
+        style={{ backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' }}
       >
-        {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Save Check-in</Text>}
+        {saving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Save Check-in</Text>
+        )}
       </Pressable>
     </ScrollView>
   );

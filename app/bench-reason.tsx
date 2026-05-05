@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { X } from 'lucide-react-native';
-import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiPost } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ const REASONS = [
 export default function BenchReasonScreen() {
   const { personId, personName } = useLocalSearchParams<{ personId: string; personName: string }>();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [selectedReason, setSelectedReason] = useState('');
   const [customReason, setCustomReason] = useState('');
   const [saving, setSaving] = useState(false);
@@ -43,11 +44,11 @@ export default function BenchReasonScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Drag handle + close button */}
       <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 8, paddingHorizontal: 16 }}>
         {/* Drag handle */}
-        <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#CCCCCC', marginBottom: 8 }} />
+        <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: 8 }} />
         {/* Close button — absolute top right */}
         <View style={{ position: 'absolute', top: 12, right: 16 }}>
           <AnimatedPressable
@@ -59,12 +60,12 @@ export default function BenchReasonScreen() {
               width: 36,
               height: 36,
               borderRadius: 18,
-              backgroundColor: COLORS.surface,
+              backgroundColor: colors.surface,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <X size={18} color={COLORS.textSecondary} />
+            <X size={18} color={colors.textSecondary} />
           </AnimatedPressable>
         </View>
       </View>
@@ -73,56 +74,59 @@ export default function BenchReasonScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={{ color: COLORS.text, fontSize: 22, fontWeight: '800', marginBottom: 6 }}>
+        <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800', marginBottom: 6 }}>
           Moving to Bench
         </Text>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 15, marginBottom: 28 }}>
+        <Text style={{ color: colors.textSecondary, fontSize: 15, marginBottom: 28 }}>
           Why are you benching{personName ? ` ${personName}` : ''}?
         </Text>
 
         <View style={{ gap: 10, marginBottom: 20 }}>
-          {REASONS.map((reason) => (
-            <AnimatedPressable
-              key={reason}
-              onPress={() => {
-                console.log('[BenchReason] Reason selected:', reason);
-                setSelectedReason(reason);
-              }}
-            >
-              <View
-                style={{
-                  backgroundColor: selectedReason === reason ? COLORS.primaryMuted : COLORS.surface,
-                  borderRadius: 12,
-                  padding: 14,
-                  borderWidth: 1,
-                  borderColor: selectedReason === reason ? COLORS.primary : COLORS.border,
-                  flexDirection: 'row',
-                  alignItems: 'center',
+          {REASONS.map((reason) => {
+            const isSelected = selectedReason === reason;
+            return (
+              <AnimatedPressable
+                key={reason}
+                onPress={() => {
+                  console.log('[BenchReason] Reason selected:', reason);
+                  setSelectedReason(reason);
                 }}
               >
                 <View
                   style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 10,
-                    borderWidth: 2,
-                    borderColor: selectedReason === reason ? COLORS.primary : COLORS.textTertiary,
-                    backgroundColor: selectedReason === reason ? COLORS.primary : 'transparent',
-                    marginRight: 12,
-                  }}
-                />
-                <Text
-                  style={{
-                    color: selectedReason === reason ? COLORS.text : COLORS.textSecondary,
-                    fontSize: 15,
-                    fontWeight: selectedReason === reason ? '600' : '400',
+                    backgroundColor: isSelected ? colors.primaryMuted : colors.surface,
+                    borderRadius: 12,
+                    padding: 14,
+                    borderWidth: 1,
+                    borderColor: isSelected ? colors.primary : colors.border,
+                    flexDirection: 'row',
+                    alignItems: 'center',
                   }}
                 >
-                  {reason}
-                </Text>
-              </View>
-            </AnimatedPressable>
-          ))}
+                  <View
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      borderWidth: 2,
+                      borderColor: isSelected ? colors.primary : colors.textTertiary,
+                      backgroundColor: isSelected ? colors.primary : 'transparent',
+                      marginRight: 12,
+                    }}
+                  />
+                  <Text
+                    style={{
+                      color: isSelected ? colors.text : colors.textSecondary,
+                      fontSize: 15,
+                      fontWeight: isSelected ? '600' : '400',
+                    }}
+                  >
+                    {reason}
+                  </Text>
+                </View>
+              </AnimatedPressable>
+            );
+          })}
         </View>
 
         {selectedReason === 'Other' && (
@@ -130,16 +134,16 @@ export default function BenchReasonScreen() {
             value={customReason}
             onChangeText={setCustomReason}
             placeholder="Describe the reason..."
-            placeholderTextColor={COLORS.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             multiline
             style={{
-              backgroundColor: COLORS.surfaceSecondary,
+              backgroundColor: colors.surfaceSecondary,
               borderRadius: 12,
               padding: 14,
-              color: COLORS.text,
+              color: colors.text,
               fontSize: 15,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: colors.border,
               minHeight: 80,
               marginBottom: 20,
             }}
@@ -148,12 +152,12 @@ export default function BenchReasonScreen() {
       </ScrollView>
 
       {/* Button always pinned at bottom */}
-      <View style={{ paddingHorizontal: 24, paddingBottom: Math.max(insets.bottom, 16) + 8, paddingTop: 8, backgroundColor: '#FFFFFF' }}>
+      <View style={{ paddingHorizontal: 24, paddingBottom: Math.max(insets.bottom, 16) + 8, paddingTop: 8, backgroundColor: colors.background }}>
         <AnimatedPressable
           onPress={handleBench}
           disabled={!canSave || saving}
           style={{
-            backgroundColor: canSave ? COLORS.primary : COLORS.surfaceSecondary,
+            backgroundColor: canSave ? colors.primary : colors.surfaceSecondary,
             borderRadius: 14,
             paddingVertical: 16,
             alignItems: 'center',
@@ -162,7 +166,7 @@ export default function BenchReasonScreen() {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={{ color: canSave ? '#fff' : COLORS.textTertiary, fontSize: 16, fontWeight: '700' }}>
+            <Text style={{ color: canSave ? '#fff' : colors.textTertiary, fontSize: 16, fontWeight: '700' }}>
               Move to Bench
             </Text>
           )}

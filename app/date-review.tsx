@@ -11,7 +11,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { Star } from 'lucide-react-native';
 import { Image } from 'expo-image';
-import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiPatch, apiGet } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +34,7 @@ function getInitials(name: string) {
 
 export default function DateReviewScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const { dateId, personName, personPhoto } = useLocalSearchParams<{
     dateId: string;
     personName: string;
@@ -109,18 +110,23 @@ export default function DateReviewScreen() {
     }
   };
 
+  const ratingLabel = rating === 1 ? 'Not great' : rating === 2 ? 'Below average' : rating === 3 ? 'It was okay' : rating === 4 ? 'Pretty good!' : 'Amazing!';
+  const submitBg = rating > 0 ? colors.primary : colors.surface;
+  const submitBorder = rating > 0 ? colors.primary : colors.border;
+  const submitTextColor = rating > 0 ? '#fff' : colors.textTertiary;
+
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   if (!dateId) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background, padding: 32 }}>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 16, textAlign: 'center' }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, padding: 32 }}>
+        <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
           No date selected. Go back and select a date to review.
         </Text>
       </View>
@@ -128,7 +134,7 @@ export default function DateReviewScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
 
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
@@ -143,9 +149,9 @@ export default function DateReviewScreen() {
               height: 80,
               borderRadius: 40,
               overflow: 'hidden',
-              backgroundColor: COLORS.surface,
+              backgroundColor: colors.surface,
               borderWidth: 2,
-              borderColor: COLORS.primary,
+              borderColor: colors.primary,
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 12,
@@ -158,15 +164,15 @@ export default function DateReviewScreen() {
                 contentFit="cover"
               />
             ) : (
-              <Text style={{ fontSize: 28, fontWeight: '700', color: COLORS.primary }}>
+              <Text style={{ fontSize: 28, fontWeight: '700', color: colors.primary }}>
                 {initials}
               </Text>
             )}
           </View>
-          <Text style={{ fontSize: 20, fontWeight: '700', color: COLORS.text, marginBottom: 4 }}>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 4 }}>
             {displayName}
           </Text>
-          <Text style={{ fontSize: 14, color: COLORS.textSecondary }}>
+          <Text style={{ fontSize: 14, color: colors.textSecondary }}>
             How did the date go?
           </Text>
         </View>
@@ -174,38 +180,42 @@ export default function DateReviewScreen() {
         {/* Star rating */}
         <View
           style={{
-            backgroundColor: COLORS.surface,
+            backgroundColor: colors.surface,
             borderRadius: 16,
             padding: 20,
             borderWidth: 1,
-            borderColor: COLORS.border,
+            borderColor: colors.border,
             marginBottom: 16,
             alignItems: 'center',
           }}
         >
-          <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 16 }}>
+          <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 16 }}>
             Overall Rating
           </Text>
           <View style={{ flexDirection: 'row', gap: 12 }}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <AnimatedPressable
-                key={star}
-                onPress={() => {
-                  console.log('[DateReview] Star rating selected:', star);
-                  setRating(star);
-                }}
-              >
-                <Star
-                  size={40}
-                  color={star <= rating ? COLORS.accent : COLORS.border}
-                  fill={star <= rating ? COLORS.accent : 'transparent'}
-                />
-              </AnimatedPressable>
-            ))}
+            {[1, 2, 3, 4, 5].map((star) => {
+              const starColor = star <= rating ? '#FFB300' : colors.border;
+              const starFill = star <= rating ? '#FFB300' : 'transparent';
+              return (
+                <AnimatedPressable
+                  key={star}
+                  onPress={() => {
+                    console.log('[DateReview] Star rating selected:', star);
+                    setRating(star);
+                  }}
+                >
+                  <Star
+                    size={40}
+                    color={starColor}
+                    fill={starFill}
+                  />
+                </AnimatedPressable>
+              );
+            })}
           </View>
           {rating > 0 && (
-            <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginTop: 10 }}>
-              {rating === 1 ? 'Not great' : rating === 2 ? 'Below average' : rating === 3 ? 'It was okay' : rating === 4 ? 'Pretty good!' : 'Amazing!'}
+            <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 10 }}>
+              {ratingLabel}
             </Text>
           )}
         </View>
@@ -213,32 +223,32 @@ export default function DateReviewScreen() {
         {/* What went well */}
         <View
           style={{
-            backgroundColor: COLORS.surface,
+            backgroundColor: colors.surface,
             borderRadius: 16,
             padding: 16,
             borderWidth: 1,
-            borderColor: COLORS.border,
+            borderColor: colors.border,
             marginBottom: 16,
           }}
         >
-          <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 12 }}>
+          <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 12 }}>
             What went well?
           </Text>
           <TextInput
             value={wentWell}
             onChangeText={setWentWell}
             placeholder="Great conversation, good vibes..."
-            placeholderTextColor={COLORS.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             multiline
             style={{
-              backgroundColor: COLORS.background,
+              backgroundColor: colors.background,
               borderRadius: 12,
               paddingHorizontal: 14,
               paddingVertical: 12,
-              color: COLORS.text,
+              color: colors.text,
               fontSize: 15,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: colors.border,
               minHeight: 80,
               textAlignVertical: 'top',
             }}
@@ -248,32 +258,32 @@ export default function DateReviewScreen() {
         {/* What could be better */}
         <View
           style={{
-            backgroundColor: COLORS.surface,
+            backgroundColor: colors.surface,
             borderRadius: 16,
             padding: 16,
             borderWidth: 1,
-            borderColor: COLORS.border,
+            borderColor: colors.border,
             marginBottom: 16,
           }}
         >
-          <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 12 }}>
+          <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 12 }}>
             What could be better?
           </Text>
           <TextInput
             value={wentPoorly}
             onChangeText={setWentPoorly}
             placeholder="Awkward silences, venue wasn't great..."
-            placeholderTextColor={COLORS.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             multiline
             style={{
-              backgroundColor: COLORS.background,
+              backgroundColor: colors.background,
               borderRadius: 12,
               paddingHorizontal: 14,
               paddingVertical: 12,
-              color: COLORS.text,
+              color: colors.text,
               fontSize: 15,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: colors.border,
               minHeight: 80,
               textAlignVertical: 'top',
             }}
@@ -283,21 +293,21 @@ export default function DateReviewScreen() {
         {/* Private Notes */}
         <View
           style={{
-            backgroundColor: COLORS.surface,
+            backgroundColor: colors.surface,
             borderRadius: 16,
             padding: 16,
             borderWidth: 1,
-            borderColor: COLORS.border,
+            borderColor: colors.border,
             marginBottom: 16,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <Text style={{ fontSize: 16 }}>🔒</Text>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700' }}>
+              <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>
                 Private Notes
               </Text>
-              <Text style={{ color: COLORS.textTertiary, fontSize: 12, marginTop: 1 }}>
+              <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 1 }}>
                 Never shown in analytics
               </Text>
             </View>
@@ -309,17 +319,17 @@ export default function DateReviewScreen() {
               setPrivateNotes(v);
             }}
             placeholder="Personal thoughts, things to remember..."
-            placeholderTextColor={COLORS.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             multiline
             style={{
-              backgroundColor: COLORS.background,
+              backgroundColor: colors.background,
               borderRadius: 12,
               paddingHorizontal: 14,
               paddingVertical: 12,
-              color: COLORS.text,
+              color: colors.text,
               fontSize: 15,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: colors.border,
               minHeight: 80,
               textAlignVertical: 'top',
             }}
@@ -329,11 +339,11 @@ export default function DateReviewScreen() {
         {/* Would you go on another date */}
         <View
           style={{
-            backgroundColor: COLORS.surface,
+            backgroundColor: colors.surface,
             borderRadius: 16,
             padding: 16,
             borderWidth: 1,
-            borderColor: COLORS.border,
+            borderColor: colors.border,
             marginBottom: 28,
             flexDirection: 'row',
             alignItems: 'center',
@@ -341,10 +351,10 @@ export default function DateReviewScreen() {
           }}
         >
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 2 }}>
+            <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 2 }}>
               Would you go on another date?
             </Text>
-            <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 13 }}>
               {wantAnother ? 'Yes, definitely!' : 'Not right now'}
             </Text>
           </View>
@@ -354,7 +364,7 @@ export default function DateReviewScreen() {
               console.log('[DateReview] Want another date toggled:', v);
               setWantAnother(v);
             }}
-            trackColor={{ false: COLORS.border, true: COLORS.primary }}
+            trackColor={{ false: colors.border, true: colors.primary }}
             thumbColor="#fff"
           />
         </View>
@@ -364,12 +374,12 @@ export default function DateReviewScreen() {
           onPress={handleSubmit}
           disabled={submitting || rating === 0}
           style={{
-            backgroundColor: rating > 0 ? COLORS.primary : COLORS.surface,
+            backgroundColor: submitBg,
             borderRadius: 14,
             paddingVertical: 16,
             alignItems: 'center',
             borderWidth: 1,
-            borderColor: rating > 0 ? COLORS.primary : COLORS.border,
+            borderColor: submitBorder,
           }}
         >
           {submitting ? (
@@ -377,7 +387,7 @@ export default function DateReviewScreen() {
           ) : (
             <Text
               style={{
-                color: rating > 0 ? '#fff' : COLORS.textTertiary,
+                color: submitTextColor,
                 fontSize: 16,
                 fontWeight: '700',
               }}

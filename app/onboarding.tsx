@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { apiGet, apiPut } from '@/utils/api';
 
 const STEPS = [
@@ -37,6 +37,7 @@ const STEPS = [
 
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -135,8 +136,8 @@ export default function OnboardingScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -144,16 +145,17 @@ export default function OnboardingScreen() {
   const currentStep = STEPS[step];
   const isLastStep = step === STEPS.length - 1;
   const progressPercent = ((step + 1) / STEPS.length) * 100;
+  const progressPctStr = `${progressPercent}%`;
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Progress bar */}
-      <View style={{ height: 3, backgroundColor: COLORS.border, marginTop: insets.top + 16, marginHorizontal: 24 }}>
+      <View style={{ height: 3, backgroundColor: colors.border, marginTop: insets.top + 16, marginHorizontal: 24 }}>
         <View
           style={{
             height: 3,
-            width: `${progressPercent}%`,
-            backgroundColor: COLORS.primary,
+            width: progressPctStr as any,
+            backgroundColor: colors.primary,
             borderRadius: 2,
           }}
         />
@@ -168,7 +170,7 @@ export default function OnboardingScreen() {
               width: i === step ? 24 : 8,
               height: 8,
               borderRadius: 4,
-              backgroundColor: i === step ? COLORS.primary : COLORS.border,
+              backgroundColor: i === step ? colors.primary : colors.border,
             }}
           />
         ))}
@@ -190,7 +192,7 @@ export default function OnboardingScreen() {
           style={{
             fontSize: 28,
             fontWeight: '800',
-            color: COLORS.text,
+            color: colors.text,
             textAlign: 'center',
             marginBottom: 16,
             letterSpacing: -0.5,
@@ -201,7 +203,7 @@ export default function OnboardingScreen() {
         <Text
           style={{
             fontSize: 16,
-            color: COLORS.textSecondary,
+            color: colors.textSecondary,
             textAlign: 'center',
             lineHeight: 24,
           }}
@@ -216,7 +218,7 @@ export default function OnboardingScreen() {
           onPress={handleCTA}
           disabled={saving}
           style={{
-            backgroundColor: COLORS.primary,
+            backgroundColor: colors.primary,
             borderRadius: 16,
             height: 56,
             alignItems: 'center',
@@ -237,7 +239,7 @@ export default function OnboardingScreen() {
           onPress={isLastStep ? handleComplete : handleSkip}
           style={{ alignItems: 'center', paddingVertical: 12 }}
         >
-          <Text style={{ color: COLORS.textSecondary, fontSize: 15, fontWeight: '500' }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 15, fontWeight: '500' }}>
             {isLastStep ? 'Get Started' : 'Skip for now'}
           </Text>
         </Pressable>

@@ -10,14 +10,13 @@ import {
   Dimensions,
 } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
-import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { apiGet } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const H_PAD = 16;
 const CARD_GAP = 12;
-const HALF_CARD_WIDTH = (SCREEN_WIDTH - H_PAD * 2 - CARD_GAP) / 2;
 
 // ─── Image helper ─────────────────────────────────────────────────────────────
 
@@ -247,7 +246,6 @@ function computeDateStats(dates: DateEntry[], persons: Person[], summary?: { wan
     monthlyFrequency.push({ label, count });
   }
 
-  // Use person_name from date entries directly (joined by backend)
   const partnerFreq: Record<string, { name: string; count: number }> = {};
   for (const d of dates) {
     const pid = d.person_id || '';
@@ -287,52 +285,54 @@ function computeDateStats(dates: DateEntry[], persons: Person[], summary?: { wan
   };
 }
 
-// ─── Shared card style ────────────────────────────────────────────────────────
-
-const CARD_STYLE = {
-  backgroundColor: '#FFFFFF',
-  borderWidth: 1,
-  borderColor: '#E0E0E0',
-  borderRadius: 12,
-  padding: 16,
-  minHeight: 100,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.06,
-  shadowRadius: 4,
-  elevation: 2,
-} as const;
-
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Card({ children, style }: { children: React.ReactNode; style?: object }) {
-  return <View style={[CARD_STYLE, style]}>{children}</View>;
+type Colors = ReturnType<typeof useTheme>['colors'];
+
+function Card({ children, style, colors }: { children: React.ReactNode; style?: object; colors: Colors }) {
+  return (
+    <View style={[{
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 16,
+      minHeight: 100,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.06,
+      shadowRadius: 4,
+      elevation: 2,
+    }, style]}>
+      {children}
+    </View>
+  );
 }
 
-function CardTitle({ children }: { children: string }) {
+function CardTitle({ children, colors }: { children: string; colors: Colors }) {
   return (
-    <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '700', marginBottom: 12 }}>
+    <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700', marginBottom: 12 }}>
       {children}
     </Text>
   );
 }
 
-function ProgressBar({ value, max }: { value: number; max: number }) {
+function ProgressBar({ value, max, colors }: { value: number; max: number; colors: Colors }) {
   const pct = max > 0 ? Math.min(value / max, 1) : 0;
   const remainder = 1 - pct;
   return (
     <View style={{ height: 7, borderRadius: 4, overflow: 'hidden', flexDirection: 'row' }}>
-      <View style={{ flex: pct, backgroundColor: COLORS.primary, borderRadius: 4 }} />
-      <View style={{ flex: remainder, backgroundColor: COLORS.surfaceSecondary }} />
+      <View style={{ flex: pct, backgroundColor: colors.primary, borderRadius: 4 }} />
+      <View style={{ flex: remainder, backgroundColor: colors.surfaceSecondary }} />
     </View>
   );
 }
 
-function RatingStars({ rating, max = 5 }: { rating: number; max?: number }) {
+function RatingStars({ rating, max = 5, colors }: { rating: number; max?: number; colors: Colors }) {
   const stars: React.ReactElement[] = [];
   for (let i = 1; i <= max; i++) {
     const filled = i <= Math.round(rating);
-    const starColor = filled ? COLORS.accent : COLORS.border;
+    const starColor = filled ? colors.accent : colors.border;
     stars.push(
       <Text key={i} style={{ fontSize: 16, color: starColor }}>★</Text>
     );
@@ -340,7 +340,7 @@ function RatingStars({ rating, max = 5 }: { rating: number; max?: number }) {
   return <View style={{ flexDirection: 'row', gap: 2 }}>{stars}</View>;
 }
 
-function BarChart({ data }: { data: { label: string; count: number }[] }) {
+function BarChart({ data, colors }: { data: { label: string; count: number }[]; colors: Colors }) {
   const maxCount = Math.max(...data.map((d) => d.count), 1);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12, height: 90 }}>
@@ -349,19 +349,19 @@ function BarChart({ data }: { data: { label: string; count: number }[] }) {
         const countLabel = String(item.count);
         return (
           <View key={item.label} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-            <Text style={{ color: COLORS.textSecondary, fontSize: 11, fontWeight: '600' }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 11, fontWeight: '600' }}>
               {countLabel}
             </Text>
             <View
               style={{
                 width: '100%',
                 height: barHeight,
-                backgroundColor: COLORS.primary,
+                backgroundColor: colors.primary,
                 borderRadius: 4,
                 opacity: item.count === 0 ? 0.15 : 1,
               }}
             />
-            <Text style={{ color: COLORS.textSecondary, fontSize: 12 }}>{item.label}</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{item.label}</Text>
           </View>
         );
       })}
@@ -369,14 +369,14 @@ function BarChart({ data }: { data: { label: string; count: number }[] }) {
   );
 }
 
-function Avatar({ uri, name, size = 28 }: { uri?: string; name: string; size?: number }) {
+function Avatar({ uri, name, size = 28, colors }: { uri?: string; name: string; size?: number; colors: Colors }) {
   const initial = name && name !== '—' ? name.charAt(0).toUpperCase() : '?';
   const imgSource = resolveImageSource(uri);
   if (uri && imgSource) {
     return (
       <Image
         source={imgSource}
-        style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: COLORS.surface }}
+        style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.surface }}
       />
     );
   }
@@ -386,19 +386,19 @@ function Avatar({ uri, name, size = 28 }: { uri?: string; name: string; size?: n
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: COLORS.primaryMuted,
+        backgroundColor: colors.primaryMuted,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Text style={{ color: COLORS.primary, fontSize: size * 0.45, fontWeight: '700' }}>{initial}</Text>
+      <Text style={{ color: colors.primary, fontSize: size * 0.45, fontWeight: '700' }}>{initial}</Text>
     </View>
   );
 }
 
 // ─── Tab pill ─────────────────────────────────────────────────────────────────
 
-function TabPills({ active, onChange }: { active: 'people' | 'dating'; onChange: (t: 'people' | 'dating') => void }) {
+function TabPills({ active, onChange, colors }: { active: 'people' | 'dating'; onChange: (t: 'people' | 'dating') => void; colors: Colors }) {
   const peopleActive = active === 'people';
   const datingActive = active === 'dating';
   return (
@@ -413,12 +413,12 @@ function TabPills({ active, onChange }: { active: 'people' | 'dating'; onChange:
           paddingVertical: 10,
           borderRadius: 10,
           borderWidth: 1,
-          borderColor: '#E0E0E0',
-          backgroundColor: peopleActive ? COLORS.primary : '#FFFFFF',
+          borderColor: colors.border,
+          backgroundColor: peopleActive ? colors.primary : colors.surface,
           alignItems: 'center',
         }}
       >
-        <Text style={{ fontSize: 14, fontWeight: '600', color: peopleActive ? '#FFFFFF' : '#1A1A1A' }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: peopleActive ? '#FFFFFF' : colors.text }}>
           People
         </Text>
       </Pressable>
@@ -432,12 +432,12 @@ function TabPills({ active, onChange }: { active: 'people' | 'dating'; onChange:
           paddingVertical: 10,
           borderRadius: 10,
           borderWidth: 1,
-          borderColor: '#E0E0E0',
-          backgroundColor: datingActive ? COLORS.primary : '#FFFFFF',
+          borderColor: colors.border,
+          backgroundColor: datingActive ? colors.primary : colors.surface,
           alignItems: 'center',
         }}
       >
-        <Text style={{ fontSize: 14, fontWeight: '600', color: datingActive ? '#FFFFFF' : '#1A1A1A' }}>
+        <Text style={{ fontSize: 14, fontWeight: '600', color: datingActive ? '#FFFFFF' : colors.text }}>
           Dating
         </Text>
       </Pressable>
@@ -474,7 +474,7 @@ function generateDatingInsights(ds: DateStats): string[] {
   return insights.slice(0, 3);
 }
 
-function InsightsCard({ insights }: { insights: string[] }) {
+function InsightsCard({ insights, colors }: { insights: string[]; colors: Colors }) {
   if (insights.length === 0) return null;
   return (
     <View style={{ backgroundColor: '#FFF8E1', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#FFE082', marginBottom: 12 }}>
@@ -496,14 +496,14 @@ function InsightsCard({ insights }: { insights: string[] }) {
 
 // ─── People tab content ───────────────────────────────────────────────────────
 
-function PeopleTab({ ps }: { ps: PeopleStats }) {
+function PeopleTab({ ps, colors }: { ps: PeopleStats; colors: Colors }) {
   const [ratingsExpanded, setRatingsExpanded] = useState(false);
   const isEmpty = ps.total === 0;
 
   if (isEmpty) {
     return (
       <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60, paddingHorizontal: 32 }}>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22 }}>
+        <Text style={{ color: colors.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22 }}>
           No data yet — add people and plan dates to see your insights!
         </Text>
       </View>
@@ -538,92 +538,91 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
 
   return (
     <View style={{ gap: CARD_GAP }}>
-      <InsightsCard insights={peopleInsights} />
+      <InsightsCard insights={peopleInsights} colors={colors} />
       {/* Row 1: Total People + Active/Benched */}
       <View style={{ flexDirection: 'row', gap: CARD_GAP }}>
-        {/* Total People */}
-        <Card style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.primary, fontSize: 32, fontWeight: '800', marginBottom: 4 }}>
+        <Card style={{ flex: 1 }} colors={colors}>
+          <Text style={{ color: colors.primary, fontSize: 32, fontWeight: '800', marginBottom: 4 }}>
             {ps.total}
           </Text>
-          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '600' }}>Total People</Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 11, marginTop: 2 }}>in your roster</Text>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Total People</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2 }}>in your roster</Text>
         </Card>
 
-        {/* Active / Benched */}
-        <Card style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
+        <Card style={{ flex: 1 }} colors={colors}>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
             Active / Benched
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4, marginBottom: 10 }}>
-            <Text style={{ color: COLORS.success, fontSize: 22, fontWeight: '800' }}>{ps.active}</Text>
-            <Text style={{ color: COLORS.textTertiary, fontSize: 16, fontWeight: '600' }}>/</Text>
-            <Text style={{ color: COLORS.textSecondary, fontSize: 22, fontWeight: '800' }}>{ps.benched}</Text>
+            <Text style={{ color: colors.success, fontSize: 22, fontWeight: '800' }}>{ps.active}</Text>
+            <Text style={{ color: colors.textTertiary, fontSize: 16, fontWeight: '600' }}>/</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 22, fontWeight: '800' }}>{ps.benched}</Text>
           </View>
           <View style={{ height: 6, borderRadius: 3, overflow: 'hidden', flexDirection: 'row' }}>
-            <View style={{ flex: activeRatio, backgroundColor: COLORS.success }} />
-            <View style={{ flex: benchedRatio, backgroundColor: '#CCCCCC' }} />
+            <View style={{ flex: activeRatio, backgroundColor: colors.success }} />
+            <View style={{ flex: benchedRatio, backgroundColor: colors.textTertiary }} />
           </View>
         </Card>
       </View>
 
       {/* Row 2: Top Rated + Most Common Zodiac */}
       <View style={{ flexDirection: 'row', gap: CARD_GAP }}>
-        {/* Top Rated */}
-        <Card style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
+        <Card style={{ flex: 1 }} colors={colors}>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
             Top Rated
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <Avatar uri={ps.topRatedPhoto} name={ps.topRatedName} size={28} />
-            <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '700', flex: 1 }} numberOfLines={1}>
+            <Avatar uri={ps.topRatedPhoto} name={ps.topRatedName} size={28} colors={colors} />
+            <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700', flex: 1 }} numberOfLines={1}>
               {ps.topRatedName}
             </Text>
           </View>
           {ps.topRatedScore > 0 && (
-            <Text style={{ color: COLORS.textSecondary, fontSize: 11 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 11 }}>
               avg {ps.topRatedScore.toFixed(1)}/10
             </Text>
           )}
         </Card>
 
-        {/* Most Common Zodiac */}
-        <Card style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
+        <Card style={{ flex: 1 }} colors={colors}>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
             Most Common Zodiac
           </Text>
-          <Text style={{ color: COLORS.text, fontSize: 26, fontWeight: '800', marginBottom: 2 }}>
+          <Text style={{ color: colors.text, fontSize: 26, fontWeight: '800', marginBottom: 2 }}>
             {zodiacEmoji || '—'}
           </Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '600' }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '600' }}>
             {zodiacName}
           </Text>
-          <Text style={{ color: COLORS.textTertiary, fontSize: 11, marginTop: 2 }}>
+          <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 2 }}>
             {zodiacLine !== '—' ? 'most frequent sign' : ''}
           </Text>
         </Card>
       </View>
 
       {/* Average Ratings */}
-      <Card style={{ minHeight: undefined, padding: 0, overflow: 'hidden' }}>
+      <Card style={{ minHeight: undefined, padding: 0, overflow: 'hidden' }} colors={colors}>
         <Pressable
-          onPress={() => setRatingsExpanded((v) => !v)}
+          onPress={() => {
+            console.log('[Analytics] Average Ratings expanded:', !ratingsExpanded);
+            setRatingsExpanded((v) => !v);
+          }}
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 }}
         >
-          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '700' }}>Average Ratings</Text>
-          <ChevronDown size={16} color={COLORS.textSecondary} style={{ transform: [{ rotate: ratingsExpanded ? '180deg' : '0deg' }] }} />
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>Average Ratings</Text>
+          <ChevronDown size={16} color={colors.textSecondary} style={{ transform: [{ rotate: ratingsExpanded ? '180deg' : '0deg' }] }} />
         </Pressable>
         {ratingsExpanded && (
           <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}>
             {ratingRows.map((item) => (
               <View key={item.label}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <Text style={{ color: COLORS.textSecondary, fontSize: 13 }}>{item.label}</Text>
-                  <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '700' }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{item.label}</Text>
+                  <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '700' }}>
                     {item.display}
                   </Text>
                 </View>
-                <ProgressBar value={item.value} max={10} />
+                <ProgressBar value={item.value} max={10} colors={colors} />
               </View>
             ))}
           </View>
@@ -632,8 +631,8 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
 
       {/* Connection Types */}
       {ps.connectionBreakdown.length > 0 && (
-        <Card style={{ minHeight: undefined }}>
-          <CardTitle>Connection Types</CardTitle>
+        <Card style={{ minHeight: undefined }} colors={colors}>
+          <CardTitle colors={colors}>Connection Types</CardTitle>
           <View style={{ gap: 8 }}>
             {ps.connectionBreakdown.map((item) => {
               const connLabel = CONNECTION_LABELS[item.type] || capitalize(item.type);
@@ -642,21 +641,21 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
                 <View key={item.type} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <View
                     style={{
-                      backgroundColor: COLORS.primaryMuted,
+                      backgroundColor: colors.primaryMuted,
                       borderRadius: 20,
                       paddingHorizontal: 10,
                       paddingVertical: 4,
                       minWidth: 80,
                     }}
                   >
-                    <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '600' }}>
+                    <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
                       {connLabel}
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <ProgressBar value={item.count} max={ps.total} />
+                    <ProgressBar value={item.count} max={ps.total} colors={colors} />
                   </View>
-                  <Text style={{ color: COLORS.textSecondary, fontSize: 12, fontWeight: '600', width: 20, textAlign: 'right' }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600', width: 20, textAlign: 'right' }}>
                     {countStr}
                   </Text>
                 </View>
@@ -668,8 +667,8 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
 
       {/* Top Hobbies */}
       {ps.topHobbies.length > 0 && (
-        <Card style={{ minHeight: undefined }}>
-          <CardTitle>Top Hobbies</CardTitle>
+        <Card style={{ minHeight: undefined }} colors={colors}>
+          <CardTitle colors={colors}>Top Hobbies</CardTitle>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {ps.topHobbies.map((item) => {
               const hobbyLabel = capitalize(item.label);
@@ -680,19 +679,19 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    backgroundColor: COLORS.surface,
+                    backgroundColor: colors.surfaceSecondary,
                     borderRadius: 20,
                     paddingHorizontal: 12,
                     paddingVertical: 6,
                     gap: 6,
                     borderWidth: 1,
-                    borderColor: COLORS.border,
+                    borderColor: colors.border,
                   }}
                 >
-                  <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '500' }}>{hobbyLabel}</Text>
+                  <Text style={{ color: colors.text, fontSize: 13, fontWeight: '500' }}>{hobbyLabel}</Text>
                   <View
                     style={{
-                      backgroundColor: COLORS.primary,
+                      backgroundColor: colors.primary,
                       borderRadius: 10,
                       minWidth: 20,
                       height: 20,
@@ -714,8 +713,8 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
       {(ps.topRedFlags.length > 0 || ps.topGreenFlags.length > 0) && (
         <View style={{ flexDirection: 'row', gap: CARD_GAP }}>
           {ps.topRedFlags.length > 0 && (
-            <Card style={{ flex: 1, minHeight: undefined }}>
-              <Text style={{ color: COLORS.danger, fontSize: 13, fontWeight: '700', marginBottom: 10 }}>
+            <Card style={{ flex: 1, minHeight: undefined }} colors={colors}>
+              <Text style={{ color: colors.danger, fontSize: 13, fontWeight: '700', marginBottom: 10 }}>
                 🚩 Red Flags
               </Text>
               <View style={{ gap: 7 }}>
@@ -724,10 +723,10 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
                   const flagCount = String(item.count);
                   return (
                     <View key={item.label} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ color: COLORS.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
+                      <Text style={{ color: colors.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
                         {flagLabel}
                       </Text>
-                      <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginLeft: 4 }}>{flagCount}</Text>
+                      <Text style={{ color: colors.textSecondary, fontSize: 12, marginLeft: 4 }}>{flagCount}</Text>
                     </View>
                   );
                 })}
@@ -735,8 +734,8 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
             </Card>
           )}
           {ps.topGreenFlags.length > 0 && (
-            <Card style={{ flex: 1, minHeight: undefined }}>
-              <Text style={{ color: COLORS.success, fontSize: 13, fontWeight: '700', marginBottom: 10 }}>
+            <Card style={{ flex: 1, minHeight: undefined }} colors={colors}>
+              <Text style={{ color: colors.success, fontSize: 13, fontWeight: '700', marginBottom: 10 }}>
                 ✅ Green Flags
               </Text>
               <View style={{ gap: 7 }}>
@@ -745,10 +744,10 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
                   const flagCount = String(item.count);
                   return (
                     <View key={item.label} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ color: COLORS.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
+                      <Text style={{ color: colors.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
                         {flagLabel}
                       </Text>
-                      <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginLeft: 4 }}>{flagCount}</Text>
+                      <Text style={{ color: colors.textSecondary, fontSize: 12, marginLeft: 4 }}>{flagCount}</Text>
                     </View>
                   );
                 })}
@@ -763,13 +762,13 @@ function PeopleTab({ ps }: { ps: PeopleStats }) {
 
 // ─── Dating tab content ───────────────────────────────────────────────────────
 
-function DatingTab({ ds }: { ds: DateStats }) {
+function DatingTab({ ds, colors }: { ds: DateStats; colors: Colors }) {
   const isEmpty = ds.total === 0;
 
   if (isEmpty) {
     return (
       <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: 60, paddingHorizontal: 32 }}>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22 }}>
+        <Text style={{ color: colors.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22 }}>
           No data yet — add people and plan dates to see your insights!
         </Text>
       </View>
@@ -788,22 +787,22 @@ function DatingTab({ ds }: { ds: DateStats }) {
 
   return (
     <View style={{ gap: CARD_GAP }}>
-      <InsightsCard insights={datingInsights} />
+      <InsightsCard insights={datingInsights} colors={colors} />
       {/* Row 1: Total Dates + Avg Rating */}
       <View style={{ flexDirection: 'row', gap: CARD_GAP }}>
-        <Card style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.primary, fontSize: 32, fontWeight: '800', marginBottom: 4 }}>
+        <Card style={{ flex: 1 }} colors={colors}>
+          <Text style={{ color: colors.primary, fontSize: 32, fontWeight: '800', marginBottom: 4 }}>
             {ds.total}
           </Text>
-          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '600' }}>Total Dates</Text>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Total Dates</Text>
         </Card>
 
-        <Card style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
+        <Card style={{ flex: 1 }} colors={colors}>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
             Avg Rating
           </Text>
-          <RatingStars rating={ds.avgRating} />
-          <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 6 }}>
+          <RatingStars rating={ds.avgRating} colors={colors} />
+          <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 6 }}>
             ★ {avgRatingDisplay}
           </Text>
         </Card>
@@ -811,58 +810,58 @@ function DatingTab({ ds }: { ds: DateStats }) {
 
       {/* Row 2: Upcoming + Completed */}
       <View style={{ flexDirection: 'row', gap: CARD_GAP }}>
-        <Card style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.accent, fontSize: 32, fontWeight: '800', marginBottom: 4 }}>
+        <Card style={{ flex: 1 }} colors={colors}>
+          <Text style={{ color: colors.accent, fontSize: 32, fontWeight: '800', marginBottom: 4 }}>
             {ds.upcoming}
           </Text>
-          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '600' }}>Upcoming</Text>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Upcoming</Text>
         </Card>
 
-        <Card style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.success, fontSize: 32, fontWeight: '800', marginBottom: 4 }}>
+        <Card style={{ flex: 1 }} colors={colors}>
+          <Text style={{ color: colors.success, fontSize: 32, fontWeight: '800', marginBottom: 4 }}>
             {ds.completed}
           </Text>
-          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '600' }}>Completed</Text>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Completed</Text>
         </Card>
       </View>
 
       {/* Row 3: Want Another Date + Top Date Partner */}
       <View style={{ flexDirection: 'row', gap: CARD_GAP }}>
-        <Card style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '600', marginBottom: 6 }}>
+        <Card style={{ flex: 1 }} colors={colors}>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600', marginBottom: 6 }}>
             Want Another Date
           </Text>
-          <Text style={{ color: COLORS.success, fontSize: 22, fontWeight: '800', marginBottom: 2 }}>
+          <Text style={{ color: colors.success, fontSize: 22, fontWeight: '800', marginBottom: 2 }}>
             {wantAnotherDisplay}
           </Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 11 }}>of completed dates</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 11 }}>of completed dates</Text>
         </Card>
 
-        <Card style={{ flex: 1 }}>
-          <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '600', marginBottom: 6 }}>
+        <Card style={{ flex: 1 }} colors={colors}>
+          <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600', marginBottom: 6 }}>
             Top Date Partner
           </Text>
-          <Text style={{ color: COLORS.primary, fontSize: 16, fontWeight: '800', marginBottom: 2 }} numberOfLines={1}>
+          <Text style={{ color: colors.primary, fontSize: 16, fontWeight: '800', marginBottom: 2 }} numberOfLines={1}>
             {ds.topPartnerName}
           </Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 11 }}>{topPartnerSubDisplay}</Text>
+          <Text style={{ color: colors.textSecondary, fontSize: 11 }}>{topPartnerSubDisplay}</Text>
         </Card>
       </View>
 
       {/* Dates Per Month bar chart */}
-      <Card style={{ minHeight: undefined }}>
-        <CardTitle>Dates Per Month</CardTitle>
-        <BarChart data={ds.monthlyFrequency} />
+      <Card style={{ minHeight: undefined }} colors={colors}>
+        <CardTitle colors={colors}>Dates Per Month</CardTitle>
+        <BarChart data={ds.monthlyFrequency} colors={colors} />
       </Card>
 
       {/* Favorite Spot */}
-      <Card style={{ minHeight: undefined }}>
-        <CardTitle>Favorite Spot</CardTitle>
-        <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: '700' }}>
+      <Card style={{ minHeight: undefined }} colors={colors}>
+        <CardTitle colors={colors}>Favorite Spot</CardTitle>
+        <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>
           {locationDisplay}
         </Text>
         {ds.mostVisitedLocation !== '—' && (
-          <Text style={{ color: COLORS.textSecondary, fontSize: 12, marginTop: 4 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 4 }}>
             most visited location
           </Text>
         )}
@@ -870,22 +869,22 @@ function DatingTab({ ds }: { ds: DateStats }) {
 
       {/* Best Date */}
       {ds.bestDateTitle !== '—' && (
-        <Card style={{ minHeight: undefined }}>
-          <CardTitle>Best Date</CardTitle>
-          <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700', marginBottom: 4 }} numberOfLines={2}>
+        <Card style={{ minHeight: undefined }} colors={colors}>
+          <CardTitle colors={colors}>Best Date</CardTitle>
+          <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 4 }} numberOfLines={2}>
             {ds.bestDateTitle}
           </Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, marginBottom: 8 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, marginBottom: 8 }}>
             {ds.bestDatePerson}
           </Text>
-          {bestDateRatingStars > 0 && <RatingStars rating={bestDateRatingStars} />}
+          {bestDateRatingStars > 0 && <RatingStars rating={bestDateRatingStars} colors={colors} />}
         </Card>
       )}
 
       {/* What Went Well */}
       {ds.recentWentWell.length > 0 && (
-        <Card style={{ minHeight: undefined }}>
-          <CardTitle>What Went Well</CardTitle>
+        <Card style={{ minHeight: undefined }} colors={colors}>
+          <CardTitle colors={colors}>What Went Well</CardTitle>
           <View style={{ gap: 10 }}>
             {ds.recentWentWell.map((snippet, idx) => {
               const snippetKey = String(idx);
@@ -893,14 +892,14 @@ function DatingTab({ ds }: { ds: DateStats }) {
                 <View
                   key={snippetKey}
                   style={{
-                    backgroundColor: '#F5F5F5',
+                    backgroundColor: colors.surfaceSecondary,
                     borderRadius: 8,
                     padding: 12,
                     borderLeftWidth: 3,
-                    borderLeftColor: COLORS.success,
+                    borderLeftColor: colors.success,
                   }}
                 >
-                  <Text style={{ color: COLORS.text, fontSize: 13, lineHeight: 19, fontStyle: 'italic' }}>
+                  <Text style={{ color: colors.text, fontSize: 13, lineHeight: 19, fontStyle: 'italic' }}>
                     {snippet}
                   </Text>
                 </View>
@@ -923,6 +922,7 @@ interface AnalyticsSummary {
 
 export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [persons, setPersons] = useState<Person[]>([]);
   const [dates, setDates] = useState<DateEntry[]>([]);
   const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary | null>(null);
@@ -967,18 +967,18 @@ export default function AnalyticsScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={COLORS.primary} size="large" />
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
         <View
           style={{
-            backgroundColor: COLORS.dangerMuted,
+            backgroundColor: colors.dangerMuted,
             borderRadius: 12,
             padding: 20,
             width: '100%',
@@ -986,10 +986,10 @@ export default function AnalyticsScreen() {
             marginBottom: 16,
           }}
         >
-          <Text style={{ color: COLORS.danger, fontSize: 16, fontWeight: '700', marginBottom: 4 }}>
+          <Text style={{ color: colors.danger, fontSize: 16, fontWeight: '700', marginBottom: 4 }}>
             Could not load insights
           </Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, textAlign: 'center' }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, textAlign: 'center' }}>
             Check your connection and try again
           </Text>
         </View>
@@ -999,7 +999,7 @@ export default function AnalyticsScreen() {
             loadData();
           }}
           style={{
-            backgroundColor: COLORS.primary,
+            backgroundColor: colors.primary,
             borderRadius: 10,
             paddingHorizontal: 28,
             paddingVertical: 12,
@@ -1015,10 +1015,10 @@ export default function AnalyticsScreen() {
   const ds = computeDateStats(dates, persons, analyticsSummary);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Tab pills */}
-      <View style={{ backgroundColor: '#FFFFFF', paddingTop: 14 }}>
-        <TabPills active={activeTab} onChange={setActiveTab} />
+      <View style={{ backgroundColor: colors.background, paddingTop: 14 }}>
+        <TabPills active={activeTab} onChange={setActiveTab} colors={colors} />
       </View>
 
       <Animated.ScrollView
@@ -1032,9 +1032,9 @@ export default function AnalyticsScreen() {
         contentInsetAdjustmentBehavior="automatic"
       >
         {activeTab === 'people' ? (
-          <PeopleTab ps={ps} />
+          <PeopleTab ps={ps} colors={colors} />
         ) : (
-          <DatingTab ds={ds} />
+          <DatingTab ds={ds} colors={colors} />
         )}
       </Animated.ScrollView>
     </View>

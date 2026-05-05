@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { X, MapPin, Shield, Share2, ChevronDown, Check } from 'lucide-react-native';
-import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet, apiPost } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +28,7 @@ interface Person {
 export default function DateSafetyScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [persons, setPersons] = useState<Person[]>([]);
   const [selectedPersonId, setSelectedPersonId] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -102,7 +103,7 @@ export default function DateSafetyScreen() {
   const selectedPersonName = selectedPerson ? selectedPerson.name : '';
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* FIXED HEADER */}
       <View
         style={{
@@ -113,7 +114,7 @@ export default function DateSafetyScreen() {
           paddingTop: Math.max(insets.top, 16),
           paddingBottom: 16,
           borderBottomWidth: 1,
-          borderBottomColor: COLORS.border,
+          borderBottomColor: colors.border,
         }}
       >
         <AnimatedPressable
@@ -125,14 +126,14 @@ export default function DateSafetyScreen() {
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: COLORS.surface,
+            backgroundColor: colors.surface,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <X size={18} color={COLORS.textSecondary} />
+          <X size={18} color={colors.textSecondary} />
         </AnimatedPressable>
-        <Text style={{ color: COLORS.text, fontSize: 17, fontWeight: '700' }}>Safety Check-In 🛡️</Text>
+        <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>Safety Check-In 🛡️</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -144,7 +145,7 @@ export default function DateSafetyScreen() {
       >
         {/* Person dropdown */}
         <View style={{ zIndex: 100, position: 'relative' }}>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
             Who's this date with?
           </Text>
           <Pressable
@@ -153,11 +154,11 @@ export default function DateSafetyScreen() {
               setDropdownOpen(!dropdownOpen);
             }}
             style={{
-              backgroundColor: COLORS.surface,
+              backgroundColor: colors.surface,
               borderRadius: 12,
               padding: 14,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: colors.border,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -175,15 +176,15 @@ export default function DateSafetyScreen() {
                 />
               )}
               {selectedPersonName ? (
-                <Text style={{ color: COLORS.text, fontSize: 15 }}>{selectedPersonName}</Text>
+                <Text style={{ color: colors.text, fontSize: 15 }}>{selectedPersonName}</Text>
               ) : (
-                <Text style={{ color: COLORS.textTertiary, fontSize: 15 }}>Select a person...</Text>
+                <Text style={{ color: colors.textTertiary, fontSize: 15 }}>Select a person...</Text>
               )}
               {selectedPerson?.is_benched && (
                 <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
               )}
             </View>
-            <ChevronDown size={16} color={COLORS.textSecondary} />
+            <ChevronDown size={16} color={colors.textSecondary} />
           </Pressable>
           {dropdownOpen && (
             <View
@@ -193,10 +194,10 @@ export default function DateSafetyScreen() {
                 left: 0,
                 right: 0,
                 zIndex: 999,
-                backgroundColor: COLORS.surface,
+                backgroundColor: colors.surface,
                 borderRadius: 12,
                 borderWidth: 1,
-                borderColor: COLORS.border,
+                borderColor: colors.border,
                 marginTop: 4,
                 overflow: 'hidden',
                 shadowColor: '#000',
@@ -222,7 +223,7 @@ export default function DateSafetyScreen() {
                       paddingHorizontal: 16,
                       paddingVertical: 14,
                       borderBottomWidth: isLast ? 0 : 1,
-                      borderBottomColor: COLORS.border,
+                      borderBottomColor: colors.border,
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -230,12 +231,12 @@ export default function DateSafetyScreen() {
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
-                      <Text style={{ color: COLORS.text, fontSize: 15 }}>{p.name}</Text>
+                      <Text style={{ color: colors.text, fontSize: 15 }}>{p.name}</Text>
                       {p.is_benched && (
                         <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
                       )}
                     </View>
-                    {isSelected && <Check size={16} color={COLORS.success} />}
+                    {isSelected && <Check size={16} color={colors.success} />}
                   </Pressable>
                 );
               })}
@@ -246,7 +247,7 @@ export default function DateSafetyScreen() {
         {/* Info banner */}
         <View
           style={{
-            backgroundColor: COLORS.successMuted,
+            backgroundColor: colors.successMuted,
             borderRadius: 12,
             padding: 14,
             flexDirection: 'row',
@@ -254,34 +255,34 @@ export default function DateSafetyScreen() {
             gap: 10,
           }}
         >
-          <Shield size={20} color={COLORS.success} />
-          <Text style={{ color: COLORS.success, fontSize: 13, flex: 1, lineHeight: 18 }}>
+          <Shield size={20} color={colors.success} />
+          <Text style={{ color: colors.success, fontSize: 13, flex: 1, lineHeight: 18 }}>
             Share your date details with trusted contacts for safety
           </Text>
         </View>
 
         {/* Location */}
         <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
             Where are you?
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <MapPin size={16} color={COLORS.textTertiary} />
+            <MapPin size={16} color={colors.textTertiary} />
             <TextInput
               value={location}
               onChangeText={setLocation}
               placeholder="Address or venue name"
-              placeholderTextColor={COLORS.textTertiary}
+              placeholderTextColor={colors.textTertiary}
               style={{
                 flex: 1,
-                backgroundColor: COLORS.surfaceSecondary,
+                backgroundColor: colors.surfaceSecondary,
                 borderRadius: 12,
                 paddingHorizontal: 14,
                 paddingVertical: 13,
-                color: COLORS.text,
+                color: colors.text,
                 fontSize: 15,
                 borderWidth: 1,
-                borderColor: COLORS.border,
+                borderColor: colors.border,
               }}
             />
           </View>
@@ -289,23 +290,23 @@ export default function DateSafetyScreen() {
 
         {/* Appearance */}
         <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
             What are they wearing / driving? (optional)
           </Text>
           <TextInput
             value={appearance}
             onChangeText={setAppearance}
             placeholder="e.g. Blue jacket, drives a red Honda..."
-            placeholderTextColor={COLORS.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             multiline
             style={{
-              backgroundColor: COLORS.surfaceSecondary,
+              backgroundColor: colors.surfaceSecondary,
               borderRadius: 12,
               padding: 14,
-              color: COLORS.text,
+              color: colors.text,
               fontSize: 15,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: colors.border,
               minHeight: 80,
             }}
           />
@@ -313,7 +314,7 @@ export default function DateSafetyScreen() {
 
         {/* Emergency contacts */}
         <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
             Emergency Contacts (up to 3)
           </Text>
           <View style={{ gap: 8 }}>
@@ -324,29 +325,29 @@ export default function DateSafetyScreen() {
                     width: 28,
                     height: 28,
                     borderRadius: 14,
-                    backgroundColor: COLORS.successMuted,
+                    backgroundColor: colors.successMuted,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ color: COLORS.success, fontSize: 12, fontWeight: '700' }}>{index + 1}</Text>
+                  <Text style={{ color: colors.success, fontSize: 12, fontWeight: '700' }}>{index + 1}</Text>
                 </View>
                 <TextInput
                   value={contact}
                   onChangeText={(v) => updateContact(index, v)}
                   placeholder={`Phone number ${index + 1}`}
-                  placeholderTextColor={COLORS.textTertiary}
+                  placeholderTextColor={colors.textTertiary}
                   keyboardType="phone-pad"
                   style={{
                     flex: 1,
-                    backgroundColor: COLORS.surfaceSecondary,
+                    backgroundColor: colors.surfaceSecondary,
                     borderRadius: 12,
                     paddingHorizontal: 14,
                     paddingVertical: 12,
-                    color: COLORS.text,
+                    color: colors.text,
                     fontSize: 15,
                     borderWidth: 1,
-                    borderColor: COLORS.border,
+                    borderColor: colors.border,
                   }}
                 />
               </View>
@@ -358,7 +359,7 @@ export default function DateSafetyScreen() {
           onPress={handleShare}
           disabled={!canShare || saving}
           style={{
-            backgroundColor: canShare ? COLORS.success : COLORS.surfaceSecondary,
+            backgroundColor: canShare ? colors.success : colors.surfaceSecondary,
             borderRadius: 14,
             paddingVertical: 16,
             alignItems: 'center',
@@ -371,8 +372,8 @@ export default function DateSafetyScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Share2 size={18} color={canShare ? '#fff' : COLORS.textTertiary} />
-              <Text style={{ color: canShare ? '#fff' : COLORS.textTertiary, fontSize: 16, fontWeight: '700' }}>
+              <Share2 size={18} color={canShare ? '#fff' : colors.textTertiary} />
+              <Text style={{ color: canShare ? '#fff' : colors.textTertiary, fontSize: 16, fontWeight: '700' }}>
                 Share My Location
               </Text>
             </>
@@ -380,7 +381,7 @@ export default function DateSafetyScreen() {
         </AnimatedPressable>
 
         {!canShare && (
-          <Text style={{ color: COLORS.textTertiary, fontSize: 12, textAlign: 'center' }}>
+          <Text style={{ color: colors.textTertiary, fontSize: 12, textAlign: 'center' }}>
             Select a person, enter location, and add at least one contact
           </Text>
         )}

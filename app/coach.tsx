@@ -11,7 +11,7 @@ import {
 import { Send, MessageCircle } from 'lucide-react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
-import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet, apiPost } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,6 +37,7 @@ const SUGGESTED_PROMPTS = [
 
 export default function CoachScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const params = useLocalSearchParams<{ personId?: string }>();
   const personId = params.personId;
 
@@ -116,6 +117,8 @@ export default function CoachScreen() {
 
   const renderMessage = ({ item }: { item: ChatMessage }) => {
     const isUser = item.role === 'user';
+    const bubbleBg = isUser ? colors.primary : colors.surface;
+    const textColor = isUser ? '#fff' : colors.text;
     return (
       <View
         style={{
@@ -144,22 +147,27 @@ export default function CoachScreen() {
         <View
           style={{
             maxWidth: '75%',
-            backgroundColor: isUser ? COLORS.primary : COLORS.surface,
+            backgroundColor: bubbleBg,
             borderRadius: 16,
             borderBottomRightRadius: isUser ? 4 : 16,
             borderBottomLeftRadius: isUser ? 16 : 4,
             padding: 12,
             borderWidth: isUser ? 0 : 1,
-            borderColor: COLORS.border,
+            borderColor: colors.border,
           }}
         >
-          <Text style={{ color: isUser ? '#fff' : COLORS.text, fontSize: 15, lineHeight: 21 }}>
+          <Text style={{ color: textColor, fontSize: 15, lineHeight: 21 }}>
             {item.content}
           </Text>
         </View>
       </View>
     );
   };
+
+  const inputBarHasText = !!input.trim();
+  const sendBtnBg = inputBarHasText ? colors.primary : colors.surface;
+  const sendBtnBorder = inputBarHasText ? colors.primary : colors.border;
+  const sendIconColor = inputBarHasText ? '#fff' : colors.textTertiary;
 
   const inputBar = (
     <View
@@ -169,27 +177,27 @@ export default function CoachScreen() {
         padding: 12,
         paddingBottom: insets.bottom + 12,
         borderTopWidth: 1,
-        borderTopColor: COLORS.border,
+        borderTopColor: colors.border,
         gap: 10,
-        backgroundColor: COLORS.background,
+        backgroundColor: colors.background,
       }}
     >
       <TextInput
         value={input}
         onChangeText={setInput}
         placeholder="Ask me anything..."
-        placeholderTextColor={COLORS.textTertiary}
+        placeholderTextColor={colors.textTertiary}
         multiline
         style={{
           flex: 1,
-          backgroundColor: COLORS.surface,
+          backgroundColor: colors.surface,
           borderRadius: 20,
           paddingHorizontal: 16,
           paddingVertical: 10,
-          color: COLORS.text,
+          color: colors.text,
           fontSize: 15,
           borderWidth: 1,
-          borderColor: COLORS.border,
+          borderColor: colors.border,
           maxHeight: 100,
         }}
       />
@@ -203,17 +211,17 @@ export default function CoachScreen() {
           width: 44,
           height: 44,
           borderRadius: 22,
-          backgroundColor: input.trim() ? COLORS.primary : COLORS.surface,
+          backgroundColor: sendBtnBg,
           alignItems: 'center',
           justifyContent: 'center',
           borderWidth: 1,
-          borderColor: input.trim() ? COLORS.primary : COLORS.border,
+          borderColor: sendBtnBorder,
         }}
       >
         {loading ? (
-          <ActivityIndicator color={input.trim() ? '#fff' : COLORS.textTertiary} size="small" />
+          <ActivityIndicator color={sendIconColor} size="small" />
         ) : (
-          <Send size={18} color={input.trim() ? '#fff' : COLORS.textTertiary} />
+          <Send size={18} color={sendIconColor} />
         )}
       </AnimatedPressable>
     </View>
@@ -223,7 +231,7 @@ export default function CoachScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: COLORS.background }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
@@ -267,7 +275,7 @@ export default function CoachScreen() {
 
       {initialLoading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={COLORS.primary} />
+          <ActivityIndicator color={colors.primary} />
         </View>
       ) : messages.length === 0 ? (
         <View style={{ flex: 1 }}>
@@ -285,12 +293,12 @@ export default function CoachScreen() {
             >
               <MessageCircle size={32} color="#A855F7" />
             </View>
-            <Text style={{ color: COLORS.text, fontSize: 18, fontWeight: '700', marginBottom: 8 }}>
+            <Text style={{ color: colors.text, fontSize: 18, fontWeight: '700', marginBottom: 8 }}>
               Your Dating Coach
             </Text>
             <Text
               style={{
-                color: COLORS.textSecondary,
+                color: colors.textSecondary,
                 fontSize: 14,
                 textAlign: 'center',
                 marginBottom: 28,
@@ -312,14 +320,14 @@ export default function CoachScreen() {
                 >
                   <View
                     style={{
-                      backgroundColor: COLORS.surface,
+                      backgroundColor: colors.surface,
                       borderRadius: 12,
                       padding: 14,
                       borderWidth: 1,
-                      borderColor: COLORS.border,
+                      borderColor: colors.border,
                     }}
                   >
-                    <Text style={{ color: COLORS.text, fontSize: 14 }}>{prompt}</Text>
+                    <Text style={{ color: colors.text, fontSize: 14 }}>{prompt}</Text>
                   </View>
                 </AnimatedPressable>
               ))}
@@ -356,15 +364,15 @@ export default function CoachScreen() {
               </View>
               <View
                 style={{
-                  backgroundColor: COLORS.surface,
+                  backgroundColor: colors.surface,
                   borderRadius: 16,
                   borderBottomLeftRadius: 4,
                   padding: 12,
                   borderWidth: 1,
-                  borderColor: COLORS.border,
+                  borderColor: colors.border,
                 }}
               >
-                <ActivityIndicator color={COLORS.textSecondary} size="small" />
+                <ActivityIndicator color={colors.textSecondary} size="small" />
               </View>
             </View>
           )}

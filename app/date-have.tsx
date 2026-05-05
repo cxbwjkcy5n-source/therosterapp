@@ -15,7 +15,7 @@ import { router } from 'expo-router';
 import { X, Calendar, Check, ChevronDown } from 'lucide-react-native';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet, apiPost } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,6 +37,7 @@ interface Person {
 export default function DateHaveScreen() {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [persons, setPersons] = useState<Person[]>([]);
   const [selectedPersonId, setSelectedPersonId] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -60,7 +61,6 @@ export default function DateHaveScreen() {
     ]).then(([activeData, benchedData]) => {
       const active = activeData.persons || [];
       const benched = benchedData.persons || [];
-      // Merge, avoiding duplicates
       const allMap = new Map<string, Person>();
       for (const p of active) allMap.set(p.id, { ...p, is_benched: false });
       for (const p of benched) allMap.set(p.id, { ...p, is_benched: true });
@@ -110,27 +110,27 @@ export default function DateHaveScreen() {
 
   if (success) {
     return (
-      <View style={{ flex: 1, backgroundColor: COLORS.background, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
         <View
           style={{
             width: 72,
             height: 72,
             borderRadius: 36,
-            backgroundColor: COLORS.successMuted,
+            backgroundColor: colors.successMuted,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Check size={36} color={COLORS.success} />
+          <Check size={36} color={colors.success} />
         </View>
-        <Text style={{ color: COLORS.text, fontSize: 20, fontWeight: '700' }}>Date saved!</Text>
-        <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>Have a great time 🎉</Text>
+        <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>Date saved!</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 14 }}>Have a great time 🎉</Text>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* FIXED HEADER */}
       <View
         style={{
@@ -141,7 +141,7 @@ export default function DateHaveScreen() {
           paddingTop: Math.max(insets.top, 16),
           paddingBottom: 16,
           borderBottomWidth: 1,
-          borderBottomColor: COLORS.border,
+          borderBottomColor: colors.border,
         }}
       >
         <AnimatedPressable
@@ -153,14 +153,14 @@ export default function DateHaveScreen() {
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: COLORS.surface,
+            backgroundColor: colors.surface,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <X size={18} color={COLORS.textSecondary} />
+          <X size={18} color={colors.textSecondary} />
         </AnimatedPressable>
-        <Text style={{ color: COLORS.text, fontSize: 17, fontWeight: '700' }}>I Have a Date! 🎉</Text>
+        <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>I Have a Date! 🎉</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -172,7 +172,7 @@ export default function DateHaveScreen() {
       >
         {/* Person dropdown */}
         <View style={{ zIndex: 100, position: 'relative' }}>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
             Who's this date with?
           </Text>
           <Pressable
@@ -181,11 +181,11 @@ export default function DateHaveScreen() {
               setDropdownOpen(!dropdownOpen);
             }}
             style={{
-              backgroundColor: COLORS.surface,
+              backgroundColor: colors.surface,
               borderRadius: 12,
               padding: 14,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: colors.border,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -197,12 +197,12 @@ export default function DateHaveScreen() {
                   width: 8, height: 8, borderRadius: 4,
                   backgroundColor: selectedPerson.is_benched ? '#E53935' : '#4CAF50',
                 }} />
-                <Text style={{ color: COLORS.text, fontSize: 15 }}>{selectedPerson.name}</Text>
+                <Text style={{ color: colors.text, fontSize: 15 }}>{selectedPerson.name}</Text>
               </View>
             ) : (
-              <Text style={{ color: COLORS.textTertiary, fontSize: 15 }}>Select a person...</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 15 }}>Select a person...</Text>
             )}
-            <ChevronDown size={16} color={COLORS.textSecondary} />
+            <ChevronDown size={16} color={colors.textSecondary} />
           </Pressable>
           {dropdownOpen && (
             <View
@@ -212,10 +212,10 @@ export default function DateHaveScreen() {
                 left: 0,
                 right: 0,
                 zIndex: 999,
-                backgroundColor: COLORS.surface,
+                backgroundColor: colors.surface,
                 borderRadius: 12,
                 borderWidth: 1,
-                borderColor: COLORS.border,
+                borderColor: colors.border,
                 marginTop: 4,
                 overflow: 'hidden',
                 shadowColor: '#000',
@@ -240,7 +240,7 @@ export default function DateHaveScreen() {
                       paddingHorizontal: 16,
                       paddingVertical: 14,
                       borderBottomWidth: isLast ? 0 : 1,
-                      borderBottomColor: COLORS.border,
+                      borderBottomColor: colors.border,
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'space-between',
@@ -251,12 +251,12 @@ export default function DateHaveScreen() {
                         width: 8, height: 8, borderRadius: 4,
                         backgroundColor: p.is_benched ? '#E53935' : '#4CAF50',
                       }} />
-                      <Text style={{ color: COLORS.text, fontSize: 15 }}>{p.name}</Text>
+                      <Text style={{ color: colors.text, fontSize: 15 }}>{p.name}</Text>
                       {p.is_benched && (
                         <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
                       )}
                     </View>
-                    {isSelected && <Check size={16} color={COLORS.primary} />}
+                    {isSelected && <Check size={16} color={colors.primary} />}
                   </Pressable>
                 );
               })}
@@ -280,7 +280,7 @@ export default function DateHaveScreen() {
 
         {/* Date & Time */}
         <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
             Date & Time
           </Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -293,18 +293,18 @@ export default function DateHaveScreen() {
             >
               <View
                 style={{
-                  backgroundColor: COLORS.surface,
+                  backgroundColor: colors.surface,
                   borderRadius: 12,
                   padding: 14,
                   borderWidth: 1,
-                  borderColor: COLORS.border,
+                  borderColor: colors.border,
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 8,
                 }}
               >
-                <Calendar size={16} color={COLORS.primary} />
-                <Text style={{ color: COLORS.text, fontSize: 14 }}>{dateLabel}</Text>
+                <Calendar size={16} color={colors.primary} />
+                <Text style={{ color: colors.text, fontSize: 14 }}>{dateLabel}</Text>
               </View>
             </AnimatedPressable>
             <AnimatedPressable
@@ -316,15 +316,15 @@ export default function DateHaveScreen() {
             >
               <View
                 style={{
-                  backgroundColor: COLORS.surface,
+                  backgroundColor: colors.surface,
                   borderRadius: 12,
                   padding: 14,
                   borderWidth: 1,
-                  borderColor: COLORS.border,
+                  borderColor: colors.border,
                   alignItems: 'center',
                 }}
               >
-                <Text style={{ color: COLORS.text, fontSize: 14 }}>{timeLabel}</Text>
+                <Text style={{ color: colors.text, fontSize: 14 }}>{timeLabel}</Text>
               </View>
             </AnimatedPressable>
           </View>
@@ -361,7 +361,7 @@ export default function DateHaveScreen() {
 
         {/* Reminders */}
         <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
             Reminders
           </Text>
           <View style={{ gap: 8 }}>
@@ -380,11 +380,11 @@ export default function DateHaveScreen() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 12,
-                  backgroundColor: COLORS.surface,
+                  backgroundColor: colors.surface,
                   borderRadius: 12,
                   padding: 14,
                   borderWidth: 1,
-                  borderColor: r.value ? COLORS.primary : COLORS.border,
+                  borderColor: r.value ? colors.primary : colors.border,
                 }}
               >
                 <View
@@ -392,16 +392,16 @@ export default function DateHaveScreen() {
                     width: 22,
                     height: 22,
                     borderRadius: 6,
-                    backgroundColor: r.value ? COLORS.primary : COLORS.surfaceSecondary,
+                    backgroundColor: r.value ? colors.primary : colors.surfaceSecondary,
                     borderWidth: 1,
-                    borderColor: r.value ? COLORS.primary : COLORS.border,
+                    borderColor: r.value ? colors.primary : colors.border,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
                   {r.value && <Check size={14} color="#fff" />}
                 </View>
-                <Text style={{ color: r.value ? COLORS.text : COLORS.textSecondary, fontSize: 14 }}>
+                <Text style={{ color: r.value ? colors.text : colors.textSecondary, fontSize: 14 }}>
                   {r.label}
                 </Text>
               </Pressable>
@@ -411,23 +411,23 @@ export default function DateHaveScreen() {
 
         {/* Notes */}
         <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
             Notes (optional)
           </Text>
           <TextInput
             value={notes}
             onChangeText={setNotes}
             placeholder="Any notes about the date..."
-            placeholderTextColor={COLORS.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             multiline
             style={{
-              backgroundColor: COLORS.surfaceSecondary,
+              backgroundColor: colors.surfaceSecondary,
               borderRadius: 12,
               padding: 14,
-              color: COLORS.text,
+              color: colors.text,
               fontSize: 15,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: colors.border,
               minHeight: 80,
             }}
           />
@@ -437,7 +437,7 @@ export default function DateHaveScreen() {
           onPress={handleSave}
           disabled={!canSave || saving}
           style={{
-            backgroundColor: canSave ? COLORS.primary : COLORS.surfaceSecondary,
+            backgroundColor: canSave ? colors.primary : colors.surfaceSecondary,
             borderRadius: 14,
             paddingVertical: 16,
             alignItems: 'center',
@@ -446,7 +446,7 @@ export default function DateHaveScreen() {
           {saving ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={{ color: canSave ? '#fff' : COLORS.textTertiary, fontSize: 16, fontWeight: '700' }}>
+            <Text style={{ color: canSave ? '#fff' : colors.textTertiary, fontSize: 16, fontWeight: '700' }}>
               Save Date
             </Text>
           )}

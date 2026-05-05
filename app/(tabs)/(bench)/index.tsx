@@ -13,7 +13,6 @@ import {
 import { router, useFocusEffect } from 'expo-router';
 import { Users } from 'lucide-react-native';
 import { Image } from 'expo-image';
-import { COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,7 +49,17 @@ function formatBenchedDate(updatedAt?: string) {
   return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
 }
 
-function BenchCard({ item, onUnbench, onArchive }: { item: Person; onUnbench: (p: Person) => void; onArchive: (p: Person) => void }) {
+function BenchCard({
+  item,
+  onUnbench,
+  onArchive,
+  colors,
+}: {
+  item: Person;
+  onUnbench: (p: Person) => void;
+  onArchive: (p: Person) => void;
+  colors: ReturnType<typeof useTheme>['colors'];
+}) {
   const hasPhoto = !!item.photo_url;
   const initials = getInitials(item.name);
   const benchedDateLabel = formatBenchedDate(item.updated_at);
@@ -109,11 +118,11 @@ function BenchCard({ item, onUnbench, onArchive }: { item: Person; onUnbench: (p
       <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
         <View
           style={{
-            backgroundColor: '#fff',
+            backgroundColor: colors.surface,
             borderRadius: 14,
             padding: 14,
             borderWidth: 1,
-            borderColor: COLORS.border,
+            borderColor: colors.border,
             flexDirection: 'row',
             alignItems: 'center',
             gap: 12,
@@ -159,19 +168,19 @@ function BenchCard({ item, onUnbench, onArchive }: { item: Person; onUnbench: (p
           {/* Info */}
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 2 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: '#1A1A1A' }} numberOfLines={1}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text }} numberOfLines={1}>
                 {item.name}
               </Text>
               {item.bench_reason ? (
-                <View style={{ backgroundColor: '#F0F0F0', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
-                  <Text style={{ fontSize: 11, color: '#888', fontWeight: '500' }} numberOfLines={1}>
+                <View style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                  <Text style={{ fontSize: 11, color: colors.textSecondary, fontWeight: '500' }} numberOfLines={1}>
                     {item.bench_reason}
                   </Text>
                 </View>
               ) : null}
             </View>
             {benchedOnText ? (
-              <Text style={{ fontSize: 11, color: '#AAAAAA', marginTop: 2 }}>
+              <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
                 {benchedOnText}
               </Text>
             ) : null}
@@ -205,7 +214,19 @@ function BenchCard({ item, onUnbench, onArchive }: { item: Person; onUnbench: (p
   );
 }
 
-function AnimatedBenchCard({ item, index, onUnbench, onArchive }: { item: Person; index: number; onUnbench: (p: Person) => void; onArchive: (p: Person) => void }) {
+function AnimatedBenchCard({
+  item,
+  index,
+  onUnbench,
+  onArchive,
+  colors,
+}: {
+  item: Person;
+  index: number;
+  onUnbench: (p: Person) => void;
+  onArchive: (p: Person) => void;
+  colors: ReturnType<typeof useTheme>['colors'];
+}) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(12)).current;
   const fadeOut = useRef(new Animated.Value(1)).current;
@@ -226,7 +247,7 @@ function AnimatedBenchCard({ item, index, onUnbench, onArchive }: { item: Person
 
   return (
     <Animated.View style={{ opacity: Animated.multiply(opacity, fadeOut), transform: [{ translateY }] }}>
-      <BenchCard item={item} onUnbench={onUnbench} onArchive={handleArchive} />
+      <BenchCard item={item} onUnbench={onUnbench} onArchive={handleArchive} colors={colors} />
     </Animated.View>
   );
 }
@@ -375,7 +396,7 @@ export default function BenchScreen() {
           data={persons}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
-            <AnimatedBenchCard item={item} index={index} onUnbench={handleUnbench} onArchive={handleArchive} />
+            <AnimatedBenchCard item={item} index={index} onUnbench={handleUnbench} onArchive={handleArchive} colors={colors} />
           )}
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           contentInsetAdjustmentBehavior="automatic"
