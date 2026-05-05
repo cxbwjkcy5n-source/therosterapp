@@ -1646,23 +1646,7 @@ export default function PersonDetailScreen() {
         {/* What I like about them */}
         <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="What I Like About Them" />
-          {editing ? (
-            <TextInput
-              value={(editData.things_i_like as string) || ''}
-              onChangeText={(v) => {
-                console.log('[PersonDetail] things_i_like updated');
-                update('things_i_like' as keyof Person, v);
-              }}
-              placeholder="What do you genuinely appreciate about this person?"
-              placeholderTextColor="#BBBBBB"
-              multiline
-              style={{
-                backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: 14,
-                color: colors.text, fontSize: 14, borderWidth: 1, borderColor: colors.border,
-                minHeight: 80, textAlignVertical: 'top',
-              }}
-            />
-          ) : displayData.things_i_like ? (
+          {displayData.things_i_like ? (
             <Text style={{ color: colors.text, fontSize: 14, lineHeight: 21, fontStyle: 'italic' }}>
               {'"'}{displayData.things_i_like}{'"'}
             </Text>
@@ -1676,35 +1660,7 @@ export default function PersonDetailScreen() {
         {/* Status card */}
         <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="Status" />
-          {editing ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {[
-                { value: 'talking', label: 'Talking', color: '#2196F3' },
-                { value: 'dating', label: 'Dating', color: '#4CAF50' },
-                { value: 'exclusive', label: 'Exclusive', color: '#9C27B0' },
-                { value: 'fading', label: 'Fading', color: '#9E9E9E' },
-                { value: 'on_hold', label: 'On Hold', color: '#FF9800' },
-              ].map((s) => {
-                const selected = (editData.dating_status as string) === s.value;
-                return (
-                  <Pressable
-                    key={s.value}
-                    onPress={() => {
-                      console.log('[PersonDetail] Dating status selected:', s.value);
-                      update('dating_status' as keyof Person, selected ? '' : s.value);
-                    }}
-                    style={{
-                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-                      backgroundColor: selected ? s.color : '#F5F5F5',
-                      borderWidth: 1.5, borderColor: selected ? s.color : '#E0E0E0',
-                    }}
-                  >
-                    <Text style={{ color: selected ? '#fff' : '#666', fontSize: 13, fontWeight: '600' }}>{s.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ) : displayData.dating_status ? (
+          {editing ? null : displayData.dating_status ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <View style={{
                 width: 10, height: 10, borderRadius: 5,
@@ -1727,58 +1683,16 @@ export default function PersonDetailScreen() {
         {/* Tags card */}
         <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="Tags" />
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: editing ? 10 : 0 }}>
-            {((editing ? editData.tags : displayData.tags) as string[] | undefined || []).map((tag, i) => (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0F4FF', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, gap: 6 }}>
-                <Text style={{ color: '#3F51B5', fontSize: 12, fontWeight: '600' }}>{tag}</Text>
-                {editing && (
-                  <Pressable onPress={() => {
-                    console.log('[PersonDetail] Tag removed at index:', i);
-                    const current = (editData.tags as string[]) || [];
-                    update('tags' as keyof Person, current.filter((_, idx) => idx !== i));
-                  }}>
-                    <Text style={{ color: '#9E9E9E', fontSize: 14 }}>×</Text>
-                  </Pressable>
-                )}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {(displayData.tags as string[] | undefined || []).map((tag, i) => (
+              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryMuted, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
+                <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>{tag}</Text>
               </View>
             ))}
-            {!editing && ((displayData.tags?.length ?? 0) === 0) && (
+            {(displayData.tags?.length ?? 0) === 0 && (
               <Text style={{ color: colors.textTertiary, fontSize: 14, fontStyle: 'italic' }}>Tap edit to add tags...</Text>
             )}
           </View>
-          {editing && (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TextInput
-                value={newTag}
-                onChangeText={setNewTag}
-                placeholder="Add a tag (e.g. Met on Hinge)"
-                placeholderTextColor="#BBBBBB"
-                style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, borderWidth: 1, borderColor: colors.border, color: colors.text }}
-                onSubmitEditing={() => {
-                  if (newTag.trim()) {
-                    console.log('[PersonDetail] Tag added via submit:', newTag.trim());
-                    const current = (editData.tags as string[]) || [];
-                    update('tags' as keyof Person, [...current, newTag.trim()]);
-                    setNewTag('');
-                  }
-                }}
-                returnKeyType="done"
-              />
-              <Pressable
-                onPress={() => {
-                  if (newTag.trim()) {
-                    console.log('[PersonDetail] Tag added via button:', newTag.trim());
-                    const current = (editData.tags as string[]) || [];
-                    update('tags' as keyof Person, [...current, newTag.trim()]);
-                    setNewTag('');
-                  }
-                }}
-                style={{ backgroundColor: RED, borderRadius: 10, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Add</Text>
-              </Pressable>
-            </View>
-          )}
         </View>
 
         {/* Next Step card */}
@@ -1944,38 +1858,49 @@ export default function PersonDetailScreen() {
               <ActivityIndicator color={RED} style={{ marginVertical: 20 }} />
             ) : (
               <>
-                {personPhotos.slice(0, 5).map((photo) => (
-                  <Pressable
-                    key={photo.id}
-                    onLongPress={() => {
-                      console.log('[PersonDetail] Long press on photo:', photo.id);
-                      Alert.alert('Delete Photo', 'Remove this photo?', [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Delete',
-                          style: 'destructive',
-                          onPress: async () => {
-                            console.log('[PersonDetail] Deleting photo:', photo.id);
-                            try {
-                              await apiDelete(`/api/persons/${id}/photos/${photo.id}`);
-                              setPersonPhotos((prev) => prev.filter((p) => p.id !== photo.id));
-                              console.log('[PersonDetail] Photo deleted:', photo.id);
-                            } catch (e) {
-                              console.error('[PersonDetail] Failed to delete photo:', e);
-                              Alert.alert('Error', 'Could not delete photo.');
-                            }
+                {personPhotos.slice(0, 5).map((photo) => {
+                  const isBase64Blob = photo.photo_url.startsWith('data:') && photo.photo_url.length > 500;
+                  return (
+                    <Pressable
+                      key={photo.id}
+                      onLongPress={() => {
+                        console.log('[PersonDetail] Long press on photo:', photo.id);
+                        Alert.alert('Delete Photo', 'Remove this photo?', [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: async () => {
+                              console.log('[PersonDetail] Deleting photo:', photo.id);
+                              try {
+                                await apiDelete(`/api/persons/${id}/photos/${photo.id}`);
+                                setPersonPhotos((prev) => prev.filter((p) => p.id !== photo.id));
+                                console.log('[PersonDetail] Photo deleted:', photo.id);
+                              } catch (e) {
+                                console.error('[PersonDetail] Failed to delete photo:', e);
+                                Alert.alert('Error', 'Could not delete photo.');
+                              }
+                            },
                           },
-                        },
-                      ]);
-                    }}
-                  >
-                    <Image
-                      source={{ uri: photo.photo_url }}
-                      style={{ width: 80, height: 80, borderRadius: 12 }}
-                      contentFit="cover"
-                    />
-                  </Pressable>
-                ))}
+                        ]);
+                      }}
+                    >
+                      {isBase64Blob ? (
+                        <View style={{ width: 80, height: 80, borderRadius: 12, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name="camera-outline" size={28} color="#AAAAAA" />
+                        </View>
+                      ) : (
+                        <Image
+                          source={{ uri: photo.photo_url }}
+                          style={{ width: 80, height: 80, borderRadius: 12 }}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                          onError={(e) => console.error('[PersonDetail] Photo load error:', e)}
+                        />
+                      )}
+                    </Pressable>
+                  );
+                })}
                 {personPhotos.length < 5 && (
                   <Pressable
                     onPress={async () => {
@@ -2810,6 +2735,114 @@ export default function PersonDetailScreen() {
                   />
                 ))}
               </View>
+            </View>
+          </View>
+        )}
+
+        {/* ── What I Like About Them (edit mode only) ──────────────────── */}
+        {editing && (
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, marginHorizontal: 16, marginTop: 14, ...CARD_SHADOW }}>
+            <SectionHeader label="What I Like About Them" />
+            <TextInput
+              value={(editData.things_i_like as string) || ''}
+              onChangeText={(v) => {
+                console.log('[PersonDetail] things_i_like updated');
+                update('things_i_like' as keyof Person, v);
+              }}
+              placeholder="What do you genuinely appreciate about this person?"
+              placeholderTextColor="#BBBBBB"
+              multiline
+              style={{
+                backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: 14,
+                color: colors.text, fontSize: 14, borderWidth: 1, borderColor: colors.border,
+                minHeight: 80, textAlignVertical: 'top',
+              }}
+            />
+          </View>
+        )}
+
+        {/* ── Status (edit mode only) ──────────────────────────────────── */}
+        {editing && (
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, marginHorizontal: 16, marginTop: 14, ...CARD_SHADOW }}>
+            <SectionHeader label="Status" />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {[
+                { value: 'talking', label: 'Talking', color: '#2196F3' },
+                { value: 'dating', label: 'Dating', color: '#4CAF50' },
+                { value: 'exclusive', label: 'Exclusive', color: '#9C27B0' },
+                { value: 'fading', label: 'Fading', color: '#9E9E9E' },
+                { value: 'on_hold', label: 'On Hold', color: '#FF9800' },
+              ].map((s) => {
+                const selected = (editData.dating_status as string) === s.value;
+                return (
+                  <Pressable
+                    key={s.value}
+                    onPress={() => {
+                      console.log('[PersonDetail] Dating status selected:', s.value);
+                      update('dating_status' as keyof Person, selected ? '' : s.value);
+                    }}
+                    style={{
+                      paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                      backgroundColor: selected ? s.color : colors.surfaceSecondary,
+                      borderWidth: 1.5, borderColor: selected ? s.color : colors.border,
+                    }}
+                  >
+                    <Text style={{ color: selected ? '#fff' : colors.textSecondary, fontSize: 13, fontWeight: '600' }}>{s.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* ── Tags (edit mode only) ────────────────────────────────────── */}
+        {editing && (
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, marginHorizontal: 16, marginTop: 14, ...CARD_SHADOW }}>
+            <SectionHeader label="Tags" />
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+              {((editData.tags as string[] | undefined) || []).map((tag, i) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryMuted, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, gap: 6 }}>
+                  <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>{tag}</Text>
+                  <Pressable onPress={() => {
+                    console.log('[PersonDetail] Tag removed at index:', i);
+                    const current = (editData.tags as string[]) || [];
+                    update('tags' as keyof Person, current.filter((_, idx) => idx !== i));
+                  }}>
+                    <Text style={{ color: '#9E9E9E', fontSize: 14 }}>×</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TextInput
+                value={newTag}
+                onChangeText={setNewTag}
+                placeholder="Add a tag (e.g. Met on Hinge)"
+                placeholderTextColor="#BBBBBB"
+                style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 13, borderWidth: 1, borderColor: colors.border, color: colors.text }}
+                onSubmitEditing={() => {
+                  if (newTag.trim()) {
+                    console.log('[PersonDetail] Tag added via submit:', newTag.trim());
+                    const current = (editData.tags as string[]) || [];
+                    update('tags' as keyof Person, [...current, newTag.trim()]);
+                    setNewTag('');
+                  }
+                }}
+                returnKeyType="done"
+              />
+              <Pressable
+                onPress={() => {
+                  if (newTag.trim()) {
+                    console.log('[PersonDetail] Tag added via button:', newTag.trim());
+                    const current = (editData.tags as string[]) || [];
+                    update('tags' as keyof Person, [...current, newTag.trim()]);
+                    setNewTag('');
+                  }
+                }}
+                style={{ backgroundColor: RED, borderRadius: 10, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>Add</Text>
+              </Pressable>
             </View>
           </View>
         )}
