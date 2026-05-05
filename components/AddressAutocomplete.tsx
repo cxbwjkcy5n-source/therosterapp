@@ -5,10 +5,11 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
-  StyleSheet,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { apiGet } from '@/utils/api';
-import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Prediction {
   place_id: string;
@@ -32,25 +33,27 @@ function generateToken() {
 }
 
 export function AddressAutocomplete({ value, onChangeText, onSelect, placeholder, label }: Props) {
+  const { colors } = useTheme();
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [loading, setLoading] = useState(false);
   const [noResults, setNoResults] = useState(false);
+  const [inputLayout, setInputLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const sessionToken = useRef<string>('');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMounted = useRef(true);
+  const inputRef = useRef<View>(null);
 
   useEffect(() => {
     isMounted.current = true;
     return () => {
       isMounted.current = false;
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
   }, []);
 
   const fetchPredictions = useCallback(async (input: string) => {
-    if (!sessionToken.current) {
-      sessionToken.current = generateToken();
-    }
+    if (!sessionToken.current) sessionToken.current = generateToken();
     const token = sessionToken.current;
     console.log('[AddressAutocomplete] Fetching predictions for:', input);
     setLoading(true);
@@ -66,13 +69,9 @@ export function AddressAutocomplete({ value, onChangeText, onSelect, placeholder
       setShowDropdown(true);
     } catch (e) {
       console.error('[AddressAutocomplete] Fetch error (silent):', e);
-      if (isMounted.current) {
-        setShowDropdown(false);
-      }
+      if (isMounted.current) setShowDropdown(false);
     } finally {
-      if (isMounted.current) {
-        setLoading(false);
-      }
+      if (isMounted.current) setLoading(false);
     }
   }, []);
 
@@ -85,9 +84,7 @@ export function AddressAutocomplete({ value, onChangeText, onSelect, placeholder
       setNoResults(false);
       return;
     }
-    debounceTimer.current = setTimeout(() => {
-      fetchPredictions(text);
-    }, 350);
+    debounceTimer.current = setTimeout(() => fetchPredictions(text), 350);
   }, [onChangeText, fetchPredictions]);
 
   const handleSelect = useCallback((prediction: Prediction) => {
@@ -100,142 +97,112 @@ export function AddressAutocomplete({ value, onChangeText, onSelect, placeholder
     sessionToken.current = '';
   }, [onSelect, onChangeText]);
 
-  const mainText = (pred: Prediction) => pred.structured_formatting?.main_text || pred.description;
-  const secondaryText = (pred: Prediction) => pred.structured_formatting?.secondary_text || '';
+  const measureInput = () => {
+    inputRef.current?.measureInWindow((x, y, width, height) => {
+      setInputLayout({ x, y, width, height });
+    });
+  };
+
+  const dropdownTop = inputLayout ? inputLayout.y + inputLayout.height + 4 : 0;
+  const dropdownLeft = inputLayout ? inputLayout.x : 0;
+  const dropdownWidth = inputLayout ? inputLayout.width : 300;
 
   return (
-    <View style={styles.container}>
+    <View ref={inputRef} onLayout={measureInput}>
       {label ? (
-        <Text style={styles.label}>{label}</Text>
+        <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>{label}</Text>
       ) : null}
-      <View style={styles.inputWrapper}>
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.surface,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: colors.border,
+      }}>
         <TextInput
           value={value}
           onChangeText={handleChangeText}
-          placeholder={placeholder || 'Search address...'}
-          placeholderTextColor={COLORS.textTertiary}
-          style={styles.input}
+          onFocus={measureInput}
+          placeholder={placeholder || 'Search city or neighborhood...'}
+          placeholderTextColor={colors.textTertiary}
+          style={{
+            flex: 1,
+            paddingHorizontal: 14,
+            paddingVertical: 13,
+            color: colors.text,
+            fontSize: 14,
+          }}
         />
         {loading ? (
-          <View style={styles.loadingIndicator}>
-            <ActivityIndicator size="small" color={COLORS.primary} />
+          <View style={{ paddingRight: 12 }}>
+            <ActivityIndicator size="small" color={colors.primary} />
           </View>
         ) : null}
       </View>
 
-      {showDropdown ? (
-        <View style={styles.dropdown}>
-          {noResults ? (
-            <View style={styles.noResultsRow}>
-              <Text style={styles.noResultsText}>No results found</Text>
-            </View>
-          ) : (
-            predictions.map((pred, index) => {
-              const isLast = index === predictions.length - 1;
-              const main = mainText(pred);
-              const secondary = secondaryText(pred);
-              return (
-                <Pressable
-                  key={pred.place_id}
-                  onPress={() => handleSelect(pred)}
-                  style={({ pressed }) => [
-                    styles.suggestionRow,
-                    !isLast && styles.suggestionRowBorder,
-                    pressed && styles.suggestionRowPressed,
-                  ]}
-                >
-                  <Text style={styles.mainText} numberOfLines={1}>{main}</Text>
-                  {secondary ? (
-                    <Text style={styles.secondaryText} numberOfLines={1}>{secondary}</Text>
-                  ) : null}
-                </Pressable>
-              );
-            })
-          )}
-        </View>
-      ) : null}
+      <Modal
+        visible={showDropdown && !!inputLayout}
+        transparent
+        animationType="none"
+        onRequestClose={() => setShowDropdown(false)}
+      >
+        <Pressable style={{ flex: 1 }} onPress={() => setShowDropdown(false)}>
+          <View
+            style={{
+              position: 'absolute',
+              top: dropdownTop,
+              left: dropdownLeft,
+              width: dropdownWidth,
+              backgroundColor: colors.surface,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: colors.border,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 12,
+              elevation: 8,
+              overflow: 'hidden',
+              maxHeight: 220,
+            }}
+          >
+            <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
+              {noResults ? (
+                <View style={{ minHeight: 44, paddingHorizontal: 14, paddingVertical: 12, justifyContent: 'center' }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 14 }}>No results found</Text>
+                </View>
+              ) : (
+                predictions.map((pred, index) => {
+                  const isLast = index === predictions.length - 1;
+                  const main = pred.structured_formatting?.main_text || pred.description;
+                  const secondary = pred.structured_formatting?.secondary_text || '';
+                  return (
+                    <Pressable
+                      key={pred.place_id}
+                      onPress={() => handleSelect(pred)}
+                      style={({ pressed }) => ({
+                        minHeight: 44,
+                        paddingHorizontal: 14,
+                        paddingVertical: 10,
+                        justifyContent: 'center',
+                        borderBottomWidth: isLast ? 0 : 1,
+                        borderBottomColor: colors.border,
+                        backgroundColor: pressed ? colors.surfaceSecondary : 'transparent',
+                      })}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>{main}</Text>
+                      {secondary ? (
+                        <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>{secondary}</Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                })
+              )}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    zIndex: 999,
-  },
-  label: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    fontWeight: '500',
-    marginBottom: 6,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  input: {
-    flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    color: '#1A1A1A',
-    fontSize: 14,
-  },
-  loadingIndicator: {
-    paddingRight: 12,
-  },
-  dropdown: {
-    position: 'absolute',
-    top: '100%',
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    zIndex: 999,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    marginTop: 4,
-    overflow: 'hidden',
-  },
-  suggestionRow: {
-    minHeight: 44,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    justifyContent: 'center',
-  },
-  suggestionRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-  },
-  suggestionRowPressed: {
-    backgroundColor: '#F5F5F5',
-  },
-  mainText: {
-    color: '#1A1A1A',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  secondaryText: {
-    color: '#666666',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  noResultsRow: {
-    minHeight: 44,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    justifyContent: 'center',
-  },
-  noResultsText: {
-    color: '#666666',
-    fontSize: 14,
-  },
-});

@@ -1904,14 +1904,17 @@ export default function PersonDetailScreen() {
               setCompatReportLoading(true);
               try {
                 const res = await apiGet<{
-                  overall_score: number;
-                  summary: string;
-                  strongest_trait: string;
-                  weakest_trait: string;
-                  traits?: { name: string; score: number }[];
+                  report: {
+                    overall_score: number;
+                    summary: string;
+                    strongest_trait: string;
+                    weakest_trait: string;
+                    traits?: { name: string; score: number }[];
+                  }
                 }>(`/api/persons/${displayData.id}/compatibility-report`);
-                console.log('[PersonDetail] Compatibility report loaded, score:', res.overall_score);
-                setCompatReport(res);
+                const report = res?.report ?? res as any;
+                console.log('[PersonDetail] Compatibility report loaded, score:', report?.overall_score);
+                setCompatReport(report);
                 setCompatReportVisible(true);
               } catch (e) {
                 console.error('[PersonDetail] Failed to get compatibility report:', e);
