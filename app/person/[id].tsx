@@ -2489,7 +2489,10 @@ export default function PersonDetailScreen() {
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        stickyHeaderIndices={editing ? [] : [1]}
       >
+        {/* child 0: all above-tab content wrapped in one View */}
+        <View>
         {/* ── Profile Card ─────────────────────────────────────────────────── */}
         <View style={{
           backgroundColor: colors.surface,
@@ -2808,62 +2811,58 @@ export default function PersonDetailScreen() {
           </View>
         )}
 
+        </View>{/* end child 0 wrapper */}
+
+        {/* child 1: tab bar — sticks at top when scrolled */}
+        {!editing && (
+          <View style={{ backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 }}>
+            <View style={{
+              backgroundColor: colors.surface,
+              borderRadius: 16,
+              padding: 6,
+              flexDirection: 'row',
+              shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12,
+              shadowOffset: { width: 0, height: 2 }, elevation: 3,
+            }}>
+              {TABS.map((tab) => {
+                const isActive = activeTab === tab;
+                return (
+                  <Pressable
+                    key={tab}
+                    onPress={() => {
+                      console.log('[PersonDetail] Tab selected:', tab);
+                      setActiveTab(tab);
+                    }}
+                    style={{
+                      flex: 1, height: 44, borderRadius: 20,
+                      backgroundColor: isActive ? RED : 'transparent',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{
+                      color: isActive ? '#FFFFFF' : colors.textSecondary,
+                      fontSize: 14, fontWeight: isActive ? '600' : '400',
+                    }}>
+                      {tab}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* child 2: tab content */}
+        {!editing && (
+          <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 }}>
+            {activeTab === 'Overview' && renderOverviewTab()}
+            {activeTab === 'Dates' && renderDatesTab()}
+            {activeTab === 'Notes' && renderNotesTab()}
+            {activeTab === 'Reminders' && renderRemindersTab()}
+          </View>
+        )}
+
       </ScrollView>
-
-      {/* ── Sticky Tab Bar ──────────────────────────────────────────────────── */}
-      {!editing && (
-        <View style={{
-          backgroundColor: colors.surface,
-          marginHorizontal: 16,
-          marginTop: 8,
-          marginBottom: 4,
-          borderRadius: 16,
-          padding: 6,
-          flexDirection: 'row',
-          shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12,
-          shadowOffset: { width: 0, height: 2 }, elevation: 3,
-        }}>
-          {TABS.map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <Pressable
-                key={tab}
-                onPress={() => {
-                  console.log('[PersonDetail] Tab selected:', tab);
-                  setActiveTab(tab);
-                }}
-                style={{
-                  flex: 1, height: 44, borderRadius: 20,
-                  backgroundColor: isActive ? RED : 'transparent',
-                  alignItems: 'center', justifyContent: 'center',
-                }}
-              >
-                <Text style={{
-                  color: isActive ? '#FFFFFF' : '#888888',
-                  fontSize: 14, fontWeight: isActive ? '600' : '400',
-                }}>
-                  {tab}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
-
-      {/* ── Tab Content ScrollView ──────────────────────────────────────────── */}
-      {!editing && (
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 }}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {activeTab === 'Overview' && renderOverviewTab()}
-          {activeTab === 'Dates' && renderDatesTab()}
-          {activeTab === 'Notes' && renderNotesTab()}
-          {activeTab === 'Reminders' && renderRemindersTab()}
-        </ScrollView>
-      )}
 
       {/* ── Conversation Starters Modal ─────────────────────────────────────── */}
       <Modal visible={startersModalVisible} transparent animationType="slide" onRequestClose={() => setStartersModalVisible(false)}>
