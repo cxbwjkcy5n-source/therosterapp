@@ -629,10 +629,11 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 200);
     const data = await res.json();
     expect(data.report).toBeDefined();
-    expect(data.report.personId).toBe(personId);
-    expect(data.report.personName).toBeDefined();
+    expect(typeof data.report.overall_score).toBe('number');
     expect(data.report.summary).toBeDefined();
-    expect(data.report.ratings).toBeDefined();
+    expect(Array.isArray(data.report.traits)).toBe(true);
+    expect(data.report.strongest_trait === null || typeof data.report.strongest_trait === 'string').toBe(true);
+    expect(data.report.weakest_trait === null || typeof data.report.weakest_trait === 'string').toBe(true);
   });
 
   test("Get compatibility report for nonexistent person returns 404", async () => {

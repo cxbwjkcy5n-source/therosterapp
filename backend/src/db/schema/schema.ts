@@ -78,6 +78,7 @@ export const persons = pgTable('persons', {
   datingStatus: text('dating_status'),
   tags: text('tags').array(),
   thingsILike: text('things_i_like'),
+  career: text('career'),
   isBenched: boolean('is_benched').default(false).notNull(),
   benchReason: text('bench_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
