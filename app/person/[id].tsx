@@ -891,6 +891,7 @@ export default function PersonDetailScreen() {
   // person photos
   const [personPhotos, setPersonPhotos] = useState<{ id: string; photo_url: string; sort_order?: number }[]>([]);
   const [photosLoading, setPhotosLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // edit date
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
@@ -1903,6 +1904,7 @@ export default function PersonDetailScreen() {
                 })}
                 {personPhotos.length < 5 && (
                   <Pressable
+                    disabled={uploadingPhoto}
                     onPress={async () => {
                       console.log('[PersonDetail] Add photo pressed');
                       const result = await ImagePicker.launchImageLibraryAsync({
@@ -1915,6 +1917,7 @@ export default function PersonDetailScreen() {
                       if (result.canceled || !result.assets?.[0]) return;
                       const asset = result.assets[0];
                       console.log('[PersonDetail] Photo selected, uploading...');
+                      setUploadingPhoto(true);
                       try {
                         const uploadRes = await apiPost<{ photo_url: string }>('/api/upload-photo', {
                           base64: asset.base64,
@@ -1928,7 +1931,9 @@ export default function PersonDetailScreen() {
                         loadPersonPhotos();
                       } catch (e) {
                         console.error('[PersonDetail] Failed to upload photo:', e);
-                        Alert.alert('Error', 'Could not upload photo.');
+                        Alert.alert('Error', 'Photo upload failed. Please try again.');
+                      } finally {
+                        setUploadingPhoto(false);
                       }
                     }}
                     style={{
@@ -1937,7 +1942,11 @@ export default function PersonDetailScreen() {
                       borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center',
                     }}
                   >
-                    <Plus size={24} color="#AAAAAA" />
+                    {uploadingPhoto ? (
+                      <ActivityIndicator size="small" color={colors.textTertiary} />
+                    ) : (
+                      <Plus size={24} color="#AAAAAA" />
+                    )}
                   </Pressable>
                 )}
               </>
@@ -2936,7 +2945,7 @@ export default function PersonDetailScreen() {
                   {/* Overall score */}
                   <View style={{ alignItems: 'center', marginVertical: 20 }}>
                     <Text style={{ fontSize: 56, fontWeight: '800', color: RED, letterSpacing: -2 }}>
-                      {Number(compatReport.overall_score).toFixed(1)}
+                      {isNaN(Number(compatReport.overall_score)) ? '—' : Number(compatReport.overall_score).toFixed(1)}
                     </Text>
                     <Text style={{ fontSize: 18, color: RED, fontWeight: '600', marginTop: -4 }}>/10</Text>
                   </View>
@@ -2946,7 +2955,7 @@ export default function PersonDetailScreen() {
                     <View style={{ marginBottom: 16 }}>
                       <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 12 }}>Traits</Text>
                       {compatReport.traits.map((trait) => {
-                        const traitScore = Number(trait.score);
+                        const traitScore = isNaN(Number(trait.score)) ? 0 : Number(trait.score);
                         const fillPct = `${(traitScore / 10) * 100}%` as any;
                         const traitScoreStr = String(traitScore);
                         return (
