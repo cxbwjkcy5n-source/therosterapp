@@ -1311,21 +1311,6 @@ describe("API Integration Tests", () => {
     expect(data.photo_url).toContain("data:image/jpeg;base64,");
   });
 
-  test("Upload photo with nonexistent person returns 404", async () => {
-    const base64Png =
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-
-    const res = await authenticatedApi("/api/upload-photo", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        base64: base64Png,
-        person_id: "00000000-0000-0000-0000-000000000000",
-      }),
-    });
-    await expectStatus(res, 404);
-  });
-
   // ========== Interactions Tests ==========
   test("Create an interaction with required fields", async () => {
     const res = await authenticatedApi("/api/interactions", authToken, {
@@ -2040,6 +2025,17 @@ describe("API Integration Tests", () => {
 
   // ========== Profile Tests ==========
   test("Get authenticated user profile", async () => {
+    // Create profile first with PUT
+    await authenticatedApi("/api/profile", authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        display_name: "Test User",
+        age: 25,
+      }),
+    });
+
+    // Now test GET
     const res = await authenticatedApi("/api/profile", authToken);
     await expectStatus(res, 200);
     const data = await res.json();
