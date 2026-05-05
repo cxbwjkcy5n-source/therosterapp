@@ -167,6 +167,7 @@ function normalizePerson(raw: any): Person {
     things_i_like: raw.things_i_like ?? raw.thingsILike,
     dating_status: raw.dating_status ?? raw.datingStatus,
     tags: raw.tags,
+    career: raw.career,
   };
 }
 
@@ -211,6 +212,7 @@ interface Person {
   things_i_like?: string;
   dating_status?: string;
   tags?: string[];
+  career?: string;
 }
 
 interface DateEntry {
@@ -1037,7 +1039,7 @@ export default function PersonDetailScreen() {
         'sexual_chemistry', 'communication', 'overall_chemistry', 'consistency',
         'emotional_availability', 'date_planning', 'alignment',
         'favorite_foods', 'hobbies', 'green_flags', 'red_flags', 'photo_url',
-        'things_i_like', 'dating_status', 'tags',
+        'things_i_like', 'dating_status', 'tags', 'career', 'nickname',
       ];
       const payload: Record<string, any> = {};
       for (const key of ALLOWED_FIELDS) {
@@ -1330,9 +1332,14 @@ export default function PersonDetailScreen() {
   ];
 
   const includedRatingFields = ratingFields.filter((f) => !excludedRatings.has(f.key));
-  const ratingValues = includedRatingFields.map((f) => (displayData[f.key] as number) ?? 5);
+  const ratingValues = includedRatingFields
+    .map((f) => {
+      const v = displayData[f.key] as number | null | undefined;
+      return (v !== null && v !== undefined && !isNaN(Number(v))) ? Number(v) : null;
+    })
+    .filter((v): v is number => v !== null);
   const avgCompatibility = ratingValues.length > 0
-    ? Math.round(ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length)
+    ? parseFloat((ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length).toFixed(1))
     : 0;
 
   const reminderDateLabel = reminderDate.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -1341,6 +1348,242 @@ export default function PersonDetailScreen() {
   const chemistryStr = String(chemistryScore);
 
   // ── render tabs ───────────────────────────────────────────────────────────
+
+  const renderDetailsCard = () => (
+    <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+      <SectionHeader label="Details" />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 0 }}>
+        {[
+          { label: 'Age', value: displayData.age?.toString() },
+          { label: 'Birthday', value: displayData.birthday ? formatBirthdayDisplay(displayData.birthday) : undefined },
+          { label: 'Zodiac', value: ZODIAC_SIGNS.find(z => z.value === displayData.zodiac)?.label },
+          { label: 'Location', value: displayData.location },
+          { label: 'Career', value: displayData.career || undefined },
+          { label: 'Connection', value: getConnectionLabel(displayData.connection_type, displayData.connection_type_custom) || undefined },
+          { label: 'Instagram', value: displayData.instagram ? `@${displayData.instagram.replace('@', '')}` : undefined },
+          { label: 'TikTok', value: displayData.tiktok ? `@${displayData.tiktok.replace('@', '')}` : undefined },
+          { label: 'Phone', value: displayData.phone_number || undefined },
+        ].filter(f => !!f.value).map((f) => (
+          <View key={f.label} style={{ width: '50%', paddingVertical: 8, paddingRight: 8 }}>
+            <Text style={{ color: '#999999', fontSize: 11, marginBottom: 2 }}>{f.label}</Text>
+            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '500' }} numberOfLines={1}>{f.value}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  const renderFavoritesCard = () => {
+    const favTags: { label: string; value: string | undefined }[] = [
+      { label: 'Favourite Foods', value: displayData.favorite_foods?.join(', ') },
+      { label: 'Hobbies', value: displayData.hobbies?.join(', ') },
+      { label: 'Connection', value: displayData.connection_type_custom || undefined },
+    ].filter((t) => !!t.value);
+    if (favTags.length === 0) return null;
+    return (
+      <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+        <SectionHeader label="Favorites" />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {favTags.map((t) => (
+            <PillTag key={t.label} label={`${t.label}: ${t.value}`} />
+          ))}
+        </View>
+      </View>
+    );
+  };
+
+  const renderFlagsCard = () => (
+    <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+      {/* Green Flags */}
+      <View style={{ marginBottom: 16 }}>
+        <Text style={{ color: '#2E7D32', fontSize: 14, fontWeight: '700', marginBottom: 10 }}>🟢 Green Flags</Text>
+        <View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+            {(displayData.green_flags || []).map((flag) => (
+              <PillTag key={flag} label={flag} color="#2E7D32" bg="rgba(46,125,50,0.08)" />
+            ))}
+            {(!displayData.green_flags || displayData.green_flags.length === 0) && (
+              <Text style={{ color: colors.textTertiary, fontSize: 13 }}>None added yet</Text>
+            )}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <TextInput
+              value={addingGreenFlag}
+              onChangeText={setAddingGreenFlag}
+              placeholder="Add green flag..."
+              placeholderTextColor="#BBBBBB"
+              style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: colors.border, color: colors.text }}
+            />
+            <Pressable
+              onPress={async () => {
+                const trimmed = addingGreenFlag.trim();
+                if (!trimmed) return;
+                console.log('[PersonDetail] Adding green flag:', trimmed);
+                const newFlags = [...(person?.green_flags ?? []), trimmed];
+                setAddingGreenFlag('');
+                setPerson((prev) => prev ? { ...prev, green_flags: newFlags } : prev);
+                setEditData((prev) => ({ ...prev, green_flags: newFlags }));
+                try {
+                  const payload: Record<string, any> = {};
+                  const ALLOWED = ['name','location','age','birthday','zodiac','instagram','tiktok','twitter_x','facebook','connection_type','connection_type_custom','interest_level','attractiveness','sexual_chemistry','communication','overall_chemistry','consistency','emotional_availability','date_planning','alignment','favorite_foods','hobbies','green_flags','red_flags','photo_url','career','nickname'];
+                  for (const key of ALLOWED) {
+                    if (key === 'zodiac' || key === 'connection_type') {
+                      const val = (person as any)?.[key];
+                      if (!val) continue;
+                      payload[key] = val;
+                      continue;
+                    }
+                    const val = (person as any)?.[key];
+                    if (val !== undefined) payload[key] = val;
+                  }
+                  payload.green_flags = newFlags;
+                  console.log('[PersonDetail] PUT green flag payload keys:', Object.keys(payload));
+                  await apiPut(`/api/persons/${id}`, payload);
+                  const raw = await apiGet<any>(`/api/persons/${id}`);
+                  const refreshed = normalizePerson(raw?.person ?? raw);
+                  if (refreshed?.green_flags && refreshed.green_flags.length >= newFlags.length) {
+                    console.log('[PersonDetail] Backend confirmed green flags saved:', refreshed.green_flags);
+                    setPerson(refreshed);
+                    setEditData(refreshed);
+                  } else {
+                    console.log('[PersonDetail] Backend did not return flags — keeping optimistic state');
+                  }
+                } catch (e) {
+                  console.error('[PersonDetail] Failed to add green flag:', e);
+                  await loadPerson();
+                }
+              }}
+              style={{ backgroundColor: '#2E7D32', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }}
+            >
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Add</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+
+      {/* Divider */}
+      <View style={{ height: 1, backgroundColor: colors.surfaceSecondary, marginBottom: 16 }} />
+
+      {/* Red Flags */}
+      <View>
+        <Text style={{ color: '#E53935', fontSize: 14, fontWeight: '700', marginBottom: 10 }}>🔴 Red Flags</Text>
+        <View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+            {(displayData.red_flags || []).map((flag) => (
+              <PillTag key={flag} label={flag} color="#E53935" bg="rgba(229,57,53,0.08)" />
+            ))}
+            {(!displayData.red_flags || displayData.red_flags.length === 0) && (
+              <Text style={{ color: colors.textTertiary, fontSize: 13 }}>None added yet</Text>
+            )}
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <TextInput
+              value={addingRedFlag}
+              onChangeText={setAddingRedFlag}
+              placeholder="Add red flag..."
+              placeholderTextColor="#BBBBBB"
+              style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: colors.border, color: colors.text }}
+            />
+            <Pressable
+              onPress={async () => {
+                const trimmed = addingRedFlag.trim();
+                if (!trimmed) return;
+                console.log('[PersonDetail] Adding red flag:', trimmed);
+                const newFlags = [...(person?.red_flags ?? []), trimmed];
+                setAddingRedFlag('');
+                setPerson((prev) => prev ? { ...prev, red_flags: newFlags } : prev);
+                setEditData((prev) => ({ ...prev, red_flags: newFlags }));
+                try {
+                  const payload: Record<string, any> = {};
+                  const ALLOWED = ['name','location','age','birthday','zodiac','instagram','tiktok','twitter_x','facebook','connection_type','connection_type_custom','interest_level','attractiveness','sexual_chemistry','communication','overall_chemistry','consistency','emotional_availability','date_planning','alignment','favorite_foods','hobbies','green_flags','red_flags','photo_url','career','nickname'];
+                  for (const key of ALLOWED) {
+                    if (key === 'zodiac' || key === 'connection_type') {
+                      const val = (person as any)?.[key];
+                      if (!val) continue;
+                      payload[key] = val;
+                      continue;
+                    }
+                    const val = (person as any)?.[key];
+                    if (val !== undefined) payload[key] = val;
+                  }
+                  payload.red_flags = newFlags;
+                  console.log('[PersonDetail] PUT red flag payload keys:', Object.keys(payload));
+                  await apiPut(`/api/persons/${id}`, payload);
+                  const raw = await apiGet<any>(`/api/persons/${id}`);
+                  const refreshed = normalizePerson(raw?.person ?? raw);
+                  if (refreshed?.red_flags && refreshed.red_flags.length >= newFlags.length) {
+                    console.log('[PersonDetail] Backend confirmed red flags saved:', refreshed.red_flags);
+                    setPerson(refreshed);
+                    setEditData(refreshed);
+                  } else {
+                    console.log('[PersonDetail] Backend did not return flags — keeping optimistic state');
+                  }
+                } catch (e) {
+                  console.error('[PersonDetail] Failed to add red flag:', e);
+                  await loadPerson();
+                }
+              }}
+              style={{ backgroundColor: '#E53935', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }}
+            >
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Add</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderRatingsCard = () => (
+    <View style={{ backgroundColor: colors.surface, borderRadius: 16, ...CARD_SHADOW, overflow: 'hidden' }}>
+      <Pressable
+        onPress={() => setRatingsExpanded((v) => !v)}
+        style={{ padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+      >
+        <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>Ratings</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 1 }}>
+            <Text style={{ color: RED, fontSize: 20, fontWeight: '800' }}>{isNaN(avgCompatibility) ? '—' : avgCompatibility}</Text>
+            <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>/10</Text>
+          </View>
+          <ChevronDown
+            size={18}
+            color="#999"
+            style={{ transform: [{ rotate: ratingsExpanded ? '180deg' : '0deg' }] }}
+          />
+        </View>
+      </Pressable>
+      {ratingsExpanded && (
+        <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+          <View style={{ height: 1, backgroundColor: '#EEEEEE', marginBottom: 16 }} />
+          {ratingFields.map((f) => (
+            <ReadOnlySlider
+              key={f.key}
+              label={f.label}
+              value={(person?.[f.key] as number) ?? 0}
+              excluded={excludedRatings.has(f.key)}
+              onToggleExclude={() => setExcludedRatings((prev) => {
+                const next = new Set(prev);
+                if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
+                return next;
+              })}
+            />
+          ))}
+          <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 16 }} />
+          <Text style={{ color: '#999999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
+            Overall Compatibility
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2, marginBottom: 10 }}>
+            <Text style={{ color: RED, fontSize: 36, fontWeight: '800', letterSpacing: -1 }}>{isNaN(avgCompatibility) ? '—' : avgCompatibility}</Text>
+            <Text style={{ color: RED, fontSize: 18, fontWeight: '600' }}>/10</Text>
+          </View>
+          <View style={{ height: 6, backgroundColor: '#E8E8E8', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
+            <View style={{ height: 6, width: `${(avgCompatibility / 10) * 100}%` as any, backgroundColor: RED, borderRadius: 3 }} />
+          </View>
+          <Text style={{ color: colors.textTertiary, fontSize: 12 }}>Based on your ratings</Text>
+        </View>
+      )}
+    </View>
+  );
 
   const renderOverviewTab = () => {
     const sortedDates = [...dates].sort((a, b) => {
@@ -1372,6 +1615,18 @@ export default function PersonDetailScreen() {
 
     return (
       <View style={{ gap: 16 }}>
+        {/* Details card */}
+        {renderDetailsCard()}
+
+        {/* Favorites card */}
+        {renderFavoritesCard()}
+
+        {/* Flags card */}
+        {renderFlagsCard()}
+
+        {/* Ratings card */}
+        {renderRatingsCard()}
+
         {/* Red flag warning banner */}
         {(displayData.red_flags?.length ?? 0) >= 3 && (
           <View style={{ backgroundColor: '#FFF8E1', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#FFB300', flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 4 }}>
@@ -2230,7 +2485,7 @@ export default function PersonDetailScreen() {
       />
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 160 }}
+        contentContainerStyle={{ paddingBottom: editing ? insets.bottom + 32 : 8 }}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -2384,38 +2639,7 @@ export default function PersonDetailScreen() {
           </View>{/* end card content padding */}
         </View>
 
-        {/* ── Tab Bar ─────────────────────────────────────────────────────── */}
-        {!editing && (
-          <View style={{
-            backgroundColor: colors.surface, marginHorizontal: 16, marginTop: 14,
-            borderRadius: 16, padding: 6, flexDirection: 'row', ...CARD_SHADOW,
-          }}>
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab;
-              return (
-                <Pressable
-                  key={tab}
-                  onPress={() => {
-                    console.log('[PersonDetail] Tab selected:', tab);
-                    setActiveTab(tab);
-                  }}
-                  style={{
-                    flex: 1, height: 44, borderRadius: 20,
-                    backgroundColor: isActive ? RED : 'transparent',
-                    alignItems: 'center', justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{
-                    color: isActive ? '#FFFFFF' : '#888888',
-                    fontSize: 14, fontWeight: isActive ? '600' : '400',
-                  }}>
-                    {tab}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
+
 
         {/* Details (edit mode) — shown here so it's first when editing */}
         {editing && (
@@ -2428,6 +2652,28 @@ export default function PersonDetailScreen() {
                   value={editData.nickname || ''}
                   onChangeText={(v) => update('nickname', v)}
                   placeholder="Nickname"
+                  placeholderTextColor="#BBBBBB"
+                  style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 10, padding: 10, color: colors.text, fontSize: 14, borderWidth: 1, borderColor: colors.border }}
+                />
+              </View>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>Location</Text>
+                <AddressAutocomplete
+                  value={editData.location || ''}
+                  onChangeText={(v) => update('location', v)}
+                  onSelect={(v) => {
+                    console.log('[PersonDetail] Location selected:', v);
+                    update('location', v);
+                  }}
+                  placeholder="City or neighborhood"
+                />
+              </View>
+              <View>
+                <Text style={{ color: '#999999', fontSize: 12, marginBottom: 4 }}>Career</Text>
+                <TextInput
+                  value={editData.career || ''}
+                  onChangeText={(v) => update('career', v)}
+                  placeholder="e.g. Software Engineer, Teacher..."
                   placeholderTextColor="#BBBBBB"
                   style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 10, padding: 10, color: colors.text, fontSize: 14, borderWidth: 1, borderColor: colors.border }}
                 />
@@ -2526,286 +2772,98 @@ export default function PersonDetailScreen() {
           </View>
         )}
 
-        {/* ── Details (view mode) ─────────────────────────────────────── */}
-        {!editing && (
+
+
+        {/* ── Ratings (edit mode only) ─────────────────────────────────── */}
+        {editing && (
           <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
-            <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-              <SectionHeader label="Details" />
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 0 }}>
-                {[
-                  { label: 'Age', value: displayData.age?.toString() },
-                  { label: 'Birthday', value: displayData.birthday ? formatBirthdayDisplay(displayData.birthday) : undefined },
-                  { label: 'Zodiac', value: ZODIAC_SIGNS.find(z => z.value === displayData.zodiac)?.label },
-                  { label: 'Location', value: displayData.location },
-                  { label: 'Connection', value: getConnectionLabel(displayData.connection_type, displayData.connection_type_custom) || undefined },
-                  { label: 'Instagram', value: displayData.instagram ? `@${displayData.instagram.replace('@', '')}` : undefined },
-                  { label: 'TikTok', value: displayData.tiktok ? `@${displayData.tiktok.replace('@', '')}` : undefined },
-                  { label: 'Phone', value: displayData.phone_number || undefined },
-                ].filter(f => !!f.value).map((f) => (
-                  <View key={f.label} style={{ width: '50%', paddingVertical: 8, paddingRight: 8 }}>
-                    <Text style={{ color: '#999999', fontSize: 11, marginBottom: 2 }}>{f.label}</Text>
-                    <Text style={{ color: colors.text, fontSize: 13, fontWeight: '500' }} numberOfLines={1}>{f.value}</Text>
-                  </View>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 16, ...CARD_SHADOW, overflow: 'hidden' }}>
+              <Pressable
+                style={{ padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>Ratings</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 1 }}>
+                  <Text style={{ color: RED, fontSize: 20, fontWeight: '800' }}>{isNaN(avgCompatibility) ? '—' : avgCompatibility}</Text>
+                  <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>/10</Text>
+                </View>
+              </Pressable>
+              <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+                <View style={{ height: 1, backgroundColor: '#EEEEEE', marginBottom: 16 }} />
+                {ratingFields.map((f) => (
+                  <EditableSlider
+                    key={f.key}
+                    label={f.label}
+                    value={editData[f.key] as number}
+                    onChange={(v) => update(f.key, v)}
+                    excluded={excludedRatings.has(f.key)}
+                    onToggleExclude={() => setExcludedRatings((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
+                      return next;
+                    })}
+                  />
                 ))}
               </View>
             </View>
           </View>
         )}
 
-        {/* ── Favorites (view mode) ───────────────────────────────────── */}
-        {!editing && (() => {
-          const favTags: { label: string; value: string | undefined }[] = [
-            { label: 'Favourite Foods', value: displayData.favorite_foods?.join(', ') },
-            { label: 'Hobbies', value: displayData.hobbies?.join(', ') },
-            { label: 'Connection', value: displayData.connection_type_custom || undefined },
-          ].filter((t) => !!t.value);
-          if (favTags.length === 0) return null;
-          return (
-            <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
-              <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-                <SectionHeader label="Favorites" />
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {favTags.map((t) => (
-                    <PillTag key={t.label} label={`${t.label}: ${t.value}`} />
-                  ))}
-                </View>
-              </View>
-            </View>
-          );
-        })()}
-
-        {/* ── Flags ───────────────────────────────────────────────────── */}
-        {!editing && (
-          <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
-            <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-              {/* Green Flags */}
-              <View style={{ marginBottom: 16 }}>
-                <Text style={{ color: '#2E7D32', fontSize: 14, fontWeight: '700', marginBottom: 10 }}>🟢 Green Flags</Text>
-                <View>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                    {(displayData.green_flags || []).map((flag) => (
-                      <PillTag key={flag} label={flag} color="#2E7D32" bg="rgba(46,125,50,0.08)" />
-                    ))}
-                    {(!displayData.green_flags || displayData.green_flags.length === 0) && (
-                      <Text style={{ color: colors.textTertiary, fontSize: 13 }}>None added yet</Text>
-                    )}
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                    <TextInput
-                      value={addingGreenFlag}
-                      onChangeText={setAddingGreenFlag}
-                      placeholder="Add green flag..."
-                      placeholderTextColor="#BBBBBB"
-                      style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: colors.border, color: colors.text }}
-                    />
-                    <Pressable
-                      onPress={async () => {
-                        const trimmed = addingGreenFlag.trim();
-                        if (!trimmed) return;
-                        console.log('[PersonDetail] Adding green flag:', trimmed);
-                        const newFlags = [...(person?.green_flags ?? []), trimmed];
-                        setAddingGreenFlag('');
-                        setPerson((prev) => prev ? { ...prev, green_flags: newFlags } : prev);
-                        setEditData((prev) => ({ ...prev, green_flags: newFlags }));
-                        try {
-                          const payload: Record<string, any> = {};
-                          const ALLOWED = ['name','location','age','birthday','zodiac','instagram','tiktok','twitter_x','facebook','connection_type','connection_type_custom','interest_level','attractiveness','sexual_chemistry','communication','overall_chemistry','consistency','emotional_availability','date_planning','alignment','favorite_foods','hobbies','green_flags','red_flags','photo_url'];
-                          for (const key of ALLOWED) {
-                            if (key === 'zodiac' || key === 'connection_type') {
-                              const val = (person as any)?.[key];
-                              if (!val) continue;
-                              payload[key] = val;
-                              continue;
-                            }
-                            const val = (person as any)?.[key];
-                            if (val !== undefined) payload[key] = val;
-                          }
-                          payload.green_flags = newFlags;
-                          console.log('[PersonDetail] PUT green flag payload keys:', Object.keys(payload));
-                          await apiPut(`/api/persons/${id}`, payload);
-                          // Verify backend persisted the flags
-                          const raw = await apiGet<any>(`/api/persons/${id}`);
-                          const refreshed = normalizePerson(raw?.person ?? raw);
-                          if (refreshed?.green_flags && refreshed.green_flags.length >= newFlags.length) {
-                            console.log('[PersonDetail] Backend confirmed green flags saved:', refreshed.green_flags);
-                            setPerson(refreshed);
-                            setEditData(refreshed);
-                          } else {
-                            console.log('[PersonDetail] Backend did not return flags — keeping optimistic state');
-                          }
-                        } catch (e) {
-                          console.error('[PersonDetail] Failed to add green flag:', e);
-                          await loadPerson();
-                        }
-                      }}
-                      style={{ backgroundColor: '#2E7D32', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }}
-                    >
-                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Add</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-
-              {/* Divider */}
-              <View style={{ height: 1, backgroundColor: colors.surfaceSecondary, marginBottom: 16 }} />
-
-              {/* Red Flags */}
-              <View>
-                <Text style={{ color: '#E53935', fontSize: 14, fontWeight: '700', marginBottom: 10 }}>🔴 Red Flags</Text>
-                <View>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                    {(displayData.red_flags || []).map((flag) => (
-                      <PillTag key={flag} label={flag} color="#E53935" bg="rgba(229,57,53,0.08)" />
-                    ))}
-                    {(!displayData.red_flags || displayData.red_flags.length === 0) && (
-                      <Text style={{ color: colors.textTertiary, fontSize: 13 }}>None added yet</Text>
-                    )}
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                    <TextInput
-                      value={addingRedFlag}
-                      onChangeText={setAddingRedFlag}
-                      placeholder="Add red flag..."
-                      placeholderTextColor="#BBBBBB"
-                      style={{ flex: 1, backgroundColor: colors.surfaceSecondary, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, borderWidth: 1, borderColor: colors.border, color: colors.text }}
-                    />
-                    <Pressable
-                      onPress={async () => {
-                        const trimmed = addingRedFlag.trim();
-                        if (!trimmed) return;
-                        console.log('[PersonDetail] Adding red flag:', trimmed);
-                        const newFlags = [...(person?.red_flags ?? []), trimmed];
-                        setAddingRedFlag('');
-                        setPerson((prev) => prev ? { ...prev, red_flags: newFlags } : prev);
-                        setEditData((prev) => ({ ...prev, red_flags: newFlags }));
-                        try {
-                          const payload: Record<string, any> = {};
-                          const ALLOWED = ['name','location','age','birthday','zodiac','instagram','tiktok','twitter_x','facebook','connection_type','connection_type_custom','interest_level','attractiveness','sexual_chemistry','communication','overall_chemistry','consistency','emotional_availability','date_planning','alignment','favorite_foods','hobbies','green_flags','red_flags','photo_url'];
-                          for (const key of ALLOWED) {
-                            if (key === 'zodiac' || key === 'connection_type') {
-                              const val = (person as any)?.[key];
-                              if (!val) continue;
-                              payload[key] = val;
-                              continue;
-                            }
-                            const val = (person as any)?.[key];
-                            if (val !== undefined) payload[key] = val;
-                          }
-                          payload.red_flags = newFlags;
-                          console.log('[PersonDetail] PUT red flag payload keys:', Object.keys(payload));
-                          await apiPut(`/api/persons/${id}`, payload);
-                          // Verify backend persisted the flags
-                          const raw = await apiGet<any>(`/api/persons/${id}`);
-                          const refreshed = normalizePerson(raw?.person ?? raw);
-                          if (refreshed?.red_flags && refreshed.red_flags.length >= newFlags.length) {
-                            console.log('[PersonDetail] Backend confirmed red flags saved:', refreshed.red_flags);
-                            setPerson(refreshed);
-                            setEditData(refreshed);
-                          } else {
-                            console.log('[PersonDetail] Backend did not return flags — keeping optimistic state');
-                          }
-                        } catch (e) {
-                          console.error('[PersonDetail] Failed to add red flag:', e);
-                          await loadPerson();
-                        }
-                      }}
-                      style={{ backgroundColor: '#E53935', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 }}
-                    >
-                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Add</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* ── Ratings ─────────────────────────────────────────────────── */}
-        <View style={{ paddingHorizontal: 16, paddingTop: 14 }}>
-          <View style={{ backgroundColor: colors.surface, borderRadius: 16, ...CARD_SHADOW, overflow: 'hidden' }}>
-            {/* Header row — always visible, tappable to expand/collapse */}
-            <Pressable
-              onPress={() => {
-                if (!editing) setRatingsExpanded((v) => !v);
-              }}
-              style={{ padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700' }}>Ratings</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                {/* Always show the overall score as a preview */}
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 1 }}>
-                  <Text style={{ color: RED, fontSize: 20, fontWeight: '800' }}>{avgCompatibility}</Text>
-                  <Text style={{ color: RED, fontSize: 12, fontWeight: '600' }}>/10</Text>
-                </View>
-                {!editing && (
-                  <ChevronDown
-                    size={18}
-                    color="#999"
-                    style={{ transform: [{ rotate: ratingsExpanded ? '180deg' : '0deg' }] }}
-                  />
-                )}
-              </View>
-            </Pressable>
-
-            {/* Expanded content */}
-            {(ratingsExpanded || editing) && (
-              <View style={{ paddingHorizontal: 20, paddingBottom: 20 }}>
-                <View style={{ height: 1, backgroundColor: '#EEEEEE', marginBottom: 16 }} />
-                {ratingFields.map((f) =>
-                  editing ? (
-                    <EditableSlider
-                      key={f.key}
-                      label={f.label}
-                      value={editData[f.key] as number}
-                      onChange={(v) => update(f.key, v)}
-                      excluded={excludedRatings.has(f.key)}
-                      onToggleExclude={() => setExcludedRatings((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
-                        return next;
-                      })}
-                    />
-                  ) : (
-                    <ReadOnlySlider
-                      key={f.key}
-                      label={f.label}
-                      value={(person?.[f.key] as number) ?? 0}
-                      excluded={excludedRatings.has(f.key)}
-                      onToggleExclude={() => setExcludedRatings((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
-                        return next;
-                      })}
-                    />
-                  )
-                )}
-                <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 16 }} />
-                <Text style={{ color: '#999999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>
-                  Overall Compatibility
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2, marginBottom: 10 }}>
-                  <Text style={{ color: RED, fontSize: 36, fontWeight: '800', letterSpacing: -1 }}>{avgCompatibility}</Text>
-                  <Text style={{ color: RED, fontSize: 18, fontWeight: '600' }}>/10</Text>
-                </View>
-                <View style={{ height: 6, backgroundColor: '#E8E8E8', borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
-                  <View style={{ height: 6, width: `${(avgCompatibility / 10) * 100}%` as any, backgroundColor: RED, borderRadius: 3 }} />
-                </View>
-                <Text style={{ color: colors.textTertiary, fontSize: 12 }}>Based on your ratings</Text>
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* ── Tab Content ─────────────────────────────────────────────────── */}
-        {!editing && (
-          <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16 }}>
-            {activeTab === 'Overview' && renderOverviewTab()}
-            {activeTab === 'Dates' && renderDatesTab()}
-            {activeTab === 'Notes' && renderNotesTab()}
-            {activeTab === 'Reminders' && renderRemindersTab()}
-          </View>
-        )}
       </ScrollView>
+
+      {/* ── Sticky Tab Bar ──────────────────────────────────────────────────── */}
+      {!editing && (
+        <View style={{
+          backgroundColor: colors.surface,
+          marginHorizontal: 16,
+          marginTop: 8,
+          marginBottom: 4,
+          borderRadius: 16,
+          padding: 6,
+          flexDirection: 'row',
+          shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12,
+          shadowOffset: { width: 0, height: 2 }, elevation: 3,
+        }}>
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <Pressable
+                key={tab}
+                onPress={() => {
+                  console.log('[PersonDetail] Tab selected:', tab);
+                  setActiveTab(tab);
+                }}
+                style={{
+                  flex: 1, height: 44, borderRadius: 20,
+                  backgroundColor: isActive ? RED : 'transparent',
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <Text style={{
+                  color: isActive ? '#FFFFFF' : '#888888',
+                  fontSize: 14, fontWeight: isActive ? '600' : '400',
+                }}>
+                  {tab}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+
+      {/* ── Tab Content ScrollView ──────────────────────────────────────────── */}
+      {!editing && (
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {activeTab === 'Overview' && renderOverviewTab()}
+          {activeTab === 'Dates' && renderDatesTab()}
+          {activeTab === 'Notes' && renderNotesTab()}
+          {activeTab === 'Reminders' && renderRemindersTab()}
+        </ScrollView>
+      )}
 
       {/* ── Conversation Starters Modal ─────────────────────────────────────── */}
       <Modal visible={startersModalVisible} transparent animationType="slide" onRequestClose={() => setStartersModalVisible(false)}>
