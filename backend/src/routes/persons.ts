@@ -399,6 +399,7 @@ export function registerPersonsRoutes(app: App) {
             location: { type: 'string' },
             photoUrl: { type: 'string' },
             photo_url: { type: ['string', 'null'] },
+            nickname: { type: ['string', 'null'] },
             age: { type: 'integer' },
             birthday: { type: 'string' },
             zodiac: { type: ['string', 'null'] },
@@ -458,6 +459,7 @@ export function registerPersonsRoutes(app: App) {
                   name: { type: 'string' },
                   location: { type: 'string' },
                   photoUrl: { type: ['string', 'null'] },
+                  nickname: { type: ['string', 'null'] },
                   age: { type: ['integer', 'null'] },
                   birthday: { type: ['string', 'null'] },
                   zodiac: { type: ['string', 'null'] },
@@ -516,6 +518,7 @@ export function registerPersonsRoutes(app: App) {
       // Extract all fields, accepting both naming conventions
       let name = getFieldValue('name', 'name');
       let location = getFieldValue('location', 'location');
+      let nickname = getFieldValue('nickname', 'nickname');
       let age = getFieldValue('age', 'age');
       let birthday = getFieldValue('birthday', 'birthday');
       let zodiac = getFieldValue('zodiac', 'zodiac');
@@ -615,6 +618,7 @@ export function registerPersonsRoutes(app: App) {
         .set({
           name: name !== undefined ? name : sql`name`,
           location: location !== undefined ? location : sql`location`,
+          nickname: nickname !== undefined ? nickname : sql`nickname`,
           age: age !== undefined ? age : sql`age`,
           birthday: birthday !== undefined ? birthday : sql`birthday`,
           zodiac: zodiac !== undefined ? zodiac : sql`zodiac`,
@@ -1230,16 +1234,12 @@ export function registerPersonsRoutes(app: App) {
           201: {
             type: 'object',
             properties: {
-              photo: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string', format: 'uuid' },
-                  personId: { type: 'string', format: 'uuid' },
-                  photoUrl: { type: 'string' },
-                  sortOrder: { type: 'integer' },
-                  createdAt: { type: 'string', format: 'date-time' },
-                },
-              },
+              id: { type: 'string', format: 'uuid' },
+              userId: { type: 'string' },
+              personId: { type: 'string', format: 'uuid' },
+              photoUrl: { type: 'string' },
+              sortOrder: { type: 'integer' },
+              createdAt: { type: 'string', format: 'date-time' },
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
@@ -1285,13 +1285,12 @@ export function registerPersonsRoutes(app: App) {
       app.logger.info({ userId: session.user.id, personId: id, photoId: photo.id }, 'Photo uploaded');
       reply.status(201);
       return {
-        photo: {
-          id: photo.id,
-          personId: photo.personId,
-          photoUrl: photo.photoUrl,
-          sortOrder: photo.sortOrder,
-          createdAt: photo.createdAt,
-        },
+        id: photo.id,
+        userId: photo.userId,
+        personId: photo.personId,
+        photoUrl: photo.photoUrl,
+        sortOrder: photo.sortOrder,
+        createdAt: photo.createdAt,
       };
     }
   );
@@ -1450,7 +1449,7 @@ export function registerPersonsRoutes(app: App) {
         ['alignment', 'Alignment'],
       ];
 
-      // Extract rating values and filter out nulls
+      // Extract rating values and filter out nulls to build traits array
       const traits: Array<{ name: string; score: number }> = [];
       let totalScore = 0;
 
@@ -1464,12 +1463,18 @@ export function registerPersonsRoutes(app: App) {
         }
       }
 
-      // Calculate overall score
-      const overallScore = traits.length > 0 ? Math.round((totalScore / traits.length) * 10) / 10 : 0;
+      // Calculate overall score BEFORE AI call - default to 5 if no traits
+      const overallScore = traits.length > 0 ? Math.round((totalScore / traits.length) * 10) / 10 : 5;
 
-      // Find strongest and weakest traits
-      let strongestTrait: string | null = null;
-      let weakestTrait: string | null = null;
+      // Ensure overall_score is always a valid finite number
+      if (!isFinite(overallScore)) {
+        app.logger.error({ userId: session.user.id, personId: id, overallScore }, 'Invalid overall_score calculated');
+        return reply.status(500).send({ error: 'Failed to calculate compatibility score' });
+      }
+
+      // Find strongest and weakest traits from the traits array
+      let strongestTrait: string = 'Overall Connection';
+      let weakestTrait: string = 'Needs More Time';
 
       if (traits.length > 0) {
         const sorted = [...traits].sort((a, b) => b.score - a.score);
@@ -1477,31 +1482,62 @@ export function registerPersonsRoutes(app: App) {
         weakestTrait = sorted[sorted.length - 1].name;
       }
 
-      // Determine summary
-      let summary: string = 'Add some ratings to generate a full compatibility summary.';
+      // Determine summary with AI call and fallback
+      let summary: string;
 
-      // Only generate AI summary if we have 3+ valid ratings
-      if (traits.length >= 3) {
+      // Try AI call only if we have traits
+      if (traits.length > 0) {
         try {
           const ratingsText = traits.map(t => `${t.name.toLowerCase()}: ${t.score}/10`).join(', ');
-          const prompt = `You are a dating coach. Based on these ratings for ${person.name}: ${ratingsText}. Overall score: ${overallScore}/10. Write a 2-3 sentence compatibility summary. Be honest, insightful, and direct. Do not use bullet points.`;
+          const prompt = `You are a dating coach. Based on these ratings for ${person.name}: ${ratingsText}. Overall score: ${overallScore}/10. Strongest trait: ${strongestTrait}. Weakest trait: ${weakestTrait}. Write a 2-sentence compatibility summary. Respond with ONLY a JSON object with this format: {"summary": "...", "strongest_trait": "...", "weakest_trait": "..."}`;
 
           const { text } = await generateText({
             model: gateway('openai/gpt-4o-mini'),
             prompt,
           });
 
-          summary = text;
-          app.logger.info({ userId: session.user.id, personId: id }, 'AI summary generated');
+          // Try to parse JSON response
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed.summary && typeof parsed.summary === 'string') {
+              summary = parsed.summary;
+              // Update strongest/weakest if AI provided them
+              if (parsed.strongest_trait && typeof parsed.strongest_trait === 'string') {
+                strongestTrait = parsed.strongest_trait;
+              }
+              if (parsed.weakest_trait && typeof parsed.weakest_trait === 'string') {
+                weakestTrait = parsed.weakest_trait;
+              }
+              app.logger.info({ userId: session.user.id, personId: id }, 'AI summary generated and parsed');
+            } else {
+              throw new Error('JSON missing required fields');
+            }
+          } catch (parseError) {
+            app.logger.warn({ err: parseError, userId: session.user.id, personId: id }, 'Failed to parse AI JSON response, using fallback');
+            // Use fallback summary
+            summary =
+              overallScore >= 7
+                ? 'Strong connection with great potential. Keep nurturing this relationship.'
+                : overallScore >= 5
+                  ? 'Decent connection with room to grow. Focus on communication and shared experiences.'
+                  : 'Early days with some challenges. Take your time and see how things develop.';
+          }
         } catch (error) {
-          app.logger.warn({ err: error, userId: session.user.id, personId: id }, 'Failed to generate AI summary, using fallback');
-          // Keep the default summary if AI fails
+          app.logger.warn({ err: error, userId: session.user.id, personId: id }, 'Failed to call AI, using fallback summary');
+          // Use fallback summary based on overall_score
+          summary =
+            overallScore >= 7
+              ? 'Strong connection with great potential. Keep nurturing this relationship.'
+              : overallScore >= 5
+                ? 'Decent connection with room to grow. Focus on communication and shared experiences.'
+                : 'Early days with some challenges. Take your time and see how things develop.';
         }
       } else {
-        app.logger.info({ userId: session.user.id, personId: id, ratingCount: traits.length }, 'Not enough ratings for AI summary');
+        // No traits - use simple summary
+        summary = 'Add some ratings to generate a full compatibility summary.';
       }
 
-      app.logger.info({ userId: session.user.id, personId: id }, 'Compatibility report generated');
+      app.logger.info({ userId: session.user.id, personId: id, overallScore }, 'Compatibility report generated');
       return {
         report: {
           overall_score: overallScore,
