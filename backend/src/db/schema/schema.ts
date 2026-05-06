@@ -119,6 +119,7 @@ export const safetyCheckins = pgTable('safety_checkins', {
 export const chatMessages = pgTable('chat_messages', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  personId: uuid('person_id').references(() => persons.id, { onDelete: 'set null' }),
   role: chatRoleEnum('role').notNull(),
   content: text('content').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

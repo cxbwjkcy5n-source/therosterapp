@@ -1,6 +1,6 @@
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { gateway } from '@specific-dev/framework';
 import { generateText } from 'ai';
 import { OpenAI } from 'openai';
@@ -99,52 +99,16 @@ export function registerAIRoutes(app: App) {
       const hobbiesStr = person.hobbies?.join(', ') || 'not specified';
       const foodsStr = person.favoriteFoods?.join(', ') || 'not specified';
 
-      // If API key is not configured, return mock suggestions for testing
-      if (!hasOpenAIKey()) {
-        const locationStr = location || 'a great place';
-        const mockSuggestions = [
-          {
-            title: 'Coffee & Conversation',
-            description: 'Meet at a cozy café for coffee and getting to know each other.',
-            category: 'casual',
-            estimated_cost: '$10-20',
-            search_url: `https://www.google.com/search?q=${encodeURIComponent('coffee shops ' + locationStr)}`,
-          },
-          {
-            title: 'Food Tasting Tour',
-            description: `Explore different restaurants and try various cuisines they love.`,
-            category: 'foodie',
-            estimated_cost: '$30-60',
-            search_url: `https://www.google.com/search?q=${encodeURIComponent('restaurants ' + locationStr)}`,
-          },
-          {
-            title: 'Outdoor Activity',
-            description: 'Go hiking, biking, or enjoy a park day together.',
-            category: 'active',
-            estimated_cost: '$0-20',
-            search_url: `https://www.google.com/search?q=${encodeURIComponent('parks trails ' + locationStr)}`,
-          },
-        ];
-        app.logger.info({ userId: session.user.id, personId: person_id }, 'Returning mock date ideas (OPENAI_API_KEY not configured)');
-        return { suggestions: mockSuggestions };
-      }
-
       const locationStr = location ? `in ${location}` : 'that you can do anywhere';
       const prompt = `Generate 5 creative date ideas ${locationStr} with a budget of $${budget}. The person's hobbies are: ${hobbiesStr}. Their favorite foods are: ${foodsStr}. Return a JSON array of 5 objects with fields: title, description, category, estimated_cost (string like '$20-$40'), search_query (a short Google search query for this date idea).`;
 
       try {
-        const message = await getOpenAI().chat.completions.create({
-          model: 'gpt-4o-mini',
-          max_tokens: 1024,
-          messages: [
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
+        const { text } = await generateText({
+          model: gateway('openai/gpt-4o-mini'),
+          prompt,
         });
 
-        const responseText = message.choices[0].message.content || '';
+        const responseText = text;
 
         // Parse the JSON from the response
         const jsonMatch = responseText.match(/\[[\s\S]*\]/);
@@ -472,6 +436,7 @@ export function registerAIRoutes(app: App) {
         // Save user message to chat history
         await app.db.insert(schema.chatMessages).values({
           userId: session.user.id,
+          personId: person_id ? person_id : undefined,
           role: 'user',
           content: message,
         });
@@ -479,6 +444,7 @@ export function registerAIRoutes(app: App) {
         // Save assistant message to chat history
         await app.db.insert(schema.chatMessages).values({
           userId: session.user.id,
+          personId: person_id ? person_id : undefined,
           role: 'assistant',
           content: text,
         });
@@ -500,6 +466,12 @@ export function registerAIRoutes(app: App) {
       schema: {
         description: 'Get chat message history with the dating coach',
         tags: ['chat'],
+        querystring: {
+          type: 'object',
+          properties: {
+            person_id: { type: 'string', format: 'uuid', description: 'Optional person ID to filter messages' },
+          },
+        },
         response: {
           200: {
             type: 'array',
@@ -508,6 +480,7 @@ export function registerAIRoutes(app: App) {
               properties: {
                 id: { type: 'string', format: 'uuid' },
                 userId: { type: 'string' },
+                personId: { type: ['string', 'null'], format: 'uuid' },
                 role: { type: 'string' },
                 content: { type: 'string' },
                 createdAt: { type: 'string', format: 'date-time' },
@@ -518,22 +491,29 @@ export function registerAIRoutes(app: App) {
         },
       },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Querystring: { person_id?: string } }>, reply: FastifyReply) => {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
-      app.logger.info({ userId: session.user.id }, 'Fetching chat history');
+      const { person_id } = request.query;
+      app.logger.info({ userId: session.user.id, personId: person_id }, 'Fetching chat history');
+
+      // Build where clause
+      let whereClause = eq(schema.chatMessages.userId, session.user.id);
+      if (person_id) {
+        whereClause = and(whereClause, eq(schema.chatMessages.personId, person_id));
+      }
 
       const messages = await app.db
         .select()
         .from(schema.chatMessages)
-        .where(eq(schema.chatMessages.userId, session.user.id))
+        .where(whereClause)
         .orderBy(schema.chatMessages.createdAt);
 
       // Return last 50 messages
       const history = messages.slice(-50);
 
-      app.logger.info({ userId: session.user.id, count: history.length }, 'Retrieved chat history');
+      app.logger.info({ userId: session.user.id, personId: person_id, count: history.length }, 'Retrieved chat history');
       return history;
     }
   );
