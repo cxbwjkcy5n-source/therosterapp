@@ -227,7 +227,7 @@ export default function AddPersonScreen() {
     prefill_name?: string;
     prefill_photo_url?: string;
     prefill_age?: string;
-    prefill_occupation?: string;
+    prefill_career?: string;
     prefill_location?: string;
     prefill_instagram?: string;
     prefill_tiktok?: string;
@@ -242,7 +242,7 @@ export default function AddPersonScreen() {
   const [age, setAge] = useState(params.prefill_age || '');
   const [birthday, setBirthday] = useState('');
   const [zodiac, setZodiac] = useState('');
-  const [occupation, setOccupation] = useState(params.prefill_occupation || '');
+  const [career, setCareer] = useState(params.prefill_career || '');
   const [phoneNumber, setPhoneNumber] = useState(params.prefill_phone_number || '');
   const [instagram, setInstagram] = useState(params.prefill_instagram || '');
   const [tiktok, setTiktok] = useState(params.prefill_tiktok || '');
@@ -319,7 +319,7 @@ export default function AddPersonScreen() {
       if (twitterX) payload.twitter_x = twitterX;
       if (connectionType) payload.connection_type = connectionType;
       if (connectionType === 'other' && connectionTypeCustom) payload.connection_type_custom = connectionTypeCustom;
-      if (occupation) payload.occupation = occupation;
+      if (career) payload.career = career;
 
       console.log('[AddPerson] POST /api/persons');
       const created = await apiPost<{ person: { id: string } }>('/api/persons', payload);
@@ -574,10 +574,10 @@ export default function AddPersonScreen() {
           ) : null}
 
           <View>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>Occupation</Text>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>Career</Text>
             <TextInput
-              value={occupation}
-              onChangeText={setOccupation}
+              value={career}
+              onChangeText={setCareer}
               placeholder="What do they do?"
               placeholderTextColor={colors.textTertiary}
               autoCapitalize="words"
