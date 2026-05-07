@@ -95,6 +95,28 @@ function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 }
 
+// ─── PhotoThumb ──────────────────────────────────────────────────────────────
+function PhotoThumb({ photoUrl, hasValidUrl, colors }: { photoUrl: string; hasValidUrl: boolean; colors: Record<string, string> }) {
+  const [hasError, setHasError] = useState(false);
+  const showImage = hasValidUrl && !hasError;
+  return showImage ? (
+    <Image
+      source={{ uri: photoUrl }}
+      style={{ width: 80, height: 80, borderRadius: 12 }}
+      contentFit="cover"
+      cachePolicy="memory-disk"
+      onError={(e) => {
+        console.error('[PersonDetail] Photo load error:', e);
+        setHasError(true);
+      }}
+    />
+  ) : (
+    <View style={{ width: 80, height: 80, borderRadius: 12, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
+      <Ionicons name="camera-outline" size={28} color="#AAAAAA" />
+    </View>
+  );
+}
+
 function formatShortDate(dateStr: string): string {
   if (!dateStr) return '';
   const d = new Date(dateStr);
@@ -1915,7 +1937,10 @@ export default function PersonDetailScreen() {
             ) : (
               <>
                 {personPhotos.slice(0, 5).map((photo) => {
-                  const hasValidUrl = typeof photo.photo_url === 'string' && photo.photo_url.length > 0;
+                  const hasValidUrl = typeof photo.photo_url === 'string' && (
+                    photo.photo_url.startsWith('https://') ||
+                    (photo.photo_url.startsWith('data:') && photo.photo_url.length > 100)
+                  );
                   return (
                     <Pressable
                       key={photo.id}
@@ -1941,19 +1966,11 @@ export default function PersonDetailScreen() {
                         ]);
                       }}
                     >
-                      {!hasValidUrl ? (
-                        <View style={{ width: 80, height: 80, borderRadius: 12, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
-                          <Ionicons name="camera-outline" size={28} color="#AAAAAA" />
-                        </View>
-                      ) : (
-                        <Image
-                          source={{ uri: photo.photo_url }}
-                          style={{ width: 80, height: 80, borderRadius: 12 }}
-                          contentFit="cover"
-                          cachePolicy="memory-disk"
-                          onError={(e) => console.error('[PersonDetail] Photo load error:', e)}
-                        />
-                      )}
+                      <PhotoThumb
+                        photoUrl={photo.photo_url}
+                        hasValidUrl={hasValidUrl}
+                        colors={colors}
+                      />
                     </Pressable>
                   );
                 })}
@@ -1980,7 +1997,9 @@ export default function PersonDetailScreen() {
                           photo_url: photoUrl,
                           sort_order: personPhotos.length,
                         });
-                        loadPersonPhotos();
+                        console.log('[PersonDetail] Optimistically adding photo to state');
+                        setPersonPhotos((prev) => [...prev, { id: Date.now().toString(), photo_url: photoUrl, sort_order: personPhotos.length }]);
+                        setTimeout(() => loadPersonPhotos(), 600);
                       } catch (e) {
                         console.error('[PersonDetail] Failed to upload photo:', e);
                         Alert.alert('Error', 'Photo upload failed. Please try again.');
