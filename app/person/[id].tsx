@@ -1860,7 +1860,7 @@ export default function PersonDetailScreen() {
             ) : (
               <>
                 {personPhotos.slice(0, 5).map((photo) => {
-                  const isBase64Blob = photo.photo_url.startsWith('data:') && photo.photo_url.length > 500;
+                  const isBase64Blob = typeof photo.photo_url === 'string' && photo.photo_url.startsWith('data:') && photo.photo_url.length > 500;
                   return (
                     <Pressable
                       key={photo.id}
@@ -1886,7 +1886,7 @@ export default function PersonDetailScreen() {
                         ]);
                       }}
                     >
-                      {isBase64Blob ? (
+                      {isBase64Blob || !photo.photo_url ? (
                         <View style={{ width: 80, height: 80, borderRadius: 12, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
                           <Ionicons name="camera-outline" size={28} color="#AAAAAA" />
                         </View>
