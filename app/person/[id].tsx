@@ -1059,15 +1059,22 @@ export default function PersonDetailScreen() {
   useEffect(() => {
     if (didLoadRef.current) return;
     didLoadRef.current = true;
-    Promise.all([loadPerson(), loadNotes(), loadReminders(), loadInteractions()]);
+    Promise.all([loadPerson(), loadNotes(), loadReminders(), loadInteractions(), loadPersonPhotos()]);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const hasMountedRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      if (id) {
+      if (!id) return;
+      if (!hasMountedRef.current) {
+        // Skip first focus — useEffect above handles initial load
+        hasMountedRef.current = true;
         loadDates();
-        loadPersonPhotos();
+        return;
       }
+      // On subsequent focuses (returning from another screen), reload everything
+      loadDates();
+      loadPersonPhotos();
     }, [id, loadDates, loadPersonPhotos])
   );
 
