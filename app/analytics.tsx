@@ -7,14 +7,13 @@ import {
   Pressable,
   Image,
   ImageSourcePropType,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { apiGet } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
 const H_PAD = 16;
 const CARD_GAP = 12;
 
@@ -923,6 +922,7 @@ interface AnalyticsSummary {
 export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { width: SCREEN_WIDTH } = useWindowDimensions(); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [persons, setPersons] = useState<Person[]>([]);
   const [dates, setDates] = useState<DateEntry[]>([]);
   const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary | null>(null);

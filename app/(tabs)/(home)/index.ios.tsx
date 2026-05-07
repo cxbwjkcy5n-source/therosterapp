@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ import { apiGet } from '@/utils/api';
 import type { ImageSourcePropType } from 'react-native';
 
 const RED = '#E53935';
+
+let cachedProfilePhotoUrl: string | null = null;
 
 interface Person {
   id: string;
@@ -241,7 +243,11 @@ const PersonCard = React.memo(function PersonCard({ item, index }: { item: Perso
 
   const hasPhoto = !!item.photo_url;
   const initials = getInitials(item.name);
-  const score = computeScore(item);
+  const score = useMemo(() => computeScore(item), [
+    item.attractiveness, item.sexual_chemistry, item.overall_chemistry,
+    item.communication, item.consistency, item.emotional_availability,
+    item.date_planning, item.alignment,
+  ]);
   const categoryLabel = getCategoryLabel(item.connection_type, item.connection_type_custom);
 
   const trendColor = item.interest_level != null
@@ -469,32 +475,38 @@ export default function RosterScreen() {
           });
       }
       if (user) {
-        console.log('[Roster] Fetching profile photo from /api/profile');
-        apiGet<any>('/api/profile')
-          .then((res) => {
-            const raw: string | null =
-              res?.profile?.photo_url ??
-              res?.profile?.photoUrl ??
-              res?.photo_url ??
-              res?.photoUrl ??
-              null;
+        if (cachedProfilePhotoUrl !== null) {
+          console.log('[Roster] Profile photo served from cache');
+          setProfilePhotoUrl(cachedProfilePhotoUrl);
+        } else {
+          console.log('[Roster] Fetching profile photo from /api/profile');
+          apiGet<any>('/api/profile')
+            .then((res) => {
+              const raw: string | null =
+                res?.profile?.photo_url ??
+                res?.profile?.photoUrl ??
+                res?.photo_url ??
+                res?.photoUrl ??
+                null;
 
-            if (!raw || raw.length < 10) {
-              setProfilePhotoUrl(null);
-              return;
-            }
+              if (!raw || raw.length < 10) {
+                setProfilePhotoUrl(null);
+                return;
+              }
 
-            let finalUrl = raw;
-            if (!raw.startsWith('http') && !raw.startsWith('data:')) {
-              finalUrl = `data:image/jpeg;base64,${raw}`;
-            }
+              let finalUrl = raw;
+              if (!raw.startsWith('http') && !raw.startsWith('data:')) {
+                finalUrl = `data:image/jpeg;base64,${raw}`;
+              }
 
-            console.log('[Roster] Profile photo resolved, length:', finalUrl.length, 'prefix:', finalUrl.slice(0, 30));
-            setProfilePhotoUrl(finalUrl);
-          })
-          .catch((e) => {
-            console.error('[Roster] Failed to fetch profile photo:', e);
-          });
+              console.log('[Roster] Profile photo resolved, length:', finalUrl.length, 'prefix:', finalUrl.slice(0, 30));
+              cachedProfilePhotoUrl = finalUrl;
+              setProfilePhotoUrl(finalUrl);
+            })
+            .catch((e) => {
+              console.error('[Roster] Failed to fetch profile photo:', e);
+            });
+        }
       }
     }, [loadData, user])
   );

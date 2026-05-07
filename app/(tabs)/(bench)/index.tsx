@@ -28,9 +28,12 @@ interface Person {
   is_benched?: boolean;
 }
 
-function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType {
-  if (!source) return { uri: '' };
-  if (typeof source === 'string') return { uri: source };
+function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
+  if (!source) return null;
+  if (typeof source === 'string') {
+    if (source.length < 10) return null;
+    return { uri: source };
+  }
   return source as ImageSourcePropType;
 }
 
@@ -151,9 +154,9 @@ function BenchCard({
                 backgroundColor: '#FFF0F0',
               }}
             >
-              {hasPhoto ? (
+              {hasPhoto && item.photo_url && item.photo_url.length > 10 ? (
                 <Image
-                  source={resolveImageSource(item.photo_url)}
+                  source={resolveImageSource(item.photo_url)!}
                   style={{ width: 52, height: 52 }}
                   contentFit="cover"
                 />

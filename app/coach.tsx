@@ -49,8 +49,9 @@ export default function CoachScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
-    console.log('[Coach] Loading chat history from GET /api/chat/history');
-    const loadHistory = apiGet<{ messages: ChatMessage[] }>('/api/chat/history')
+    const historyUrl = personId ? `/api/chat/history?person_id=${personId}` : '/api/chat/history';
+    console.log('[Coach] Loading chat history from GET', historyUrl);
+    const loadHistory = apiGet<{ messages: ChatMessage[] }>(historyUrl)
       .then((data) => {
         console.log('[Coach] Loaded', data.messages?.length ?? 0, 'messages');
         setMessages(data.messages || []);

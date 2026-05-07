@@ -160,7 +160,7 @@ export default function RemindersScreen() {
                     key={d.id}
                     onPress={() => {
                       console.log('[Reminders] Upcoming date pressed:', d.id, d.title);
-                      router.push('/date-plan');
+                      router.push({ pathname: '/date-review', params: { dateId: d.id, personName: d.person_name, personPhoto: d.person_photo_url || '' } });
                     }}
                     style={{
                       backgroundColor: colors.surface,
