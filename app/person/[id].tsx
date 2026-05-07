@@ -1944,6 +1944,7 @@ export default function PersonDetailScreen() {
                   return (
                     <Pressable
                       key={photo.id}
+                      delayLongPress={800}
                       onLongPress={() => {
                         console.log('[PersonDetail] Long press on photo:', photo.id);
                         Alert.alert('Delete Photo', 'Remove this photo?', [
@@ -1999,7 +2000,7 @@ export default function PersonDetailScreen() {
                         });
                         console.log('[PersonDetail] Optimistically adding photo to state');
                         setPersonPhotos((prev) => [...prev, { id: Date.now().toString(), photo_url: photoUrl, sort_order: personPhotos.length }]);
-                        setTimeout(() => loadPersonPhotos(), 600);
+                        await loadPersonPhotos();
                       } catch (e) {
                         console.error('[PersonDetail] Failed to upload photo:', e);
                         Alert.alert('Error', 'Photo upload failed. Please try again.');
