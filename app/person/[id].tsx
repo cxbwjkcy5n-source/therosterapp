@@ -54,6 +54,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
 import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPicker';
@@ -849,6 +850,7 @@ export default function PersonDetailScreen() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { isReady } = useAuth();
 
   // core data
   const [person, setPerson] = useState<Person | null>(null);
@@ -1052,14 +1054,14 @@ export default function PersonDetailScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !isReady) return;
     loadPerson();
     loadNotes();
     loadReminders();
     loadInteractions();
     loadPersonPhotos();
     loadDates();
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id, isReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── actions ──────────────────────────────────────────────────────────────
 
