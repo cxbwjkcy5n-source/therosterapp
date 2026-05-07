@@ -27,6 +27,23 @@ const safeFetch: typeof fetch = (input, init?) => {
   return fetch(input, init);
 };
 
+// Web fetch that:
+// 1. Rewrites the URL to always target the real Specular backend (never localhost proxy)
+// 2. Injects Origin header so Better Auth trusts the request
+// 3. Attaches Bearer token from localStorage (no cookies)
+const webFetch: typeof fetch = (input, init?) => {
+  const rawUrl = input instanceof URL ? input.toString() : typeof input === "string" ? input : (input as Request).url;
+  const rewritten = rawUrl.startsWith(API_URL) ? rawUrl : rawUrl.replace(/^https?:\/\/[^/]+/, API_URL);
+  const token = localStorage.getItem(BEARER_TOKEN_KEY) || "";
+  const headers = new Headers((init?.headers as HeadersInit | undefined) ?? {});
+  headers.set("Origin", API_URL);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  console.log("[Auth] webFetch:", rewritten);
+  return fetch(rewritten, { ...init, headers });
+};
+
 export const authClient = createAuthClient({
   baseURL: API_URL,
   plugins: [
@@ -38,7 +55,7 @@ export const authClient = createAuthClient({
   ],
   fetchOptions: Platform.OS === "web"
     ? {
-        credentials: "include",
+        customFetchImpl: webFetch,
         auth: {
           type: "Bearer" as const,
           token: () => localStorage.getItem(BEARER_TOKEN_KEY) || "",
