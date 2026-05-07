@@ -993,16 +993,18 @@ export default function PersonDetailScreen() {
   const loadPersonPhotos = useCallback(async () => {
     if (!id) return;
     console.log('[PersonDetail] Loading photos for person:', id);
-    setPhotosLoading(true);
+    // Don't set photosLoading=true — that causes the strip to flash/disappear
     try {
       const data = await apiGet<{ photos: { id: string; photo_url: string; sort_order?: number }[] }>(`/api/persons/${id}/photos`);
       console.log('[PersonDetail] Loaded', data.photos?.length ?? 0, 'photos');
       if (data.photos?.length > 0) console.log('[PersonDetail] First photo raw:', JSON.stringify(data.photos[0]));
-      setPersonPhotos(data.photos || []);
+      // Filter out any records with null/empty photo_url to prevent camera icon flash
+      const validPhotos = (data.photos || []).filter(
+        (p) => p.photo_url && typeof p.photo_url === 'string' && p.photo_url.length > 10
+      );
+      setPersonPhotos(validPhotos);
     } catch (e) {
       console.error('[PersonDetail] Failed to load person photos:', e);
-    } finally {
-      setPhotosLoading(false);
     }
   }, [id]);
 
@@ -1947,11 +1949,8 @@ export default function PersonDetailScreen() {
         <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="Photos" />
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
-            {photosLoading ? (
-              <ActivityIndicator color={RED} style={{ marginVertical: 20 }} />
-            ) : (
-              <>
-                {personPhotos.slice(0, 5).map((photo) => {
+            <>
+              {personPhotos.slice(0, 5).map((photo) => {
                   const hasValidUrl = typeof photo.photo_url === 'string' && photo.photo_url.length > 10 && (
                     photo.photo_url.startsWith('https://') ||
                     photo.photo_url.startsWith('http://') ||
@@ -2016,8 +2015,8 @@ export default function PersonDetailScreen() {
                           photo_url: photoUrl,
                           sort_order: personPhotos.length,
                         });
-                        // Replace optimistic entry with real DB record (gets the real id)
-                        await loadPersonPhotos();
+                        // Don't call loadPersonPhotos() here — optimistic state is correct
+                        // useFocusEffect will reload from DB next time user returns to screen
                       } catch (e) {
                         console.error('[PersonDetail] Failed to upload photo:', e);
                         Alert.alert('Error', 'Photo upload failed. Please try again.');
@@ -2038,8 +2037,7 @@ export default function PersonDetailScreen() {
                     )}
                   </Pressable>
                 )}
-              </>
-            )}
+            </>
           </ScrollView>
         </View>
 
