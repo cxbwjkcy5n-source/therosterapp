@@ -97,8 +97,10 @@ function getInitials(name: string) {
 }
 
 // ─── PhotoThumb ──────────────────────────────────────────────────────────────
-function PhotoThumb({ photoUrl, hasValidUrl, colors }: { photoUrl: string; hasValidUrl: boolean; colors: Record<string, string> }) {
-  if (!hasValidUrl) {
+function PhotoThumb({ photoUrl, colors }: { photoUrl: string; colors: Record<string, string> }) {
+  const [loadError, setLoadError] = useState(false);
+
+  if (loadError || !photoUrl || photoUrl.trim().length === 0) {
     return (
       <View style={{ width: 80, height: 80, borderRadius: 12, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
         <Ionicons name="camera-outline" size={28} color="#AAAAAA" />
@@ -110,7 +112,10 @@ function PhotoThumb({ photoUrl, hasValidUrl, colors }: { photoUrl: string; hasVa
       source={{ uri: photoUrl }}
       style={{ width: 80, height: 80, borderRadius: 12 }}
       contentFit="cover"
-      onError={(e) => console.error('[PersonDetail] Photo load error:', photoUrl?.slice(0, 60), e)}
+      onError={(e) => {
+        console.error('[PersonDetail] Photo load error for url:', photoUrl?.slice(0, 80), e);
+        setLoadError(true);
+      }}
     />
   );
 }
@@ -993,15 +998,17 @@ export default function PersonDetailScreen() {
   const loadPersonPhotos = useCallback(async () => {
     if (!id) return;
     console.log('[PersonDetail] Loading photos for person:', id);
-    // Don't set photosLoading=true — that causes the strip to flash/disappear
     try {
       const data = await apiGet<{ photos: { id: string; photo_url: string; sort_order?: number }[] }>(`/api/persons/${id}/photos`);
-      console.log('[PersonDetail] Loaded', data.photos?.length ?? 0, 'photos');
-      if (data.photos?.length > 0) console.log('[PersonDetail] First photo raw:', JSON.stringify(data.photos[0]));
-      // Filter out any records with null/empty photo_url to prevent camera icon flash
-      const validPhotos = (data.photos || []).filter(
-        (p) => p.photo_url && typeof p.photo_url === 'string' && p.photo_url.length > 10
-      );
+      console.log('[PersonDetail] Raw photos response:', JSON.stringify(data));
+      const allPhotos = data.photos || [];
+      console.log('[PersonDetail] Total photos from DB:', allPhotos.length);
+      allPhotos.forEach((p, i) => {
+        console.log(`[PersonDetail] Photo[${i}]: id=${p.id}, url_length=${p.photo_url?.length}, url_prefix=${p.photo_url?.slice(0, 50)}`);
+      });
+      // Accept any photo with a non-empty photo_url — don't over-filter
+      const validPhotos = allPhotos.filter((p) => p.photo_url && p.photo_url.trim().length > 0);
+      console.log('[PersonDetail] Valid photos after filter:', validPhotos.length);
       setPersonPhotos(validPhotos);
     } catch (e) {
       console.error('[PersonDetail] Failed to load person photos:', e);
@@ -1951,11 +1958,6 @@ export default function PersonDetailScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10 }}>
             <>
               {personPhotos.slice(0, 5).map((photo) => {
-                  const hasValidUrl = typeof photo.photo_url === 'string' && photo.photo_url.length > 10 && (
-                    photo.photo_url.startsWith('https://') ||
-                    photo.photo_url.startsWith('http://') ||
-                    (photo.photo_url.startsWith('data:') && photo.photo_url.length > 100)
-                  );
                   return (
                     <Pressable
                       key={photo.id}
@@ -1984,7 +1986,6 @@ export default function PersonDetailScreen() {
                     >
                       <PhotoThumb
                         photoUrl={photo.photo_url}
-                        hasValidUrl={hasValidUrl}
                         colors={colors}
                       />
                     </Pressable>
