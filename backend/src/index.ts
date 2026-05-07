@@ -30,17 +30,25 @@ export const app = await createApplication(schema);
 export type App = typeof app;
 
 // Enable authentication with email/password and OAuth providers
+const baseTrustedOrigins = [
+  'roster://',
+  'https://bqwfnumg43sdjmd5mdarg4jau4ey73ch.app.specular.dev',
+  'http://localhost:8081',
+  'http://localhost:8082',
+  'http://localhost:19006',
+  'exp://',
+  'exp://localhost:8081',
+  'exp://localhost:8082',
+  'exp://localhost:19000',
+];
+
+// Add extra origins from environment variable if provided
+const extraOrigins = process.env.EXTRA_TRUSTED_ORIGINS
+  ? process.env.EXTRA_TRUSTED_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
+  : [];
+
 app.withAuth({
-  trustedOrigins: [
-    'roster://',
-    'https://bqwfnumg43sdjmd5mdarg4jau4ey73ch.app.specular.dev',
-    'http://localhost:8081',
-    'http://localhost:8082',
-    'http://localhost:19006',
-    'exp://',
-    'exp://localhost:8081',
-    'exp://localhost:19000',
-  ],
+  trustedOrigins: [...baseTrustedOrigins, ...extraOrigins],
 });
 
 // Enable file storage for uploads
