@@ -27,6 +27,7 @@ import {
   Modal,
   Platform,
   KeyboardAvoidingView,
+  Image as RNImage,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -98,24 +99,19 @@ function getInitials(name: string) {
 
 // ─── PhotoThumb ──────────────────────────────────────────────────────────────
 function PhotoThumb({ photoUrl, colors }: { photoUrl: string; colors: Record<string, string> }) {
-  const [loadError, setLoadError] = useState(false);
-
-  if (loadError || !photoUrl || photoUrl.trim().length === 0) {
+  if (!photoUrl || photoUrl.trim().length === 0) {
     return (
       <View style={{ width: 80, height: 80, borderRadius: 12, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
         <Ionicons name="camera-outline" size={28} color="#AAAAAA" />
       </View>
     );
   }
+  // Use React Native's built-in Image — no onError, no loadError state, no expo-image caching issues
   return (
-    <Image
+    <RNImage
       source={{ uri: photoUrl }}
       style={{ width: 80, height: 80, borderRadius: 12 }}
-      contentFit="cover"
-      onError={(e) => {
-        console.error('[PersonDetail] Photo load error for url:', photoUrl?.slice(0, 80), e);
-        setLoadError(true);
-      }}
+      resizeMode="cover"
     />
   );
 }
