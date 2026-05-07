@@ -12,6 +12,7 @@ import {
   Modal,
   Platform,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import {
   Pencil,
@@ -869,6 +870,13 @@ export default function PersonDetailScreen() {
   const [addingGreenFlag, setAddingGreenFlag] = useState('');
   const [addingRedFlag, setAddingRedFlag] = useState('');
 
+  // inline card editing
+  const [inlineEditField, setInlineEditField] = useState<'things_i_like' | 'dating_status' | 'tags' | null>(null);
+  const [inlineEditValue, setInlineEditValue] = useState('');
+  const [inlineTagInput, setInlineTagInput] = useState('');
+  const [inlineTags, setInlineTags] = useState<string[]>([]);
+  const [inlineSaving, setInlineSaving] = useState(false);
+
   // tags
   const [newTag, setNewTag] = useState('');
 
@@ -1645,23 +1653,43 @@ export default function PersonDetailScreen() {
         )}
 
         {/* What I like about them */}
-        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-          <SectionHeader label="What I Like About Them" />
+        <Pressable
+          onPress={() => {
+            console.log('[PersonDetail] Inline edit: things_i_like tapped');
+            setInlineEditValue(displayData.things_i_like ?? '');
+            setInlineEditField('things_i_like');
+          }}
+          style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', color: '#999999' }}>What I Like About Them</Text>
+            <Pencil size={14} color="#BBBBBB" />
+          </View>
           {displayData.things_i_like ? (
             <Text style={{ color: colors.text, fontSize: 14, lineHeight: 21, fontStyle: 'italic' }}>
               {'"'}{displayData.things_i_like}{'"'}
             </Text>
           ) : (
             <Text style={{ color: colors.textTertiary, fontSize: 14, fontStyle: 'italic' }}>
-              Tap edit to add what you appreciate about them...
+              Tap to add what you appreciate about them...
             </Text>
           )}
-        </View>
+        </Pressable>
 
         {/* Status card */}
-        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-          <SectionHeader label="Status" />
-          {editing ? null : displayData.dating_status ? (
+        <Pressable
+          onPress={() => {
+            console.log('[PersonDetail] Inline edit: dating_status tapped');
+            setInlineEditValue(displayData.dating_status ?? '');
+            setInlineEditField('dating_status');
+          }}
+          style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', color: '#999999' }}>Status</Text>
+            <Pencil size={14} color="#BBBBBB" />
+          </View>
+          {displayData.dating_status ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <View style={{
                 width: 10, height: 10, borderRadius: 5,
@@ -1677,13 +1705,25 @@ export default function PersonDetailScreen() {
               </Text>
             </View>
           ) : (
-            <Text style={{ color: colors.textTertiary, fontSize: 14, fontStyle: 'italic' }}>Tap edit to set a status...</Text>
+            <Text style={{ color: colors.textTertiary, fontSize: 14, fontStyle: 'italic' }}>Tap to set a status...</Text>
           )}
-        </View>
+        </Pressable>
 
         {/* Tags card */}
-        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
-          <SectionHeader label="Tags" />
+        <Pressable
+          onPress={() => {
+            console.log('[PersonDetail] Inline edit: tags tapped');
+            const currentTags = (displayData.tags as string[] | undefined) ?? [];
+            setInlineTags([...currentTags]);
+            setInlineTagInput('');
+            setInlineEditField('tags');
+          }}
+          style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', color: '#999999' }}>Tags</Text>
+            <Pencil size={14} color="#BBBBBB" />
+          </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {(displayData.tags as string[] | undefined || []).map((tag, i) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryMuted, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 }}>
@@ -1691,10 +1731,10 @@ export default function PersonDetailScreen() {
               </View>
             ))}
             {(displayData.tags?.length ?? 0) === 0 && (
-              <Text style={{ color: colors.textTertiary, fontSize: 14, fontStyle: 'italic' }}>Tap edit to add tags...</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 14, fontStyle: 'italic' }}>Tap to add tags...</Text>
             )}
           </View>
-        </View>
+        </Pressable>
 
         {/* Next Step card */}
         {(() => {
@@ -1860,7 +1900,7 @@ export default function PersonDetailScreen() {
             ) : (
               <>
                 {personPhotos.slice(0, 5).map((photo) => {
-                  const isBase64Blob = typeof photo.photo_url === 'string' && photo.photo_url.startsWith('data:') && photo.photo_url.length > 500;
+                  const hasValidUrl = typeof photo.photo_url === 'string' && photo.photo_url.length > 0;
                   return (
                     <Pressable
                       key={photo.id}
@@ -1886,7 +1926,7 @@ export default function PersonDetailScreen() {
                         ]);
                       }}
                     >
-                      {isBase64Blob || !photo.photo_url ? (
+                      {!hasValidUrl ? (
                         <View style={{ width: 80, height: 80, borderRadius: 12, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
                           <Ionicons name="camera-outline" size={28} color="#AAAAAA" />
                         </View>
@@ -1916,14 +1956,13 @@ export default function PersonDetailScreen() {
                       });
                       if (result.canceled || !result.assets?.[0]) return;
                       const asset = result.assets[0];
-                      console.log('[PersonDetail] Photo selected, uploading...');
+                      console.log('[PersonDetail] Photo selected, saving base64 directly...');
                       setUploadingPhoto(true);
                       try {
-                        const uploadRes = await apiPost<{ photo_url: string }>('/api/upload-photo', {
-                          base64: asset.base64,
-                        });
-                        const photoUrl = uploadRes.photo_url;
-                        console.log('[PersonDetail] Photo uploaded, saving to person:', photoUrl.slice(0, 40));
+                        const base64Data = asset.base64;
+                        const mimeType = asset.mimeType ?? 'image/jpeg';
+                        const photoUrl = `data:${mimeType};base64,${base64Data}`;
+                        console.log('[PersonDetail] Saving photo to person, url prefix:', photoUrl.slice(0, 40));
                         await apiPost(`/api/persons/${id}/photos`, {
                           photo_url: photoUrl,
                           sort_order: personPhotos.length,
@@ -2909,6 +2948,219 @@ export default function PersonDetailScreen() {
 
       </ScrollView>
 
+      {/* ── Inline Edit Modal ───────────────────────────────────────────────── */}
+      <Modal
+        visible={inlineEditField !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setInlineEditField(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+          onPress={() => setInlineEditField(null)}
+        >
+          <Pressable
+            onPress={() => {}}
+            style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}
+          >
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>
+                {inlineEditField === 'things_i_like' ? 'What I Like About Them' :
+                 inlineEditField === 'dating_status' ? 'Status' :
+                 inlineEditField === 'tags' ? 'Tags' : ''}
+              </Text>
+              <Pressable onPress={() => setInlineEditField(null)}>
+                <Text style={{ color: RED, fontSize: 14, fontWeight: '600' }}>Cancel</Text>
+              </Pressable>
+            </View>
+
+            {/* things_i_like */}
+            {inlineEditField === 'things_i_like' && (
+              <View>
+                <TextInput
+                  value={inlineEditValue}
+                  onChangeText={setInlineEditValue}
+                  multiline
+                  numberOfLines={4}
+                  placeholder="What do you appreciate about them?"
+                  placeholderTextColor={colors.textTertiary}
+                  style={{
+                    backgroundColor: colors.surfaceSecondary,
+                    borderRadius: 12,
+                    padding: 14,
+                    fontSize: 14,
+                    color: colors.text,
+                    minHeight: 100,
+                    textAlignVertical: 'top',
+                    marginBottom: 16,
+                  }}
+                />
+                <Pressable
+                  disabled={inlineSaving}
+                  onPress={async () => {
+                    console.log('[PersonDetail] Inline save things_i_like:', inlineEditValue.slice(0, 40));
+                    setInlineSaving(true);
+                    try {
+                      await apiPut(`/api/persons/${id}`, { things_i_like: inlineEditValue });
+                      setPerson((prev) => prev ? { ...prev, things_i_like: inlineEditValue } : prev);
+                      setInlineEditField(null);
+                    } catch (e: any) {
+                      console.error('[PersonDetail] Inline save things_i_like failed:', e);
+                      Alert.alert('Error', e?.message || 'Could not save. Try again.');
+                    } finally {
+                      setInlineSaving(false);
+                    }
+                  }}
+                  style={{ backgroundColor: RED, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
+                >
+                  {inlineSaving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Save</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
+
+            {/* dating_status */}
+            {inlineEditField === 'dating_status' && (
+              <View style={{ gap: 10 }}>
+                {(['talking', 'dating', 'exclusive', 'fading', 'on_hold'] as const).map((status) => {
+                  const dotColor =
+                    status === 'talking' ? '#2196F3' :
+                    status === 'dating' ? '#4CAF50' :
+                    status === 'exclusive' ? '#9C27B0' :
+                    status === 'fading' ? '#9E9E9E' :
+                    '#FF9800';
+                  const isSelected = inlineEditValue === status;
+                  const statusLabel = status.replace('_', ' ');
+                  return (
+                    <Pressable
+                      key={status}
+                      disabled={inlineSaving}
+                      onPress={async () => {
+                        console.log('[PersonDetail] Inline save dating_status:', status);
+                        setInlineSaving(true);
+                        try {
+                          await apiPut(`/api/persons/${id}`, { dating_status: status });
+                          setPerson((prev) => prev ? { ...prev, dating_status: status } : prev);
+                          setInlineEditField(null);
+                        } catch (e: any) {
+                          console.error('[PersonDetail] Inline save dating_status failed:', e);
+                          Alert.alert('Error', e?.message || 'Could not save. Try again.');
+                        } finally {
+                          setInlineSaving(false);
+                        }
+                      }}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        backgroundColor: isSelected ? colors.primaryMuted : colors.surfaceSecondary,
+                        borderRadius: 12,
+                        padding: 14,
+                        borderWidth: isSelected ? 1.5 : 0,
+                        borderColor: isSelected ? colors.primary : 'transparent',
+                      }}
+                    >
+                      <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: dotColor }} />
+                      <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600', textTransform: 'capitalize', flex: 1 }}>{statusLabel}</Text>
+                      {isSelected && <Ionicons name="checkmark" size={18} color={colors.primary} />}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* tags */}
+            {inlineEditField === 'tags' && (
+              <View>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                  {inlineTags.map((tag, i) => (
+                    <Pressable
+                      key={i}
+                      onPress={() => {
+                        console.log('[PersonDetail] Removing inline tag:', tag);
+                        setInlineTags((prev) => prev.filter((_, idx) => idx !== i));
+                      }}
+                      style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryMuted, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, gap: 6 }}
+                    >
+                      <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>{tag}</Text>
+                      <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '700' }}>×</Text>
+                    </Pressable>
+                  ))}
+                  {inlineTags.length === 0 && (
+                    <Text style={{ color: colors.textTertiary, fontSize: 13, fontStyle: 'italic' }}>No tags yet</Text>
+                  )}
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                  <TextInput
+                    value={inlineTagInput}
+                    onChangeText={setInlineTagInput}
+                    placeholder="Add a tag..."
+                    placeholderTextColor={colors.textTertiary}
+                    style={{
+                      flex: 1,
+                      backgroundColor: colors.surfaceSecondary,
+                      borderRadius: 10,
+                      paddingHorizontal: 14,
+                      paddingVertical: 10,
+                      fontSize: 14,
+                      color: colors.text,
+                    }}
+                    onSubmitEditing={() => {
+                      const trimmed = inlineTagInput.trim();
+                      if (trimmed && !inlineTags.includes(trimmed)) {
+                        setInlineTags((prev) => [...prev, trimmed]);
+                      }
+                      setInlineTagInput('');
+                    }}
+                  />
+                  <Pressable
+                    onPress={() => {
+                      const trimmed = inlineTagInput.trim();
+                      if (trimmed && !inlineTags.includes(trimmed)) {
+                        console.log('[PersonDetail] Adding inline tag:', trimmed);
+                        setInlineTags((prev) => [...prev, trimmed]);
+                      }
+                      setInlineTagInput('');
+                    }}
+                    style={{ backgroundColor: RED, borderRadius: 10, paddingHorizontal: 16, justifyContent: 'center' }}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Add</Text>
+                  </Pressable>
+                </View>
+                <Pressable
+                  disabled={inlineSaving}
+                  onPress={async () => {
+                    console.log('[PersonDetail] Inline save tags:', inlineTags);
+                    setInlineSaving(true);
+                    try {
+                      await apiPut(`/api/persons/${id}`, { tags: inlineTags });
+                      setPerson((prev) => prev ? { ...prev, tags: inlineTags } : prev);
+                      setInlineEditField(null);
+                    } catch (e: any) {
+                      console.error('[PersonDetail] Inline save tags failed:', e);
+                      Alert.alert('Error', e?.message || 'Could not save. Try again.');
+                    } finally {
+                      setInlineSaving(false);
+                    }
+                  }}
+                  style={{ backgroundColor: RED, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
+                >
+                  {inlineSaving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Save</Text>
+                  )}
+                </Pressable>
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* ── Conversation Starters Modal ─────────────────────────────────────── */}
       <Modal visible={startersModalVisible} transparent animationType="slide" onRequestClose={() => setStartersModalVisible(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={() => setStartersModalVisible(false)}>
@@ -2916,9 +3168,56 @@ export default function PersonDetailScreen() {
             <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 16 }}>✨ Conversation Starters</Text>
             <View style={{ gap: 12 }}>
               {starters.map((s, i) => (
-                <View key={i} style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 12, padding: 14 }}>
-                  <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{s}</Text>
-                </View>
+                <Pressable
+                  key={i}
+                  onPress={() => {
+                    console.log('[PersonDetail] Conversation starter tapped:', s.slice(0, 40));
+                    const hasPhone = !!(displayData.phone_number);
+                    if (hasPhone) {
+                      Alert.alert(
+                        'Send as Text?',
+                        s,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Send Text',
+                            onPress: () => {
+                              console.log('[PersonDetail] Opening SMS for starter');
+                              Linking.openURL('sms:' + (displayData.phone_number ?? ''));
+                            },
+                          },
+                        ]
+                      );
+                    } else {
+                      Alert.alert(
+                        'Send as Text?',
+                        'Copy this to send manually:\n\n' + s,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Copy',
+                            onPress: () => {
+                              console.log('[PersonDetail] Copying starter to clipboard');
+                              Clipboard.setStringAsync(s);
+                            },
+                          },
+                        ]
+                      );
+                    }
+                  }}
+                  style={({ pressed }) => ({
+                    backgroundColor: pressed ? colors.surfaceSecondary : colors.surfaceSecondary,
+                    borderRadius: 12,
+                    padding: 14,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20, flex: 1 }}>{s}</Text>
+                  <Text style={{ color: '#BBBBBB', fontSize: 16, marginLeft: 8 }}>›</Text>
+                </Pressable>
               ))}
             </View>
             <Pressable
