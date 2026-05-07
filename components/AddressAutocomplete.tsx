@@ -43,6 +43,7 @@ export function AddressAutocomplete({ value, onChangeText, onSelect, placeholder
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMounted = useRef(true);
   const inputRef = useRef<View>(null);
+  const textInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
     isMounted.current = true;
@@ -67,6 +68,7 @@ export function AddressAutocomplete({ value, onChangeText, onSelect, placeholder
       setPredictions(preds);
       setNoResults(preds.length === 0);
       setShowDropdown(true);
+      textInputRef.current?.focus();
     } catch (e) {
       console.error('[AddressAutocomplete] Fetch error (silent):', e);
       if (isMounted.current) setShowDropdown(false);
@@ -121,6 +123,7 @@ export function AddressAutocomplete({ value, onChangeText, onSelect, placeholder
         borderColor: colors.border,
       }}>
         <TextInput
+          ref={textInputRef}
           value={value}
           onChangeText={handleChangeText}
           onFocus={measureInput}
@@ -146,6 +149,7 @@ export function AddressAutocomplete({ value, onChangeText, onSelect, placeholder
         transparent
         animationType="none"
         onRequestClose={() => setShowDropdown(false)}
+        onShow={() => {}}
       >
         <Pressable style={{ flex: 1 }} onPress={() => setShowDropdown(false)}>
           <View
@@ -167,7 +171,7 @@ export function AddressAutocomplete({ value, onChangeText, onSelect, placeholder
               maxHeight: 220,
             }}
           >
-            <ScrollView keyboardShouldPersistTaps="handled" bounces={false}>
+            <ScrollView keyboardShouldPersistTaps="always" bounces={false}>
               {noResults ? (
                 <View style={{ minHeight: 44, paddingHorizontal: 14, paddingVertical: 12, justifyContent: 'center' }}>
                   <Text style={{ color: colors.textSecondary, fontSize: 14 }}>No results found</Text>

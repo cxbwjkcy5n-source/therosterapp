@@ -26,6 +26,7 @@ import {
   Linking,
   Modal,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -97,22 +98,20 @@ function getInitials(name: string) {
 
 // ─── PhotoThumb ──────────────────────────────────────────────────────────────
 function PhotoThumb({ photoUrl, hasValidUrl, colors }: { photoUrl: string; hasValidUrl: boolean; colors: Record<string, string> }) {
-  const [hasError, setHasError] = useState(false);
-  const showImage = hasValidUrl && !hasError;
-  return showImage ? (
+  if (!hasValidUrl) {
+    return (
+      <View style={{ width: 80, height: 80, borderRadius: 12, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
+        <Ionicons name="camera-outline" size={28} color="#AAAAAA" />
+      </View>
+    );
+  }
+  return (
     <Image
       source={{ uri: photoUrl }}
       style={{ width: 80, height: 80, borderRadius: 12 }}
       contentFit="cover"
-      onError={(e) => {
-        console.error('[PersonDetail] Photo load error:', e);
-        setHasError(true);
-      }}
+      onError={(e) => console.error('[PersonDetail] Photo load error:', photoUrl?.slice(0, 60), e)}
     />
-  ) : (
-    <View style={{ width: 80, height: 80, borderRadius: 12, backgroundColor: colors.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }}>
-      <Ionicons name="camera-outline" size={28} color="#AAAAAA" />
-    </View>
   );
 }
 
@@ -879,6 +878,9 @@ export default function PersonDetailScreen() {
   const [dateVibe, setDateVibe] = useState('');
   const [savingDate, setSavingDate] = useState(false);
 
+  // scroll ref for keyboard avoidance
+  const scrollViewRef = useRef<ScrollView>(null);
+
   // notes tab
   const [notes, setNotes] = useState<Note[]>([]);
   const [loadingNotes, setLoadingNotes] = useState(true);
@@ -939,6 +941,16 @@ export default function PersonDetailScreen() {
 
   // edit date
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
+
+  // scroll to end when note input appears so keyboard doesn't cover it
+  useEffect(() => {
+    if (addingNote) {
+      const timer = setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [addingNote]);
 
   // ── loaders ──────────────────────────────────────────────────────────────
 
@@ -2491,7 +2503,9 @@ export default function PersonDetailScreen() {
         }}
       />
 
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={{ paddingBottom: editing ? insets.bottom + 32 : 8 }}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
@@ -2978,6 +2992,7 @@ export default function PersonDetailScreen() {
         )}
 
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* ── Inline Edit Modal ───────────────────────────────────────────────── */}
       <Modal
