@@ -1050,15 +1050,16 @@ export default function PersonDetailScreen() {
   useEffect(() => {
     if (didLoadRef.current) return;
     didLoadRef.current = true;
-    Promise.all([loadPerson(), loadNotes(), loadReminders(), loadInteractions(), loadPersonPhotos()]);
+    Promise.all([loadPerson(), loadNotes(), loadReminders(), loadInteractions()]);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useFocusEffect(
     useCallback(() => {
       if (id) {
         loadDates();
+        loadPersonPhotos();
       }
-    }, [id, loadDates])
+    }, [id, loadDates, loadPersonPhotos])
   );
 
   // ── actions ──────────────────────────────────────────────────────────────
@@ -2009,12 +2010,14 @@ export default function PersonDetailScreen() {
                       try {
                         const photoUrl = await uploadToCloudinary(asset.base64 ?? '', asset.mimeType ?? 'image/jpeg');
                         console.log('[PersonDetail] Saving Cloudinary URL to person photos');
+                        // Optimistically add so the user sees it immediately
+                        setPersonPhotos((prev) => [...prev, { id: Date.now().toString(), photo_url: photoUrl, sort_order: personPhotos.length }]);
                         await apiPost(`/api/persons/${id}/photos`, {
                           photo_url: photoUrl,
                           sort_order: personPhotos.length,
                         });
-                        console.log('[PersonDetail] Optimistically adding photo to state');
-                        setPersonPhotos((prev) => [...prev, { id: Date.now().toString(), photo_url: photoUrl, sort_order: personPhotos.length }]);
+                        // Replace optimistic entry with real DB record (gets the real id)
+                        await loadPersonPhotos();
                       } catch (e) {
                         console.error('[PersonDetail] Failed to upload photo:', e);
                         Alert.alert('Error', 'Photo upload failed. Please try again.');
