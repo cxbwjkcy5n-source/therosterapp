@@ -1243,10 +1243,11 @@ describe("API Integration Tests", () => {
     const res = await authenticatedApi("/api/chat/history", authToken);
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(Array.isArray(data)).toBe(true);
+    expect(data.messages).toBeDefined();
+    expect(Array.isArray(data.messages)).toBe(true);
     // Each message should have the expected structure
-    if (data.length > 0) {
-      const msg = data[0];
+    if (data.messages.length > 0) {
+      const msg = data.messages[0];
       expect(msg.id).toBeDefined();
       expect(msg.role).toBeDefined();
       expect(msg.content).toBeDefined();

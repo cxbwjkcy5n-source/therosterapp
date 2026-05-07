@@ -299,6 +299,7 @@ export function registerAIRoutes(app: App) {
         // Save user message to chat history
         await app.db.insert(schema.chatMessages).values({
           userId: session.user.id,
+          personId: person_id ? person_id : undefined,
           role: 'user',
           content: message,
         });
@@ -306,6 +307,7 @@ export function registerAIRoutes(app: App) {
         // Save assistant message to chat history
         await app.db.insert(schema.chatMessages).values({
           userId: session.user.id,
+          personId: person_id ? person_id : undefined,
           role: 'assistant',
           content: text,
         });
@@ -474,16 +476,21 @@ export function registerAIRoutes(app: App) {
         },
         response: {
           200: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                id: { type: 'string', format: 'uuid' },
-                userId: { type: 'string' },
-                personId: { type: ['string', 'null'], format: 'uuid' },
-                role: { type: 'string' },
-                content: { type: 'string' },
-                createdAt: { type: 'string', format: 'date-time' },
+            type: 'object',
+            properties: {
+              messages: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    userId: { type: 'string' },
+                    personId: { type: ['string', 'null'], format: 'uuid' },
+                    role: { type: 'string' },
+                    content: { type: 'string' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                  },
+                },
               },
             },
           },
@@ -514,7 +521,7 @@ export function registerAIRoutes(app: App) {
       const history = messages.slice(-50);
 
       app.logger.info({ userId: session.user.id, personId: person_id, count: history.length }, 'Retrieved chat history');
-      return history;
+      return { messages: history };
     }
   );
 }
