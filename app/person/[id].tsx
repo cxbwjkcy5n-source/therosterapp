@@ -1,4 +1,19 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+
+async function uploadToCloudinary(base64: string, mimeType: string = 'image/jpeg'): Promise<string> {
+  console.log('[Cloudinary] Uploading image, mimeType:', mimeType);
+  const formData = new FormData();
+  formData.append('file', `data:${mimeType};base64,${base64}`);
+  formData.append('upload_preset', 'Roster');
+  const res = await fetch('https://api.cloudinary.com/v1_1/dfssa7ecv/image/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  const data = await res.json();
+  if (!data.secure_url) throw new Error('Cloudinary upload failed');
+  console.log('[Cloudinary] Upload successful:', data.secure_url);
+  return data.secure_url;
+}
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -1948,7 +1963,7 @@ export default function PersonDetailScreen() {
                     onPress={async () => {
                       console.log('[PersonDetail] Add photo pressed');
                       const result = await ImagePicker.launchImageLibraryAsync({
-                        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                        mediaTypes: ['images'],
                         allowsEditing: true,
                         aspect: [1, 1],
                         quality: 0.7,
@@ -1956,13 +1971,11 @@ export default function PersonDetailScreen() {
                       });
                       if (result.canceled || !result.assets?.[0]) return;
                       const asset = result.assets[0];
-                      console.log('[PersonDetail] Photo selected, saving base64 directly...');
+                      console.log('[PersonDetail] Photo selected, uploading to Cloudinary...');
                       setUploadingPhoto(true);
                       try {
-                        const base64Data = asset.base64;
-                        const mimeType = asset.mimeType ?? 'image/jpeg';
-                        const photoUrl = `data:${mimeType};base64,${base64Data}`;
-                        console.log('[PersonDetail] Saving photo to person, url prefix:', photoUrl.slice(0, 40));
+                        const photoUrl = await uploadToCloudinary(asset.base64 ?? '', asset.mimeType ?? 'image/jpeg');
+                        console.log('[PersonDetail] Saving Cloudinary URL to person photos');
                         await apiPost(`/api/persons/${id}/photos`, {
                           photo_url: photoUrl,
                           sort_order: personPhotos.length,

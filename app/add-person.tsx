@@ -21,6 +21,21 @@ import { apiPost, apiPut } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
 
+async function uploadToCloudinary(base64: string, mimeType: string = 'image/jpeg'): Promise<string> {
+  console.log('[Cloudinary] Uploading image, mimeType:', mimeType);
+  const formData = new FormData();
+  formData.append('file', `data:${mimeType};base64,${base64}`);
+  formData.append('upload_preset', 'Roster');
+  const res = await fetch('https://api.cloudinary.com/v1_1/dfssa7ecv/image/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  const data = await res.json();
+  if (!data.secure_url) throw new Error('Cloudinary upload failed');
+  console.log('[Cloudinary] Upload successful:', data.secure_url);
+  return data.secure_url;
+}
+
 function resolveImageSource(source: string | number | ImageSourcePropType | undefined): ImageSourcePropType | null {
   if (!source) return null;
   if (typeof source === 'string') return { uri: source };
@@ -327,14 +342,10 @@ export default function AddPersonScreen() {
 
       if (photoUri && personId && photoBase64) {
         try {
-          console.log('[AddPerson] Uploading photo for person:', personId);
-          const uploadResult = await apiPost<{ photo_url: string }>('/api/upload-photo', {
-            base64: photoBase64,
-            person_id: personId,
-          });
-          if (uploadResult?.photo_url) {
-            await apiPut(`/api/persons/${personId}`, { photo_url: uploadResult.photo_url });
-          }
+          console.log('[AddPerson] Uploading photo to Cloudinary for person:', personId);
+          const cloudinaryUrl = await uploadToCloudinary(photoBase64);
+          console.log('[AddPerson] Saving Cloudinary URL to person:', personId);
+          await apiPut(`/api/persons/${personId}`, { photo_url: cloudinaryUrl });
         } catch (photoErr) {
           console.error('[AddPerson] Photo upload failed (non-fatal):', photoErr);
         }
