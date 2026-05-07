@@ -104,7 +104,6 @@ function PhotoThumb({ photoUrl, hasValidUrl, colors }: { photoUrl: string; hasVa
       source={{ uri: photoUrl }}
       style={{ width: 80, height: 80, borderRadius: 12 }}
       contentFit="cover"
-      cachePolicy="memory-disk"
       onError={(e) => {
         console.error('[PersonDetail] Photo load error:', e);
         setHasError(true);
@@ -2000,7 +1999,6 @@ export default function PersonDetailScreen() {
                         });
                         console.log('[PersonDetail] Optimistically adding photo to state');
                         setPersonPhotos((prev) => [...prev, { id: Date.now().toString(), photo_url: photoUrl, sort_order: personPhotos.length }]);
-                        await loadPersonPhotos();
                       } catch (e) {
                         console.error('[PersonDetail] Failed to upload photo:', e);
                         Alert.alert('Error', 'Photo upload failed. Please try again.');
