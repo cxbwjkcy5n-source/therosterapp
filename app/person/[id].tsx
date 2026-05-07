@@ -2012,7 +2012,6 @@ export default function PersonDetailScreen() {
                         });
                         console.log('[PersonDetail] Optimistically adding photo to state');
                         setPersonPhotos((prev) => [...prev, { id: Date.now().toString(), photo_url: photoUrl, sort_order: personPhotos.length }]);
-                        setTimeout(() => loadPersonPhotos(), 1000);
                       } catch (e) {
                         console.error('[PersonDetail] Failed to upload photo:', e);
                         Alert.alert('Error', 'Photo upload failed. Please try again.');
@@ -3007,6 +3006,7 @@ export default function PersonDetailScreen() {
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
           onPress={() => setInlineEditField(null)}
         >
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <Pressable
             onPress={() => {}}
             style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}
@@ -3206,6 +3206,7 @@ export default function PersonDetailScreen() {
               </View>
             )}
           </Pressable>
+          </KeyboardAvoidingView>
         </Pressable>
       </Modal>
 
