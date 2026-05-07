@@ -997,6 +997,7 @@ export default function PersonDetailScreen() {
     try {
       const data = await apiGet<{ photos: { id: string; photo_url: string; sort_order?: number }[] }>(`/api/persons/${id}/photos`);
       console.log('[PersonDetail] Loaded', data.photos?.length ?? 0, 'photos');
+      if (data.photos?.length > 0) console.log('[PersonDetail] First photo raw:', JSON.stringify(data.photos[0]));
       setPersonPhotos(data.photos || []);
     } catch (e) {
       console.error('[PersonDetail] Failed to load person photos:', e);
@@ -1046,16 +1047,15 @@ export default function PersonDetailScreen() {
   }, [id]);
 
   useEffect(() => {
-    Promise.all([loadPerson(), loadNotes(), loadReminders(), loadInteractions()]);
-  }, [loadPerson, loadNotes, loadReminders, loadInteractions]);
+    Promise.all([loadPerson(), loadNotes(), loadReminders(), loadInteractions(), loadPersonPhotos()]);
+  }, [loadPerson, loadNotes, loadReminders, loadInteractions, loadPersonPhotos]);
 
   useFocusEffect(
     useCallback(() => {
       if (id) {
         loadDates();
-        loadPersonPhotos();
       }
-    }, [id, loadDates, loadPersonPhotos])
+    }, [id, loadDates])
   );
 
   // ── actions ──────────────────────────────────────────────────────────────
@@ -1948,8 +1948,9 @@ export default function PersonDetailScreen() {
             ) : (
               <>
                 {personPhotos.slice(0, 5).map((photo) => {
-                  const hasValidUrl = typeof photo.photo_url === 'string' && (
+                  const hasValidUrl = typeof photo.photo_url === 'string' && photo.photo_url.length > 10 && (
                     photo.photo_url.startsWith('https://') ||
+                    photo.photo_url.startsWith('http://') ||
                     (photo.photo_url.startsWith('data:') && photo.photo_url.length > 100)
                   );
                   return (
@@ -2011,6 +2012,7 @@ export default function PersonDetailScreen() {
                         });
                         console.log('[PersonDetail] Optimistically adding photo to state');
                         setPersonPhotos((prev) => [...prev, { id: Date.now().toString(), photo_url: photoUrl, sort_order: personPhotos.length }]);
+                        setTimeout(() => loadPersonPhotos(), 1000);
                       } catch (e) {
                         console.error('[PersonDetail] Failed to upload photo:', e);
                         Alert.alert('Error', 'Photo upload failed. Please try again.');
