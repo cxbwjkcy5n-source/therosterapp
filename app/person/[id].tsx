@@ -1046,9 +1046,12 @@ export default function PersonDetailScreen() {
     }
   }, [id]);
 
+  const didLoadRef = useRef(false);
   useEffect(() => {
+    if (didLoadRef.current) return;
+    didLoadRef.current = true;
     Promise.all([loadPerson(), loadNotes(), loadReminders(), loadInteractions(), loadPersonPhotos()]);
-  }, [loadPerson, loadNotes, loadReminders, loadInteractions, loadPersonPhotos]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useFocusEffect(
     useCallback(() => {
