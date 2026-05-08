@@ -340,12 +340,19 @@ export default function AddPersonScreen() {
       const created = await apiPost<{ person: { id: string } }>('/api/persons', payload);
       const personId = created?.person?.id;
 
-      if (photoUri && personId && photoBase64) {
+      if (photoUri && personId) {
         try {
-          console.log('[AddPerson] Uploading photo to Cloudinary for person:', personId);
-          const cloudinaryUrl = await uploadToCloudinary(photoBase64);
-          console.log('[AddPerson] Saving Cloudinary URL to person:', personId);
-          await apiPut(`/api/persons/${personId}`, { photo_url: cloudinaryUrl });
+          if (photoBase64) {
+            // User picked a new photo — upload to Cloudinary
+            console.log('[AddPerson] Uploading photo to Cloudinary for person:', personId);
+            const cloudinaryUrl = await uploadToCloudinary(photoBase64);
+            console.log('[AddPerson] Saving Cloudinary URL to person:', personId);
+            await apiPut(`/api/persons/${personId}`, { photo_url: cloudinaryUrl });
+          } else {
+            // Photo came from a scan prefill — save the URL directly
+            console.log('[AddPerson] Saving prefilled photo URL for person:', personId);
+            await apiPut(`/api/persons/${personId}`, { photo_url: photoUri });
+          }
         } catch (photoErr) {
           console.error('[AddPerson] Photo upload failed (non-fatal):', photoErr);
         }

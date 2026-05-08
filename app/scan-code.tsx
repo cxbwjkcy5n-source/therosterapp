@@ -57,7 +57,7 @@ export default function ScanCodeScreen() {
           prefill_name: profile.name ?? '',
           prefill_photo_url: profile.photo_url ?? '',
           prefill_age: profile.age?.toString() ?? '',
-          prefill_occupation: profile.occupation ?? '',
+          prefill_career: profile.occupation ?? '',
           prefill_location: profile.location ?? '',
           prefill_instagram: profile.instagram ?? '',
           prefill_tiktok: profile.tiktok ?? '',
