@@ -1992,16 +1992,22 @@ export default function PersonDetailScreen() {
                         const photoUrl = await uploadToCloudinary(asset.base64 ?? '', asset.mimeType ?? 'image/jpeg');
                         console.log('[PersonDetail] Saving Cloudinary URL to person photos');
                         // Optimistically add so the user sees it immediately
-                        setPersonPhotos((prev) => [...prev, { id: Date.now().toString(), photo_url: photoUrl, sort_order: personPhotos.length }]);
-                        await apiPost(`/api/persons/${id}/photos`, {
+                        setPersonPhotos((prev) => [...prev, { id: Date.now().toString(), photo_url: photoUrl, sort_order: prev.length }]);
+                        // Save to DB
+                        const personId = Array.isArray(id) ? id[0] : id;
+                        await apiPost(`/api/persons/${personId}/photos`, {
                           photo_url: photoUrl,
                           sort_order: personPhotos.length,
                         });
-                        // Don't call loadPersonPhotos() here — optimistic state is correct
-                        // useFocusEffect will reload from DB next time user returns to screen
-                      } catch (e) {
-                        console.error('[PersonDetail] Failed to upload photo:', e);
-                        Alert.alert('Error', 'Photo upload failed. Please try again.');
+                        // Reload from DB to replace optimistic entry with real record
+                        const data = await apiGet<{ photos: { id: string; photo_url: string; sort_order?: number }[] }>(`/api/persons/${personId}/photos`);
+                        const photos = (data.photos || []).filter((p) => p.photo_url && p.photo_url.trim().length > 0);
+                        setPersonPhotos(photos);
+                      } catch (e: any) {
+                        console.error('[PersonDetail] Failed to upload/save photo:', e?.message || e);
+                        Alert.alert('Error', 'Photo upload failed: ' + (e?.message || 'Please try again.'));
+                        // Remove optimistic entry on failure
+                        setPersonPhotos((prev) => prev.filter((p) => !p.id.startsWith('temp_') && p.photo_url !== ''));
                       } finally {
                         setUploadingPhoto(false);
                       }
