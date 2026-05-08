@@ -133,8 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("[Auth] Attempting email sign in");
       const result = await authClient.signIn.email({ email, password });
-      if (result?.error?.message) {
-        throw new Error(result.error.message);
+      if (result?.error) {
+        throw new Error(result.error.message || result.error.code || result.error.status?.toString() || 'Sign in failed');
       }
       console.log("[Auth] Sign in API succeeded, fetching session");
       const u = await fetchUser();
@@ -154,8 +154,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log("[Auth] Attempting email sign up");
       const result = await authClient.signUp.email({ email, password, name });
-      if (result?.error?.message) {
-        throw new Error(result.error.message);
+      if (result?.error) {
+        throw new Error(result.error.message || result.error.code || result.error.status?.toString() || 'Sign up failed');
       }
       console.log("[Auth] Sign up API succeeded, fetching session");
       const u = await fetchUser();
