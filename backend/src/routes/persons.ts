@@ -1295,18 +1295,18 @@ export function registerPersonsRoutes(app: App) {
     }
   );
 
-  // DELETE /api/persons/:personId/photos/:photoId - Delete a photo
+  // DELETE /api/persons/:id/photos/:photoId - Delete a photo
   app.fastify.delete(
-    '/api/persons/:personId/photos/:photoId',
+    '/api/persons/:id/photos/:photoId',
     {
       schema: {
         description: 'Delete a photo for a person',
         tags: ['persons'],
         params: {
           type: 'object',
-          required: ['personId', 'photoId'],
+          required: ['id', 'photoId'],
           properties: {
-            personId: { type: 'string', format: 'uuid' },
+            id: { type: 'string', format: 'uuid' },
             photoId: { type: 'string', format: 'uuid' },
           },
         },
@@ -1318,34 +1318,23 @@ export function registerPersonsRoutes(app: App) {
             },
           },
           401: { type: 'object', properties: { error: { type: 'string' } } },
-          403: { type: 'object', properties: { error: { type: 'string' } } },
           404: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
     async (
       request: FastifyRequest<{
-        Params: { personId: string; photoId: string };
+        Params: { id: string; photoId: string };
       }>,
       reply: FastifyReply
     ) => {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
-      const { personId, photoId } = request.params;
-      app.logger.info({ userId: session.user.id, personId, photoId }, 'Deleting photo');
+      const { id, photoId } = request.params;
+      app.logger.info({ userId: session.user.id, personId: id, photoId }, 'Deleting photo');
 
-      // Verify person ownership
-      const person = await app.db.query.persons.findFirst({
-        where: and(eq(schema.persons.id, personId), eq(schema.persons.userId, session.user.id)),
-      });
-
-      if (!person) {
-        app.logger.warn({ userId: session.user.id, personId }, 'Person not found');
-        return reply.status(404).send({ error: 'Person not found' });
-      }
-
-      // Verify photo exists
+      // Verify the photo belongs to the authenticated user
       const photo = await app.db.query.personPhotos.findFirst({
         where: eq(schema.personPhotos.id, photoId),
       });
@@ -1355,21 +1344,15 @@ export function registerPersonsRoutes(app: App) {
         return reply.status(404).send({ error: 'Photo not found' });
       }
 
-      // Verify photo belongs to the person
-      if (photo.personId !== personId) {
-        app.logger.warn({ userId: session.user.id, photoId, expectedPersonId: personId, actualPersonId: photo.personId }, 'Photo does not belong to person');
-        return reply.status(404).send({ error: 'Photo not found' });
-      }
-
-      // Verify user owns the photo
+      // Verify photo belongs to the user
       if (photo.userId !== session.user.id) {
-        app.logger.warn({ userId: session.user.id, photoId, photoUserId: photo.userId }, 'User does not own photo');
-        return reply.status(403).send({ error: 'Access denied' });
+        app.logger.warn({ userId: session.user.id, photoId, photoUserId: photo.userId }, 'Photo not found');
+        return reply.status(404).send({ error: 'Photo not found' });
       }
 
       await app.db.delete(schema.personPhotos).where(eq(schema.personPhotos.id, photoId));
 
-      app.logger.info({ userId: session.user.id, personId, photoId }, 'Photo deleted');
+      app.logger.info({ userId: session.user.id, personId: id, photoId }, 'Photo deleted');
       return { success: true };
     }
   );
