@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, DARK_COLORS } from '@/constants/Colors';
 import { apiGet, apiPut } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ColorScheme = typeof COLORS;
 
@@ -21,6 +22,7 @@ const STORAGE_KEY = 'app_dark_mode';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     // Load from AsyncStorage first (fast), then sync from API
@@ -32,6 +34,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         }
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
 
     apiGet<{ notifications_enabled: boolean; dark_mode_enabled: boolean }>('/api/preferences')
       .then((prefs) => {
@@ -43,7 +49,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       .catch((e) => {
         console.log('[Theme] Could not load preferences from API (non-fatal):', e?.message);
       });
-  }, []);
+  }, [user]);
 
   const toggleDark = useCallback(() => {
     setIsDark((prev) => {
