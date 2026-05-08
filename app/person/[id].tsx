@@ -992,25 +992,6 @@ export default function PersonDetailScreen() {
     }
   }, [id]);
 
-  const loadPersonPhotos = useCallback(async () => {
-    if (!id) return;
-    console.log('[PersonDetail] Loading photos for person:', id);
-    try {
-      const data = await apiGet<{ photos: { id: string; photo_url: string; sort_order?: number }[] }>(`/api/persons/${id}/photos`);
-      console.log('[PersonDetail] Raw photos response:', JSON.stringify(data));
-      const allPhotos = data.photos || [];
-      console.log('[PersonDetail] Total photos from DB:', allPhotos.length);
-      allPhotos.forEach((p, i) => {
-        console.log(`[PersonDetail] Photo[${i}]: id=${p.id}, url_length=${p.photo_url?.length}, url_prefix=${p.photo_url?.slice(0, 50)}`);
-      });
-      // Accept any photo with a non-empty photo_url — don't over-filter
-      const validPhotos = allPhotos.filter((p) => p.photo_url && p.photo_url.trim().length > 0);
-      console.log('[PersonDetail] Valid photos after filter:', validPhotos.length);
-      setPersonPhotos(validPhotos);
-    } catch (e) {
-      console.error('[PersonDetail] Failed to load person photos:', e);
-    }
-  }, [id]);
 
   const loadNotes = useCallback(async () => {
     if (!id) return;
@@ -1054,12 +1035,21 @@ export default function PersonDetailScreen() {
 
   useEffect(() => {
     if (!id || !isReady) return;
+    const personId = Array.isArray(id) ? id[0] : id;
     loadPerson();
     loadNotes();
     loadReminders();
     loadInteractions();
-    loadPersonPhotos();
     loadDates();
+    // Fetch photos inline to avoid stale useCallback closure
+    console.log('[PersonDetail] Loading photos inline for person:', personId);
+    apiGet<{ photos: { id: string; photo_url: string; sort_order?: number }[] }>(`/api/persons/${personId}/photos`)
+      .then((data) => {
+        const photos = (data.photos || []).filter((p) => p.photo_url && p.photo_url.trim().length > 0);
+        console.log('[PersonDetail] Loaded', photos.length, 'photos');
+        setPersonPhotos(photos);
+      })
+      .catch((e) => console.error('[PersonDetail] Failed to load photos:', e));
   }, [id, isReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── actions ──────────────────────────────────────────────────────────────
