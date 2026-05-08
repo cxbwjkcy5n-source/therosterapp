@@ -550,10 +550,9 @@ describe("API Integration Tests", () => {
     if (data.photos.length > 0) {
       const photo = data.photos[0];
       expect(photo.id).toBeDefined();
-      expect(photo.personId).toBeDefined();
-      expect(photo.photoUrl).toBeDefined();
-      expect(photo.sortOrder).toBeDefined();
-      expect(photo.createdAt).toBeDefined();
+      expect(photo.photo_url).toBeDefined();
+      expect(photo.sort_order).toBeDefined();
+      expect(photo.created_at).toBeDefined();
     }
   });
 

@@ -1167,10 +1167,9 @@ export function registerPersonsRoutes(app: App) {
                   type: 'object',
                   properties: {
                     id: { type: 'string', format: 'uuid' },
-                    personId: { type: 'string', format: 'uuid' },
-                    photoUrl: { type: 'string' },
-                    sortOrder: { type: 'integer' },
-                    createdAt: { type: 'string', format: 'date-time' },
+                    photo_url: { type: 'string' },
+                    sort_order: { type: 'integer' },
+                    created_at: { type: 'string', format: 'date-time' },
                   },
                 },
               },
@@ -1204,7 +1203,14 @@ export function registerPersonsRoutes(app: App) {
       });
 
       app.logger.info({ userId: session.user.id, personId: id, count: photos.length }, 'Photos retrieved');
-      return { photos };
+      return {
+        photos: photos.map((photo) => ({
+          id: photo.id,
+          photo_url: photo.photoUrl,
+          sort_order: photo.sortOrder,
+          created_at: photo.createdAt,
+        })),
+      };
     }
   );
 
