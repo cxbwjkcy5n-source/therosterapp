@@ -76,9 +76,7 @@ export function registerPlacesRoutes(app: App) {
       // Check if query is provided
       if (!input || input.trim() === '') {
         app.logger.warn({}, 'input parameter is required');
-        return {
-          predictions: [],
-        };
+        return reply.status(400).send({ error: 'input parameter is required' });
       }
 
       try {

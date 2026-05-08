@@ -172,9 +172,11 @@ export function registerShareRoutes(app: App) {
         }
 
         // Fetch the user to get the name if display_name is not set
-        const userData = await app.db.query.user.findFirst({
-          where: eq(user.id, shareToken.userId),
-        });
+        const userData = await app.db
+          .select()
+          .from(user)
+          .where(eq(user.id, shareToken.userId))
+          .then(rows => rows[0] || null);
 
         const displayName = userProfile.displayName && userProfile.displayName.trim() ? userProfile.displayName : userData?.name || null;
 
