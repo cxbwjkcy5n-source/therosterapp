@@ -16,6 +16,7 @@ export function registerStorageRoutes(app: App) {
           required: ['base64'],
           properties: {
             base64: { type: 'string', description: 'Base64 encoded image or full data URI' },
+            person_id: { type: ['string', 'null'], format: 'uuid', description: 'Optional person ID (unused)' },
           },
         },
         response: {
@@ -30,7 +31,7 @@ export function registerStorageRoutes(app: App) {
         },
       },
     },
-    async (request: FastifyRequest<{ Body: { base64: string } }>, reply: FastifyReply) => {
+    async (request: FastifyRequest<{ Body: { base64: string; person_id?: string } }>, reply: FastifyReply) => {
       const session = await requireAuth(request, reply);
       if (!session) return;
 
