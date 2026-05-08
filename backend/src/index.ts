@@ -30,20 +30,8 @@ export const app = await createApplication(schema);
 export type App = typeof app;
 
 // Enable authentication with email/password and OAuth providers
-app.withAuth({
-  trustedOrigins: [
-    'http://localhost:8082',
-    'http://localhost:8081',
-    'http://localhost:19006',
-    'exp://localhost:8081',
-    'http://localhost:3000',
-    'http://localhost',
-    'https://localhost',
-    'http://10.0.37.165:8082',
-    'http://169.254.172.2:8082',
-    'https://bqwfnumg43sdjmd5mdarg4jau4ey73ch.app.specular.dev',
-  ],
-});
+// Minimal configuration for native iOS support (no trustedOrigins restriction)
+app.withAuth();
 
 // Enable file storage for uploads
 app.withStorage();
