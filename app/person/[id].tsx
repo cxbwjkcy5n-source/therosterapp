@@ -27,7 +27,6 @@ import {
   Modal,
   Platform,
   KeyboardAvoidingView,
-  Image as RNImage,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -50,7 +49,7 @@ import {
 } from 'lucide-react-native';
 import { FontAwesome } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
+import { Image, Image as ExpoImage } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -107,12 +106,12 @@ function PhotoThumb({ photoUrl, colors }: { photoUrl: string; colors: Record<str
       </View>
     );
   }
-  // Use React Native's built-in Image — no onError, no loadError state, no expo-image caching issues
   return (
-    <RNImage
+    <ExpoImage
       source={{ uri: photoUrl }}
       style={{ width: 80, height: 80, borderRadius: 12 }}
-      resizeMode="cover"
+      contentFit="cover"
+      cachePolicy="none"
     />
   );
 }
