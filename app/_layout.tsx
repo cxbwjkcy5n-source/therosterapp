@@ -505,12 +505,12 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <NavThemeProvider value={AppLightTheme}>
-            <ThemeProvider>
-              <AuthProvider>
+            <AuthProvider>
+              <ThemeProvider>
                 <AppContent showSplash={showSplash} onSplashDone={() => setShowSplash(false)} />
                 <SystemBars style="dark" />
-              </AuthProvider>
-            </ThemeProvider>
+              </ThemeProvider>
+            </AuthProvider>
           </NavThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
