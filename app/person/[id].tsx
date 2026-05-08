@@ -1999,10 +1999,7 @@ export default function PersonDetailScreen() {
                           photo_url: photoUrl,
                           sort_order: personPhotos.length,
                         });
-                        // Reload from DB to replace optimistic entry with real record
-                        const data = await apiGet<{ photos: { id: string; photo_url: string; sort_order?: number }[] }>(`/api/persons/${personId}/photos`);
-                        const photos = (data.photos || []).filter((p) => p.photo_url && p.photo_url.trim().length > 0);
-                        setPersonPhotos(photos);
+                        // Optimistic state is correct — DB will be read on next mount
                       } catch (e: any) {
                         console.error('[PersonDetail] Failed to upload/save photo:', e?.message || e);
                         Alert.alert('Error', 'Photo upload failed: ' + (e?.message || 'Please try again.'));
