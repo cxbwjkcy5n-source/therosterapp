@@ -145,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Sign in succeeded but session could not be confirmed. Please try again.");
       }
     } catch (error) {
-      console.error("Email sign in failed:", error);
+      console.error("Email sign in failed:", error instanceof Error ? error.message : error);
       throw error;
     }
   };

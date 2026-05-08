@@ -70,7 +70,7 @@ export default function AuthScreen() {
         console.log('[Auth] Sign up successful');
       }
     } catch (e: any) {
-      console.error('[Auth] Email auth failed:', e);
+      console.error('[Auth] Email auth failed:', e instanceof Error ? e.message : e);
       const msg = e?.message || '';
       if (msg.includes('Invalid email') || msg.includes('invalid_email')) {
         setError('Please enter a valid email address.');
