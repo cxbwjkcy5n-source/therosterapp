@@ -36,7 +36,6 @@ const webFetch: typeof fetch = (input, init?) => {
   const rewritten = rawUrl.startsWith(API_URL) ? rawUrl : rawUrl.replace(/^https?:\/\/[^/]+/, API_URL);
   const token = localStorage.getItem(BEARER_TOKEN_KEY) || "";
   const headers = new Headers((init?.headers as HeadersInit | undefined) ?? {});
-  headers.set("Origin", API_URL);
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
