@@ -27,17 +27,6 @@ const safeFetch: typeof fetch = (input, init?) => {
   return fetch(input, init);
 };
 
-// Web fetch that injects the Bearer token from localStorage (no URL rewriting — proxy handles routing)
-const webFetch: typeof fetch = (input, init?) => {
-  const rawUrl = input instanceof URL ? input.toString() : typeof input === "string" ? input : (input as Request).url;
-  const token = localStorage.getItem(BEARER_TOKEN_KEY) || "";
-  const headers = new Headers((init?.headers as HeadersInit | undefined) ?? {});
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-  return fetch(rawUrl, { ...init, headers });
-};
-
 export const authClient = createAuthClient({
   baseURL: API_URL,
   plugins: [
@@ -49,7 +38,6 @@ export const authClient = createAuthClient({
   ],
   fetchOptions: Platform.OS === "web"
     ? {
-        customFetchImpl: webFetch,
         auth: {
           type: "Bearer" as const,
           token: () => localStorage.getItem(BEARER_TOKEN_KEY) || "",
