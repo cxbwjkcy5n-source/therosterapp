@@ -20,11 +20,11 @@ const storage = Platform.OS === "web"
 // iOS native fetch (NSURLSession) cannot coerce a URL object to a string.
 // This wrapper ensures the first argument is always a plain string.
 const safeFetch: typeof fetch = (input, init?) => {
-  if (Platform.OS === "ios" && input instanceof URL) {
-    console.log("[Auth] iOS safeFetch: coercing URL object to string:", input.toString());
-    return fetch(input.toString(), init);
-  }
-  return fetch(input, init);
+  const url = input instanceof URL ? input.toString() : typeof input === "string" ? input : (input as Request).url;
+  const headers = new Headers((init?.headers as HeadersInit | undefined) ?? {});
+  headers.set("Origin", API_URL);
+  console.log("[Auth] safeFetch: injecting Origin header for request to", url);
+  return fetch(url, { ...init, headers });
 };
 
 export const authClient = createAuthClient({
