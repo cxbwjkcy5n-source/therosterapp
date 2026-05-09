@@ -30,7 +30,7 @@ export const app = await createApplication(schema);
 export type App = typeof app;
 
 // Enable authentication with email/password and OAuth providers
-// Minimal configuration for native iOS support (no trustedOrigins restriction)
+// Google and Apple OAuth are handled automatically by the proxy
 app.withAuth();
 
 // Enable file storage for uploads

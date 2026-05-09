@@ -530,11 +530,12 @@ export function registerDatesRoutes(app: App) {
       app.logger.info({ userId: session.user.id }, 'Getting dates pending review');
 
       // Query dates that are past their scheduled time, not completed/cancelled, and have no rating
-      const dates = await app.db
+      const datesData = await app.db
         .select({
           id: schema.dates.id,
           userId: schema.dates.userId,
           personId: schema.dates.personId,
+          personIdValue: schema.dates.personId,
           title: schema.dates.title,
           location: schema.dates.location,
           dateTime: schema.dates.dateTime,
@@ -549,11 +550,8 @@ export function registerDatesRoutes(app: App) {
           wentPoorly: schema.dates.wentPoorly,
           wantAnotherDate: schema.dates.wantAnotherDate,
           createdAt: schema.dates.createdAt,
-          person: {
-            id: schema.persons.id,
-            name: schema.persons.name,
-            photoUrl: schema.persons.photoUrl,
-          },
+          personName: schema.persons.name,
+          personPhotoUrl: schema.persons.photoUrl,
         })
         .from(schema.dates)
         .leftJoin(schema.persons, eq(schema.dates.personId, schema.persons.id))
@@ -568,6 +566,22 @@ export function registerDatesRoutes(app: App) {
             )
           )
         );
+
+      // Map the flattened results to include nested person object
+      const dates = datesData.map((date) => ({
+        id: date.id,
+        title: date.title,
+        status: date.status,
+        dateTime: date.dateTime,
+        rating: date.rating,
+        person: date.personIdValue
+          ? {
+              id: date.personIdValue,
+              name: date.personName,
+              photoUrl: date.personPhotoUrl,
+            }
+          : null,
+      }));
 
       app.logger.info({ userId: session.user.id, count: dates.length }, 'Retrieved pending review dates');
       return dates;
