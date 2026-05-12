@@ -19,6 +19,7 @@ import { Image } from 'expo-image';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
+import { NotificationBell } from "@/components/NotificationBell";
 import { useAuth } from '@/contexts/AuthContext';
 import { apiGet } from '@/utils/api';
 import type { ImageSourcePropType } from 'react-native';
@@ -666,12 +667,15 @@ export default function RosterScreen() {
             )}
           </View>
 
+          {/* Notification preferences bell (OneSignal) */}
+          <NotificationBell variant="compact" size={22} />
+          {/* Reminders bell */}
           <Pressable
             onPress={() => {
-              console.log('[Roster] Notification bell pressed — navigating to reminders');
+              console.log('[Roster] Reminders bell pressed — navigating to reminders');
               router.push('/reminders');
             }}
-            style={{ padding: 4 }}
+            style={{ padding: 4, marginLeft: 4 }}
           >
             <Bell size={22} color="#fff" />
           </Pressable>

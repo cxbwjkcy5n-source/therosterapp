@@ -13,12 +13,13 @@
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.roster.app",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Used to scan profile barcodes to add people to your roster.",
         "NSPhotoLibraryUsageDescription": "Used to add a photo to your profile or a person's card.",
         "NSPhotoLibraryAddUsageDescription": "Used to save photos to your library."
-      },
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -36,6 +37,7 @@
       "bundler": "metro"
     },
     "plugins": [
+      ["onesignal-expo-plugin", {"mode": "development"}],
       "expo-font",
       "expo-router",
       "expo-web-browser",
@@ -50,7 +52,8 @@
     "newArchEnabled": true,
     "extra": {
       "router": {},
-      "backendUrl": "https://bqwfnumg43sdjmd5mdarg4jau4ey73ch.app.specular.dev"
+      "backendUrl": "https://bqwfnumg43sdjmd5mdarg4jau4ey73ch.app.specular.dev",
+      "oneSignalAppId": "ed7c5fe2-92c5-460b-b181-e96639aafafb"
     }
   }
 }

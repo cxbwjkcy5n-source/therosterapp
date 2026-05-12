@@ -12,6 +12,7 @@ import { ThemeProvider as NavThemeProvider, DefaultTheme } from '@react-navigati
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { COLORS } from '@/constants/Colors';
 import { registerForPushNotifications } from '@/utils/notifications';
@@ -479,6 +480,28 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 ),
               }}
             />
+            <Stack.Screen
+              name="notification-preferences"
+              options={{
+                headerShown: true,
+                headerStyle: { backgroundColor: COLORS.background },
+                headerTintColor: COLORS.text,
+                headerShadowVisible: false,
+                title: 'Notifications',
+                headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
+              }}
+            />
           </Stack>
       </View>
       {showPlaceholder && (
@@ -506,11 +529,13 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <NavThemeProvider value={AppLightTheme}>
             <AuthProvider>
+        <NotificationProvider>
               <ThemeProvider>
                 <AppContent showSplash={showSplash} onSplashDone={() => setShowSplash(false)} />
                 <SystemBars style="dark" />
               </ThemeProvider>
-            </AuthProvider>
+            </NotificationProvider>
+        </AuthProvider>
           </NavThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
