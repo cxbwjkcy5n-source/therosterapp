@@ -164,15 +164,13 @@ function CircleScore({ score, size }: { score: number | null; size: number }) {
 const SORT_OPTIONS = ['Chemistry', 'Newest', 'Category', 'Name'] as const;
 type SortOption = typeof SORT_OPTIONS[number];
 
-const CATEGORY_OPTIONS = [
+const STATUS_OPTIONS = [
   'All',
-  'Situationship',
-  'Cuddle buddy',
-  'Foodie buddy',
-  'Travel buddy',
-  'Potential partner',
-  'One night stand',
-  'Still deciding',
+  'Talking',
+  'Dating',
+  'Exclusive',
+  'Fading',
+  'On Hold',
 ];
 
 function Chip({
@@ -410,7 +408,7 @@ export default function RosterScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('Newest');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [checkinBannerDismissed, setCheckinBannerDismissed] = useState(false);
@@ -534,9 +532,15 @@ export default function RosterScreen() {
   const filtered = persons.filter((p) => {
     const matchesSearch = !lowerQuery || p.name.toLowerCase().includes(lowerQuery);
     if (!matchesSearch) return false;
-    if (selectedCategory === 'All') return true;
-    const label = getCategoryLabel(p.connection_type, p.connection_type_custom);
-    return label === selectedCategory;
+    if (selectedStatus === 'All') return true;
+    const statusMap: Record<string, string> = {
+      'Talking': 'talking',
+      'Dating': 'dating',
+      'Exclusive': 'exclusive',
+      'Fading': 'fading',
+      'On Hold': 'on_hold',
+    };
+    return p.dating_status === statusMap[selectedStatus];
   });
 
   const sorted = [...filtered].sort((a, b) => {
@@ -753,19 +757,19 @@ export default function RosterScreen() {
               ))}
             </ScrollView>
 
-            {/* Category */}
+            {/* Status */}
             <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 8 }}>
-              Category
+              Status
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-              {CATEGORY_OPTIONS.map((cat) => (
+              {STATUS_OPTIONS.map((status) => (
                 <Chip
-                  key={cat}
-                  label={cat}
-                  selected={selectedCategory === cat}
+                  key={status}
+                  label={status}
+                  selected={selectedStatus === status}
                   onPress={() => {
-                    console.log('[Roster] Category filter selected:', cat);
-                    setSelectedCategory(cat);
+                    console.log('[Roster] Status filter selected:', status);
+                    setSelectedStatus(status);
                   }}
                 />
               ))}
