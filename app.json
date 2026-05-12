@@ -18,7 +18,8 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Used to scan profile barcodes to add people to your roster.",
         "NSPhotoLibraryUsageDescription": "Used to add a photo to your profile or a person's card.",
-        "NSPhotoLibraryAddUsageDescription": "Used to save photos to your library."
+        "NSPhotoLibraryAddUsageDescription": "Used to save photos to your library.",
+        "NSLocationWhenInUseUsageDescription": "Used to share your current location during a safety check-in."
       }
     },
     "android": {
@@ -37,7 +38,7 @@
       "bundler": "metro"
     },
     "plugins": [
-      ["onesignal-expo-plugin", {"mode": "development"}],
+      ["onesignal-expo-plugin", {"mode": "production"}],
       "expo-font",
       "expo-router",
       "expo-web-browser",
