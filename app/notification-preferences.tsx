@@ -17,8 +17,6 @@ import {
   Linking,
   ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import { useNotifications } from "@/contexts/NotificationContext";
 
 // Notification categories - customize these for your app
@@ -44,7 +42,6 @@ const NOTIFICATION_CATEGORIES = [
 ];
 
 export default function NotificationPreferencesScreen() {
-  const router = useRouter();
   const { hasPermission, permissionDenied, isWeb, requestPermission, sendTag, deleteTag } =
     useNotifications();
 
@@ -92,33 +89,18 @@ export default function NotificationPreferencesScreen() {
 
   if (isWeb) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={styles.backButton}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.title}>Notifications</Text>
-          <View style={{ width: 60 }} />
-        </View>
+      <View style={styles.container}>
         <View style={styles.centeredContent}>
           <Text style={styles.webMessage}>
             Push notifications are available in the mobile app.
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backButton}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Notifications</Text>
-        <View style={{ width: 60 }} />
-      </View>
-
+    <View style={styles.container}>
       <ScrollView style={styles.content}>
         {/* Permission Status */}
         <View style={styles.section}>
@@ -176,7 +158,7 @@ export default function NotificationPreferencesScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -184,26 +166,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F2F2F7",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
-  },
-  backButton: {
-    fontSize: 16,
-    color: "#007AFF",
-    width: 60,
-  },
-  title: {
-    fontSize: 17,
-    fontWeight: "600",
-    color: "#000",
   },
   content: {
     flex: 1,
