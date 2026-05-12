@@ -185,6 +185,7 @@ export const shareTokens = pgTable('share_tokens', {
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
   token: text('token').notNull().unique(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  shareFields: text('share_fields').array(),
   used: boolean('used').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });

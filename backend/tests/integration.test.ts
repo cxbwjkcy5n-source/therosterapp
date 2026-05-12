@@ -2150,8 +2150,8 @@ describe("API Integration Tests", () => {
     shareToken = data.token;
   });
 
-  test("Resolve a valid share token", async () => {
-    const res = await api(`/api/share/resolve/${shareToken}`);
+  test("Redeem a valid share token", async () => {
+    const res = await api(`/api/share/redeem/${shareToken}`);
     await expectStatus(res, 200);
     const data = await res.json();
     // Should have some profile fields defined
@@ -2161,10 +2161,12 @@ describe("API Integration Tests", () => {
       data.photo_url !== undefined ||
       data.location !== undefined
     ).toBe(true);
+    expect(data.share_fields).toBeDefined();
+    expect(data.expires_at).toBeDefined();
   });
 
-  test("Resolve an invalid share token returns 404", async () => {
-    const res = await api("/api/share/resolve/invalid-token-xyz");
+  test("Redeem an invalid share token returns 404", async () => {
+    const res = await api("/api/share/redeem/invalid-token-xyz");
     await expectStatus(res, 404);
   });
 
