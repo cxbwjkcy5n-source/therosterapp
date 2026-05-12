@@ -38,7 +38,12 @@
       "bundler": "metro"
     },
     "plugins": [
-      ["onesignal-expo-plugin", {"mode": "production"}],
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "production"
+        }
+      ],
       "expo-font",
       "expo-router",
       "expo-web-browser",
