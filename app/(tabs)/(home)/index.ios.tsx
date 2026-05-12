@@ -335,11 +335,11 @@ const PersonCard = React.memo(function PersonCard({ item, index }: { item: Perso
                 </View>
               </View>
               {/* Info row */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5, flexWrap: 'wrap', minHeight: 18 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 5, overflow: 'hidden', minHeight: 18 }}>
                 {item.location ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, flex: 1, maxWidth: '60%' }}>
                     <Text style={{ fontSize: 11, color: colors.textTertiary }}>📍</Text>
-                    <Text style={{ fontSize: 12, color: colors.textSecondary, fontWeight: '400' }} numberOfLines={1}>{item.location}</Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, fontWeight: '400', flex: 1 }} numberOfLines={1}>{item.location}</Text>
                   </View>
                 ) : null}
                 {item.interest_level != null ? (
