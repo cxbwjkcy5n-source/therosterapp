@@ -887,7 +887,7 @@ export default function RosterScreen() {
             data={sorted}
             keyExtractor={(item) => item.id}
             renderItem={({ item, index }) => <PersonCard item={item} index={index} />}
-            contentContainerStyle={{ paddingTop: 8, paddingBottom: 120 }}
+            contentContainerStyle={{ paddingTop: 8, paddingBottom: 80 }}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={true}
             maxToRenderPerBatch={8}
@@ -939,7 +939,7 @@ export default function RosterScreen() {
             left: 0,
             right: 0,
             paddingHorizontal: 16,
-            paddingBottom: 100,
+            paddingBottom: 80,
             paddingTop: 8,
             backgroundColor: 'transparent',
           }}

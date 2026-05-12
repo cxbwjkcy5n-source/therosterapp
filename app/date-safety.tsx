@@ -10,6 +10,9 @@ import {
   Share,
 } from 'react-native';
 import { router } from 'expo-router';
+import * as Location from 'expo-location';
+import { File, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { X, MapPin, Shield, Share2, ChevronDown, Check } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
@@ -32,6 +35,7 @@ export default function DateSafetyScreen() {
   const [selectedPersonId, setSelectedPersonId] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [location, setLocation] = useState('');
+  const [locating, setLocating] = useState(false);
   const [appearance, setAppearance] = useState('');
   const [contacts, setContacts] = useState(['', '', '']);
   const [saving, setSaving] = useState(false);
@@ -57,6 +61,41 @@ export default function DateSafetyScreen() {
     });
   }, [user]);
 
+  const handleUseCurrentLocation = async () => {
+    console.log('[DateSafety] Use My Current Location pressed');
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('[DateSafety] Location permission denied');
+        Alert.alert('Permission Denied', 'Location access is required to use this feature.');
+        return;
+      }
+      console.log('[DateSafety] Getting current position');
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      console.log('[DateSafety] Got coords:', pos.coords.latitude, pos.coords.longitude);
+      const results = await Location.reverseGeocodeAsync({
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      });
+      if (results && results.length > 0) {
+        const r = results[0];
+        const parts = [r.name || r.street, r.city, r.region].filter(Boolean);
+        const address = parts.join(', ');
+        console.log('[DateSafety] Reverse geocoded address:', address);
+        setLocation(address);
+      } else {
+        console.log('[DateSafety] No reverse geocode results');
+        Alert.alert('Could not resolve address', 'Please type your location manually.');
+      }
+    } catch (e: any) {
+      console.error('[DateSafety] Location error:', e);
+      Alert.alert('Location Error', 'Could not get your location. Please type it manually.');
+    } finally {
+      setLocating(false);
+    }
+  };
+
   const filledContacts = contacts.filter((c) => c.trim().length > 0);
   const canShare = !!selectedPersonId && !!location.trim() && filledContacts.length > 0;
 
@@ -77,7 +116,6 @@ export default function DateSafetyScreen() {
       const appearanceLine = appearance.trim()
         ? `They are wearing/driving: ${appearance.trim()}.`
         : '';
-      const photoLine = selectedPerson?.photo_url ? `Photo: ${selectedPerson.photo_url}` : '';
       const personName = selectedPerson?.name || 'someone';
 
       const messageParts = [
@@ -85,14 +123,36 @@ export default function DateSafetyScreen() {
         `I'm on a date with ${personName} at ${location.trim()}.`,
       ];
       if (appearanceLine) messageParts.push(appearanceLine);
-      if (photoLine) messageParts.push(photoLine);
       messageParts.push('');
       messageParts.push("Please check on me if you don't hear from me! 💙");
 
       const message = messageParts.join('\n');
 
       console.log('[DateSafety] Opening Share sheet with safety message');
-      await Share.share({ message });
+
+      const photoUrl = selectedPerson?.photo_url;
+      if (photoUrl) {
+        try {
+          console.log('[DateSafety] Downloading photo for share:', photoUrl);
+          const destFile = new File(Paths.cache, 'date-safety-photo.jpg');
+          const downloadedFile = await File.downloadFileAsync(photoUrl, destFile, { idempotent: true });
+          const localUri = downloadedFile.uri;
+          console.log('[DateSafety] Photo downloaded to:', localUri);
+          const sharingAvailable = await Sharing.isAvailableAsync();
+          if (sharingAvailable) {
+            // On iOS, Share.share with url attaches the image alongside the text
+            await Share.share({ message, url: localUri });
+          } else {
+            await Share.share({ message });
+          }
+        } catch (photoErr: any) {
+          console.warn('[DateSafety] Photo download/share failed, falling back to text only:', photoErr?.message);
+          await Share.share({ message });
+        }
+      } else {
+        await Share.share({ message });
+      }
+
       router.back();
     } catch (e: any) {
       console.error('[DateSafety] Failed to share:', e);
@@ -282,43 +342,58 @@ export default function DateSafetyScreen() {
 
           {/* Location */}
           <View>
-            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 8 }}>
               Where are you?
             </Text>
-            <View style={{ position: 'relative', justifyContent: 'center' }}>
-              <View
-                style={{
-                  position: 'absolute',
-                  left: 14,
-                  zIndex: 1,
-                  pointerEvents: 'none',
-                }}
-              >
-                <MapPin size={16} color={colors.textTertiary} />
-              </View>
-              <TextInput
-                value={location}
-                onChangeText={(v) => {
-                  console.log('[DateSafety] Location changed');
-                  setLocation(v);
-                }}
-                onFocus={() => console.log('[DateSafety] Location field focused')}
-                placeholder="Address or venue name"
-                placeholderTextColor={colors.textTertiary}
-                pointerEvents="auto"
-                style={{
-                  backgroundColor: colors.surfaceSecondary,
-                  borderRadius: 12,
-                  paddingLeft: 40,
-                  paddingRight: 14,
-                  paddingVertical: 13,
-                  color: colors.text,
-                  fontSize: 15,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              />
-            </View>
+
+            {/* GPS button */}
+            <Pressable
+              onPress={handleUseCurrentLocation}
+              disabled={locating}
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 12,
+                paddingVertical: 13,
+                paddingHorizontal: 14,
+                borderWidth: 1,
+                borderColor: colors.border,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 8,
+              }}
+            >
+              {locating ? (
+                <ActivityIndicator size="small" color={colors.textSecondary} />
+              ) : (
+                <MapPin size={16} color={colors.textSecondary} />
+              )}
+              <Text style={{ color: locating ? colors.textTertiary : colors.textSecondary, fontSize: 15 }}>
+                {locating ? 'Getting location...' : 'Use My Current Location'}
+              </Text>
+            </Pressable>
+
+            {/* Manual text input */}
+            <TextInput
+              value={location}
+              onChangeText={(v) => {
+                console.log('[DateSafety] Location changed manually');
+                setLocation(v);
+              }}
+              onFocus={() => console.log('[DateSafety] Location field focused')}
+              placeholder="Or type address / venue name"
+              placeholderTextColor={colors.textTertiary}
+              style={{
+                backgroundColor: colors.surfaceSecondary,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 13,
+                color: colors.text,
+                fontSize: 15,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            />
           </View>
 
           {/* Appearance */}
