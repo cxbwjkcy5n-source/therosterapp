@@ -7,8 +7,7 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
-  Linking,
-  Platform,
+  Share,
 } from 'react-native';
 import { router } from 'expo-router';
 import { X, MapPin, Shield, Share2, ChevronDown, Check } from 'lucide-react-native';
@@ -67,7 +66,7 @@ export default function DateSafetyScreen() {
     console.log('[DateSafety] Sharing safety check-in for person:', selectedPersonId);
     setSaving(true);
     try {
-      const result = await apiPost<{ share_message: string }>('/api/safety-checkins', {
+      await apiPost<{ share_message: string }>('/api/safety-checkins', {
         person_id: selectedPersonId,
         location: location.trim(),
         appearance: appearance.trim() || undefined,
@@ -75,15 +74,25 @@ export default function DateSafetyScreen() {
       });
       console.log('[DateSafety] Safety check-in created');
 
-      const photoLine = selectedPerson?.photo_url ? `\n📸 ${selectedPerson.photo_url}` : '';
-      const message = result?.share_message ||
-        `🛡️ Safety Check-In\nI'm on a date with ${selectedPerson?.name || 'someone'} at ${location}. ${appearance ? `They are: ${appearance}. ` : ''}Please check on me if you don't hear from me.${photoLine}`;
+      const appearanceLine = appearance.trim()
+        ? `They are wearing/driving: ${appearance.trim()}.`
+        : '';
+      const photoLine = selectedPerson?.photo_url ? `Photo: ${selectedPerson.photo_url}` : '';
+      const personName = selectedPerson?.name || 'someone';
 
-      const phoneNumbers = filledContacts.join(',');
-      const smsUrl = `sms:${phoneNumbers}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(message)}`;
+      const messageParts = [
+        '🛡️ Safety Check-In',
+        `I'm on a date with ${personName} at ${location.trim()}.`,
+      ];
+      if (appearanceLine) messageParts.push(appearanceLine);
+      if (photoLine) messageParts.push(photoLine);
+      messageParts.push('');
+      messageParts.push("Please check on me if you don't hear from me! 💙");
 
-      console.log('[DateSafety] Opening SMS to contacts:', phoneNumbers);
-      await Linking.openURL(smsUrl);
+      const message = messageParts.join('\n');
+
+      console.log('[DateSafety] Opening Share sheet with safety message');
+      await Share.share({ message });
       router.back();
     } catch (e: any) {
       console.error('[DateSafety] Failed to share:', e);
@@ -97,6 +106,13 @@ export default function DateSafetyScreen() {
     const updated = [...contacts];
     updated[index] = value;
     setContacts(updated);
+  };
+
+  const closeDropdown = () => {
+    if (dropdownOpen) {
+      console.log('[DateSafety] Dropdown closed by outside tap');
+      setDropdownOpen(false);
+    }
   };
 
   const selectedPerson = persons.find((p) => p.id === selectedPersonId);
@@ -143,248 +159,267 @@ export default function DateSafetyScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Person dropdown */}
-        <View style={{ zIndex: 100, position: 'relative' }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
-            Who's this date with?
-          </Text>
-          <Pressable
-            onPress={() => {
-              console.log('[DateSafety] Person dropdown toggled, open:', !dropdownOpen);
-              setDropdownOpen(!dropdownOpen);
-            }}
-            style={{
-              backgroundColor: colors.surface,
-              borderRadius: 12,
-              padding: 14,
-              borderWidth: 1,
-              borderColor: colors.border,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-              {selectedPerson && (
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: selectedPerson.is_benched ? '#E53935' : '#2E7D32',
-                  }}
-                />
-              )}
-              {selectedPersonName ? (
-                <Text style={{ color: colors.text, fontSize: 15 }}>{selectedPersonName}</Text>
-              ) : (
-                <Text style={{ color: colors.textTertiary, fontSize: 15 }}>Select a person...</Text>
-              )}
-              {selectedPerson?.is_benched && (
-                <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
-              )}
-            </View>
-            <ChevronDown size={16} color={colors.textSecondary} />
-          </Pressable>
-          {dropdownOpen && (
-            <View
+        {/* Pressable overlay to close dropdown when tapping outside */}
+        <Pressable onPress={closeDropdown} style={{ gap: 28 }}>
+
+          {/* Person dropdown */}
+          <View style={{ zIndex: 100, position: 'relative' }}>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+              Who's this date with?
+            </Text>
+            <Pressable
+              onPress={() => {
+                console.log('[DateSafety] Person dropdown toggled, open:', !dropdownOpen);
+                setDropdownOpen(!dropdownOpen);
+              }}
               style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                zIndex: 999,
                 backgroundColor: colors.surface,
                 borderRadius: 12,
+                padding: 14,
                 borderWidth: 1,
                 borderColor: colors.border,
-                marginTop: 4,
-                overflow: 'hidden',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.12,
-                shadowRadius: 8,
-                elevation: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
               }}
             >
-              {persons.map((p, index) => {
-                const isSelected = selectedPersonId === p.id;
-                const isLast = index === persons.length - 1;
-                const dotColor = p.is_benched ? '#E53935' : '#2E7D32';
-                return (
-                  <Pressable
-                    key={p.id}
-                    onPress={() => {
-                      console.log('[DateSafety] Person selected from dropdown:', p.id, p.name, 'benched:', p.is_benched);
-                      setSelectedPersonId(p.id);
-                      setDropdownOpen(false);
-                    }}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                {selectedPerson && (
+                  <View
                     style={{
-                      paddingHorizontal: 16,
-                      paddingVertical: 14,
-                      borderBottomWidth: isLast ? 0 : 1,
-                      borderBottomColor: colors.border,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: selectedPerson.is_benched ? '#E53935' : '#2E7D32',
                     }}
-                  >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
-                      <Text style={{ color: colors.text, fontSize: 15 }}>{p.name}</Text>
-                      {p.is_benched && (
-                        <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
-                      )}
-                    </View>
-                    {isSelected && <Check size={16} color={colors.success} />}
-                  </Pressable>
-                );
-              })}
+                  />
+                )}
+                {selectedPersonName ? (
+                  <Text style={{ color: colors.text, fontSize: 15 }}>{selectedPersonName}</Text>
+                ) : (
+                  <Text style={{ color: colors.textTertiary, fontSize: 15 }}>Select a person...</Text>
+                )}
+                {selectedPerson?.is_benched && (
+                  <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
+                )}
+              </View>
+              <ChevronDown size={16} color={colors.textSecondary} />
+            </Pressable>
+            {dropdownOpen && (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  right: 0,
+                  zIndex: 999,
+                  backgroundColor: colors.surface,
+                  borderRadius: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  marginTop: 4,
+                  overflow: 'hidden',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 8,
+                  elevation: 8,
+                }}
+              >
+                {persons.map((p, index) => {
+                  const isSelected = selectedPersonId === p.id;
+                  const isLast = index === persons.length - 1;
+                  const dotColor = p.is_benched ? '#E53935' : '#2E7D32';
+                  return (
+                    <Pressable
+                      key={p.id}
+                      onPress={() => {
+                        console.log('[DateSafety] Person selected from dropdown:', p.id, p.name, 'benched:', p.is_benched);
+                        setSelectedPersonId(p.id);
+                        setDropdownOpen(false);
+                      }}
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 14,
+                        borderBottomWidth: isLast ? 0 : 1,
+                        borderBottomColor: colors.border,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
+                        <Text style={{ color: colors.text, fontSize: 15 }}>{p.name}</Text>
+                        {p.is_benched && (
+                          <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
+                        )}
+                      </View>
+                      {isSelected && <Check size={16} color={colors.success} />}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          {/* Info banner */}
+          <View
+            style={{
+              backgroundColor: colors.successMuted,
+              borderRadius: 12,
+              padding: 14,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <Shield size={20} color={colors.success} />
+            <Text style={{ color: colors.success, fontSize: 13, flex: 1, lineHeight: 18 }}>
+              Share your date details with trusted contacts for safety
+            </Text>
+          </View>
+
+          {/* Location */}
+          <View>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+              Where are you?
+            </Text>
+            <View style={{ position: 'relative', justifyContent: 'center' }}>
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 14,
+                  zIndex: 1,
+                  pointerEvents: 'none',
+                }}
+              >
+                <MapPin size={16} color={colors.textTertiary} />
+              </View>
+              <TextInput
+                value={location}
+                onChangeText={(v) => {
+                  console.log('[DateSafety] Location changed');
+                  setLocation(v);
+                }}
+                onFocus={() => console.log('[DateSafety] Location field focused')}
+                placeholder="Address or venue name"
+                placeholderTextColor={colors.textTertiary}
+                pointerEvents="auto"
+                style={{
+                  backgroundColor: colors.surfaceSecondary,
+                  borderRadius: 12,
+                  paddingLeft: 40,
+                  paddingRight: 14,
+                  paddingVertical: 13,
+                  color: colors.text,
+                  fontSize: 15,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              />
             </View>
-          )}
-        </View>
+          </View>
 
-        {/* Info banner */}
-        <View
-          style={{
-            backgroundColor: colors.successMuted,
-            borderRadius: 12,
-            padding: 14,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 10,
-          }}
-        >
-          <Shield size={20} color={colors.success} />
-          <Text style={{ color: colors.success, fontSize: 13, flex: 1, lineHeight: 18 }}>
-            Share your date details with trusted contacts for safety
-          </Text>
-        </View>
-
-        {/* Location */}
-        <View>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
-            Where are you?
-          </Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <MapPin size={16} color={colors.textTertiary} />
+          {/* Appearance */}
+          <View>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+              What are they wearing / driving? (optional)
+            </Text>
             <TextInput
-              value={location}
-              onChangeText={setLocation}
-              placeholder="Address or venue name"
+              value={appearance}
+              onChangeText={setAppearance}
+              placeholder="e.g. Blue jacket, drives a red Honda..."
               placeholderTextColor={colors.textTertiary}
+              multiline
               style={{
-                flex: 1,
                 backgroundColor: colors.surfaceSecondary,
                 borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 13,
+                padding: 14,
                 color: colors.text,
                 fontSize: 15,
                 borderWidth: 1,
                 borderColor: colors.border,
+                minHeight: 80,
               }}
             />
           </View>
-        </View>
 
-        {/* Appearance */}
-        <View>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
-            What are they wearing / driving? (optional)
-          </Text>
-          <TextInput
-            value={appearance}
-            onChangeText={setAppearance}
-            placeholder="e.g. Blue jacket, drives a red Honda..."
-            placeholderTextColor={colors.textTertiary}
-            multiline
-            style={{
-              backgroundColor: colors.surfaceSecondary,
-              borderRadius: 12,
-              padding: 14,
-              color: colors.text,
-              fontSize: 15,
-              borderWidth: 1,
-              borderColor: colors.border,
-              minHeight: 80,
-            }}
-          />
-        </View>
-
-        {/* Emergency contacts */}
-        <View>
-          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
-            Emergency Contacts (up to 3)
-          </Text>
-          <View style={{ gap: 8 }}>
-            {contacts.map((contact, index) => (
-              <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14,
-                    backgroundColor: colors.successMuted,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={{ color: colors.success, fontSize: 12, fontWeight: '700' }}>{index + 1}</Text>
+          {/* Emergency contacts */}
+          <View>
+            <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+              Emergency Contacts (up to 3)
+            </Text>
+            <View style={{ gap: 8 }}>
+              {contacts.map((contact, index) => (
+                <View key={index} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: colors.successMuted,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: colors.success, fontSize: 12, fontWeight: '700' }}>{index + 1}</Text>
+                  </View>
+                  <TextInput
+                    value={contact}
+                    onChangeText={(v) => updateContact(index, v)}
+                    placeholder={`Phone number ${index + 1}`}
+                    placeholderTextColor={colors.textTertiary}
+                    keyboardType="phone-pad"
+                    style={{
+                      flex: 1,
+                      backgroundColor: colors.surfaceSecondary,
+                      borderRadius: 12,
+                      paddingHorizontal: 14,
+                      paddingVertical: 12,
+                      color: colors.text,
+                      fontSize: 15,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }}
+                  />
                 </View>
-                <TextInput
-                  value={contact}
-                  onChangeText={(v) => updateContact(index, v)}
-                  placeholder={`Phone number ${index + 1}`}
-                  placeholderTextColor={colors.textTertiary}
-                  keyboardType="phone-pad"
-                  style={{
-                    flex: 1,
-                    backgroundColor: colors.surfaceSecondary,
-                    borderRadius: 12,
-                    paddingHorizontal: 14,
-                    paddingVertical: 12,
-                    color: colors.text,
-                    fontSize: 15,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                  }}
-                />
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
-        </View>
 
-        <AnimatedPressable
-          onPress={handleShare}
-          disabled={!canShare || saving}
-          style={{
-            backgroundColor: canShare ? colors.success : colors.surfaceSecondary,
-            borderRadius: 14,
-            paddingVertical: 16,
-            alignItems: 'center',
-            flexDirection: 'row',
-            justifyContent: 'center',
-            gap: 8,
-          }}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Share2 size={18} color={canShare ? '#fff' : colors.textTertiary} />
-              <Text style={{ color: canShare ? '#fff' : colors.textTertiary, fontSize: 16, fontWeight: '700' }}>
-                Share My Location
-              </Text>
-            </>
+          <AnimatedPressable
+            onPress={handleShare}
+            disabled={!canShare || saving}
+            style={{
+              backgroundColor: canShare ? colors.success : colors.surfaceSecondary,
+              borderRadius: 14,
+              paddingVertical: 16,
+              alignItems: 'center',
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Share2 size={18} color={canShare ? '#fff' : colors.textTertiary} />
+                <Text style={{ color: canShare ? '#fff' : colors.textTertiary, fontSize: 16, fontWeight: '700' }}>
+                  Share My Location
+                </Text>
+              </>
+            )}
+          </AnimatedPressable>
+
+          {!canShare && (
+            <Text style={{ color: colors.textTertiary, fontSize: 12, textAlign: 'center' }}>
+              Select a person, enter location, and add at least one contact
+            </Text>
           )}
-        </AnimatedPressable>
 
-        {!canShare && (
-          <Text style={{ color: colors.textTertiary, fontSize: 12, textAlign: 'center' }}>
-            Select a person, enter location, and add at least one contact
-          </Text>
-        )}
+        </Pressable>
       </ScrollView>
     </View>
   );
