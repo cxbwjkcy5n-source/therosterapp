@@ -533,23 +533,11 @@ export function registerDatesRoutes(app: App) {
       const datesData = await app.db
         .select({
           id: schema.dates.id,
-          userId: schema.dates.userId,
           personId: schema.dates.personId,
-          personIdValue: schema.dates.personId,
           title: schema.dates.title,
-          location: schema.dates.location,
           dateTime: schema.dates.dateTime,
-          budget: schema.dates.budget,
-          status: schema.dates.status,
-          reminder3Days: schema.dates.reminder3Days,
-          reminder1Day: schema.dates.reminder1Day,
-          reminder1Hour: schema.dates.reminder1Hour,
-          notes: schema.dates.notes,
           rating: schema.dates.rating,
-          wentWell: schema.dates.wentWell,
-          wentPoorly: schema.dates.wentPoorly,
-          wantAnotherDate: schema.dates.wantAnotherDate,
-          createdAt: schema.dates.createdAt,
+          status: schema.dates.status,
           personName: schema.persons.name,
           personPhotoUrl: schema.persons.photoUrl,
         })
@@ -574,9 +562,9 @@ export function registerDatesRoutes(app: App) {
         status: date.status,
         dateTime: date.dateTime,
         rating: date.rating,
-        person: date.personIdValue
+        person: date.personId
           ? {
-              id: date.personIdValue,
+              id: date.personId,
               name: date.personName,
               photoUrl: date.personPhotoUrl,
             }

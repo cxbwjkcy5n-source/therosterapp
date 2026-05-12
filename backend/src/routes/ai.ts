@@ -130,8 +130,249 @@ export function registerAIRoutes(app: App) {
         app.logger.info({ userId: session.user.id, personId: person_id, count: enrichedSuggestions.length }, 'Date ideas generated');
         return { suggestions: enrichedSuggestions };
       } catch (error) {
-        app.logger.error({ err: error, userId: session.user.id, personId: person_id }, 'Failed to generate date ideas');
-        throw error;
+        app.logger.warn({ err: error, userId: session.user.id, personId: person_id }, 'Failed to generate date ideas with AI, using fallback');
+
+        // Fallback generic suggestions
+        const fallbackSuggestions = [
+          {
+            title: 'Dinner at a Local Restaurant',
+            description: 'Explore a highly-rated local restaurant together. Share dishes and enjoy great conversation over a delicious meal.',
+            category: 'Food & Drink',
+            estimated_cost: '$40-60',
+            search_url: `https://www.yelp.com/search?find_desc=restaurants&find_loc=${encodeURIComponent(location || 'nearby')}`,
+          },
+          {
+            title: 'Scenic Nature Walk',
+            description: 'Take a relaxing walk through a local park or nature trail. Enjoy the fresh air and beautiful surroundings while getting to know each other better.',
+            category: 'Outdoors',
+            estimated_cost: '$0-10',
+            search_url: `https://www.google.com/maps/search/parks+near+${encodeURIComponent(location || 'nearby')}`,
+          },
+          {
+            title: 'Coffee & Bookstore Browse',
+            description: 'Start with coffee at a cozy café, then wander through a local bookstore. Share your favorite reads and discover new ones together.',
+            category: 'Cozy',
+            estimated_cost: '$15-25',
+            search_url: `https://www.yelp.com/search?find_desc=coffee+shops&find_loc=${encodeURIComponent(location || 'nearby')}`,
+          },
+          {
+            title: 'Live Music or Comedy Show',
+            description: 'Catch a live performance at a local venue. Whether it\'s a band or a comedy night, shared laughter and music create great memories.',
+            category: 'Entertainment',
+            estimated_cost: '$30-60',
+            search_url: `https://www.google.com/maps/search/live+music+venues+near+${encodeURIComponent(location || 'nearby')}`,
+          },
+          {
+            title: 'Art Museum or Gallery Visit',
+            description: 'Spend an afternoon exploring local art together. Discuss your interpretations and discover each other\'s tastes through the exhibits.',
+            category: 'Arts & Culture',
+            estimated_cost: '$20-40',
+            search_url: `https://www.google.com/maps/search/art+museums+near+${encodeURIComponent(location || 'nearby')}`,
+          },
+        ];
+
+        return { suggestions: fallbackSuggestions };
+      }
+    }
+  );
+
+  // POST /api/date-plan/ideas - Generate personalized date ideas
+  app.fastify.post(
+    '/api/date-plan/ideas',
+    {
+      schema: {
+        description: 'Generate AI-powered personalized date ideas for a person',
+        tags: ['ai'],
+        body: {
+          type: 'object',
+          required: ['person_id'],
+          properties: {
+            person_id: { type: 'string', format: 'uuid' },
+            location: { type: 'string' },
+            budget: { type: 'number' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              ideas: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    title: { type: 'string' },
+                    description: { type: 'string' },
+                    category: { type: 'string' },
+                    estimated_cost: { type: 'string' },
+                    search_url: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          400: { type: 'object', properties: { error: { type: 'string' } } },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Body: { person_id: string; location?: string; budget?: number };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { person_id, location: requestLocation, budget } = request.body;
+
+      // Validate person_id is present
+      if (!person_id) {
+        app.logger.warn({ userId: session.user.id }, 'Missing person_id');
+        return reply.status(400).send({ error: 'person_id is required' });
+      }
+
+      app.logger.info({ userId: session.user.id, personId: person_id }, 'Generating personalized date ideas');
+
+      // Look up person
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, person_id), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: person_id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      // Fetch last 5 dates with this person
+      const pastDates = await app.db
+        .select({ title: schema.dates.title })
+        .from(schema.dates)
+        .where(and(eq(schema.dates.personId, person_id), eq(schema.dates.userId, session.user.id)))
+        .orderBy(desc(schema.dates.createdAt))
+        .limit(5);
+
+      const pastDateTitles = pastDates.map((d) => d.title);
+
+      // Build budget label
+      let budgetLabel = '$$'; // default
+      if (budget === 25) budgetLabel = '$';
+      else if (budget === 75) budgetLabel = '$$';
+      else if (budget === 150) budgetLabel = '$$$';
+      else if (budget === 300) budgetLabel = '$$$$';
+
+      // Determine location
+      const resolvedLocation = requestLocation || person.location || 'your area';
+
+      // Build user prompt dynamically
+      let userPrompt = `Generate 5 personalized date ideas for a date with ${person.name}${person.age ? `, age ${person.age}` : ''}.
+
+Location: ${resolvedLocation}
+Budget: ${budgetLabel}`;
+
+      if (person.connectionType) {
+        userPrompt += `\nConnection type: ${person.connectionType}`;
+      }
+      if (person.career) {
+        userPrompt += `\nTheir career: ${person.career}`;
+      }
+      if (person.hobbies && person.hobbies.length > 0) {
+        userPrompt += `\nTheir hobbies: ${person.hobbies.join(', ')}`;
+      }
+      if (person.favoriteFoods && person.favoriteFoods.length > 0) {
+        userPrompt += `\nTheir favorite foods: ${person.favoriteFoods.join(', ')}`;
+      }
+      if (person.greenFlags && person.greenFlags.length > 0) {
+        userPrompt += `\nTheir green flags: ${person.greenFlags.join(', ')}`;
+      }
+      if (person.thingsILike) {
+        userPrompt += `\nThings I like about them: ${person.thingsILike}`;
+      }
+      if (pastDateTitles.length > 0) {
+        userPrompt += `\nWe've already done these dates (avoid repeating): ${pastDateTitles.join(', ')}`;
+      }
+
+      userPrompt += `
+
+For each idea provide:
+- title: short catchy name for the date
+- description: 2-3 sentence description of the date experience
+- category: one of "Food & Drink", "Outdoors", "Arts & Culture", "Entertainment", "Cozy", "Adventure", "Nightlife"
+- estimated_cost: a cost range string like "$20-40" or "$50-80" appropriate for the budget level ${budgetLabel}
+- search_url: a real Google Maps or Yelp search URL relevant to the idea and location (e.g. https://www.google.com/maps/search/rooftop+bars+in+New+York or https://www.yelp.com/search?find_desc=wine+bars&find_loc=Los+Angeles)
+
+Return ONLY the JSON array, nothing else.`;
+
+      const systemPrompt = `You are a creative date planning assistant. Return ONLY a valid JSON array with exactly 5 date idea objects. No markdown, no explanation, no code blocks — just the raw JSON array. Each object must have these exact keys: title, description, category, estimated_cost, search_url.`;
+
+      try {
+        const { text } = await generateText({
+          model: gateway('openai/gpt-4o-mini'),
+          system: systemPrompt,
+          prompt: userPrompt,
+        });
+
+        app.logger.info({ userId: session.user.id, personId: person_id, response: text }, 'AI response received');
+
+        // Try to parse JSON
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) {
+          throw new Error('Could not extract JSON array from AI response');
+        }
+
+        const ideas = JSON.parse(jsonMatch[0]);
+
+        if (!Array.isArray(ideas) || ideas.length === 0) {
+          throw new Error('AI response is not a valid array');
+        }
+
+        app.logger.info({ userId: session.user.id, personId: person_id, count: ideas.length }, 'Date ideas generated');
+        return { ideas };
+      } catch (error) {
+        app.logger.warn({ err: error, userId: session.user.id, personId: person_id }, 'Failed to generate date ideas with AI, using fallback');
+
+        // Fallback generic ideas
+        const fallbackIdeas = [
+          {
+            title: 'Dinner at a Local Restaurant',
+            description: 'Explore a highly-rated local restaurant together. Share dishes and enjoy great conversation over a delicious meal.',
+            category: 'Food & Drink',
+            estimated_cost: '$40-60',
+            search_url: `https://www.yelp.com/search?find_desc=restaurants&find_loc=${encodeURIComponent(resolvedLocation)}`,
+          },
+          {
+            title: 'Scenic Nature Walk',
+            description: 'Take a relaxing walk through a local park or nature trail. Enjoy the fresh air and beautiful surroundings while getting to know each other better.',
+            category: 'Outdoors',
+            estimated_cost: '$0-10',
+            search_url: `https://www.google.com/maps/search/parks+near+${encodeURIComponent(resolvedLocation)}`,
+          },
+          {
+            title: 'Coffee & Bookstore Browse',
+            description: 'Start with coffee at a cozy café, then wander through a local bookstore. Share your favorite reads and discover new ones together.',
+            category: 'Cozy',
+            estimated_cost: '$15-25',
+            search_url: `https://www.yelp.com/search?find_desc=coffee+shops&find_loc=${encodeURIComponent(resolvedLocation)}`,
+          },
+          {
+            title: 'Live Music or Comedy Show',
+            description: 'Catch a live performance at a local venue. Whether it\'s a band or a comedy night, shared laughter and music create great memories.',
+            category: 'Entertainment',
+            estimated_cost: '$30-60',
+            search_url: `https://www.google.com/maps/search/live+music+venues+near+${encodeURIComponent(resolvedLocation)}`,
+          },
+          {
+            title: 'Art Museum or Gallery Visit',
+            description: 'Spend an afternoon exploring local art together. Discuss your interpretations and discover each other\'s tastes through the exhibits.',
+            category: 'Arts & Culture',
+            estimated_cost: '$20-40',
+            search_url: `https://www.google.com/maps/search/art+museums+near+${encodeURIComponent(resolvedLocation)}`,
+          },
+        ];
+
+        return { ideas: fallbackIdeas };
       }
     }
   );
