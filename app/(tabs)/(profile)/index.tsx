@@ -798,6 +798,21 @@ export default function ProfileScreen() {
               />
             </View>
 
+            <AnimatedPressable
+              onPress={() => {
+                console.log('[Profile] Notification Settings pressed');
+                router.push('/notification-preferences');
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: colors.accentMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Bell size={18} color={colors.accent} />
+                </View>
+                <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>Notification Settings</Text>
+                <ChevronRight size={18} color={colors.textTertiary} />
+              </View>
+            </AnimatedPressable>
+
             <View
               style={{
                 flexDirection: 'row',
