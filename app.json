@@ -19,7 +19,8 @@
         "NSCameraUsageDescription": "Used to scan profile barcodes to add people to your roster.",
         "NSPhotoLibraryUsageDescription": "Used to add a photo to your profile or a person's card.",
         "NSPhotoLibraryAddUsageDescription": "Used to save photos to your library.",
-        "NSLocationWhenInUseUsageDescription": "Used to share your current location during a safety check-in."
+        "NSLocationWhenInUseUsageDescription": "Used to share your current location during a safety check-in.",
+        "NSContactsUsageDescription": "Used to save people from your roster to your phone contacts."
       }
     },
     "android": {
@@ -30,7 +31,9 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_EXTERNAL_STORAGE"
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS"
       ]
     },
     "web": {
@@ -49,7 +52,8 @@
       "expo-web-browser",
       "expo-secure-store",
       "expo-camera",
-      "expo-image-picker"
+      "expo-image-picker",
+      "expo-contacts"
     ],
     "scheme": "roster",
     "experiments": {

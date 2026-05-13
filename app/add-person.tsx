@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import * as Contacts from 'expo-contacts';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Camera, Plus, X, ScanLine } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -283,6 +284,7 @@ export default function AddPersonScreen() {
   const [hobbies, setHobbies] = useState<string[]>([]);
   const [greenFlags, setGreenFlags] = useState<string[]>([]);
   const [redFlags, setRedFlags] = useState<string[]>([]);
+  const [saveToContacts, setSaveToContacts] = useState(false);
 
   const canSave = name.trim().length > 0 && location.trim().length > 0;
 
@@ -359,6 +361,77 @@ export default function AddPersonScreen() {
       }
 
       console.log('[AddPerson] Person saved successfully:', personId);
+
+      if (saveToContacts) {
+        console.log('[AddPerson] Requesting contacts permission');
+        const { status } = await Contacts.requestPermissionsAsync();
+        if (status !== 'granted') {
+          console.log('[AddPerson] Contacts permission denied');
+          Alert.alert('Permission needed', 'Please allow contacts access in Settings to use this feature.');
+        } else {
+          console.log('[AddPerson] Contacts permission granted, building contact object');
+          try {
+            const nameTrimmed = name.trim();
+            const spaceIdx = nameTrimmed.indexOf(' ');
+            const firstName = spaceIdx === -1 ? nameTrimmed : nameTrimmed.slice(0, spaceIdx);
+            const lastName = spaceIdx === -1 ? undefined : nameTrimmed.slice(spaceIdx + 1);
+
+            const contact: Contacts.Contact = {
+              contactType: Contacts.ContactTypes.Person,
+              name: nameTrimmed,
+              firstName,
+              ...(lastName ? { lastName } : {}),
+            };
+
+            if (phoneNumber) {
+              contact.phoneNumbers = [{ number: phoneNumber, label: 'mobile' }];
+            }
+
+            if (birthday) {
+              const bParts = birthday.split('-');
+              if (bParts.length === 2) {
+                const bMonth = parseInt(bParts[0], 10);
+                const bDay = parseInt(bParts[1], 10);
+                if (!isNaN(bMonth) && !isNaN(bDay)) {
+                  contact.birthday = { month: bMonth, day: bDay };
+                }
+              }
+            }
+
+            if (career) {
+              contact.jobTitle = career;
+            }
+
+            const urlAddresses: Contacts.UrlAddress[] = [];
+            if (instagram) {
+              urlAddresses.push({ url: 'https://instagram.com/' + instagram.replace('@', ''), label: 'instagram' });
+            }
+            if (tiktok) {
+              urlAddresses.push({ url: 'https://tiktok.com/@' + tiktok.replace('@', ''), label: 'tiktok' });
+            }
+            if (twitterX) {
+              urlAddresses.push({ url: 'https://twitter.com/' + twitterX.replace('@', ''), label: 'twitter' });
+            }
+            if (urlAddresses.length > 0) {
+              contact.urlAddresses = urlAddresses;
+            }
+
+            if (photoUri && (photoUri.startsWith('file://') || photoUri.startsWith('ph://'))) {
+              contact.imageAvailable = true;
+              contact.image = { uri: photoUri };
+            }
+
+            console.log('[AddPerson] Calling Contacts.addContactAsync for:', nameTrimmed);
+            await Contacts.addContactAsync(contact);
+            console.log('[AddPerson] Contact saved successfully:', nameTrimmed);
+            Alert.alert('Saved', `${nameTrimmed} was added to your contacts.`);
+          } catch (contactErr) {
+            console.error('[AddPerson] Failed to save contact:', contactErr);
+            Alert.alert('Could not save contact', 'Please try again.');
+          }
+        }
+      }
+
       router.back();
     } catch (e: any) {
       console.error('[AddPerson] Save failed:', e);
@@ -776,6 +849,26 @@ export default function AddPersonScreen() {
           </View>
           <Text style={{ color: colors.textTertiary, fontSize: 12 }}>Based on your ratings</Text>
         </View>
+
+        {/* Save to contacts toggle */}
+        <Pressable
+          onPress={() => {
+            console.log('[AddPerson] Save to contacts toggled:', !saveToContacts);
+            setSaveToContacts(!saveToContacts);
+          }}
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16, marginTop: 8 }}
+        >
+          <View style={{
+            width: 22, height: 22, borderRadius: 6,
+            backgroundColor: saveToContacts ? colors.primary : colors.surfaceSecondary,
+            borderWidth: saveToContacts ? 0 : 1.5,
+            borderColor: colors.border,
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            {saveToContacts && <Ionicons name="checkmark" size={14} color="#fff" />}
+          </View>
+          <Text style={{ color: colors.text, fontSize: 15, fontWeight: '500' }}>Save to phone contacts</Text>
+        </Pressable>
 
         {/* Save button */}
         <AnimatedPressable
