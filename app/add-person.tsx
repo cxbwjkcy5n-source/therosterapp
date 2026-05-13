@@ -8,7 +8,6 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import * as Contacts from 'expo-contacts';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Camera, Plus, X, ScanLine } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -364,6 +363,7 @@ export default function AddPersonScreen() {
 
       if (saveToContacts) {
         console.log('[AddPerson] Requesting contacts permission');
+        const Contacts = await import('expo-contacts');
         const { status } = await Contacts.requestPermissionsAsync();
         if (status !== 'granted') {
           console.log('[AddPerson] Contacts permission denied');
