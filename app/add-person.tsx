@@ -20,6 +20,7 @@ import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiPost, apiPut } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
+import type * as Contacts from 'expo-contacts';
 
 async function uploadToCloudinary(base64: string, mimeType: string = 'image/jpeg'): Promise<string> {
   console.log('[Cloudinary] Uploading image, mimeType:', mimeType);
