@@ -12,6 +12,7 @@ import {
   Modal,
   Platform,
   KeyboardAvoidingView,
+  Animated,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
@@ -95,6 +96,50 @@ function resolveImageSource(source: string | number | ImageSourcePropType | unde
 
 function getInitials(name: string) {
   return name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+}
+
+// ─── CompatReportSkeleton ────────────────────────────────────────────────────
+function CompatReportSkeleton({ colors }: { colors: Record<string, string> }) {
+  const pulse = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  const skeletonBg = colors.surfaceSecondary;
+  return (
+    <Animated.View style={{ opacity: pulse }}>
+      {/* Score placeholder */}
+      <View style={{ alignItems: 'center', marginVertical: 20 }}>
+        <View style={{ width: 80, height: 64, borderRadius: 12, backgroundColor: skeletonBg }} />
+        <View style={{ width: 40, height: 18, borderRadius: 6, backgroundColor: skeletonBg, marginTop: 8 }} />
+      </View>
+      {/* Trait bars placeholder */}
+      {[1, 2, 3].map((n) => (
+        <View key={n} style={{ marginBottom: 14 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+            <View style={{ width: 90, height: 12, borderRadius: 6, backgroundColor: skeletonBg }} />
+            <View style={{ width: 24, height: 12, borderRadius: 6, backgroundColor: skeletonBg }} />
+          </View>
+          <View style={{ height: 6, backgroundColor: skeletonBg, borderRadius: 3 }} />
+        </View>
+      ))}
+      {/* Summary placeholder */}
+      <View style={{ backgroundColor: skeletonBg, borderRadius: 12, padding: 14, marginBottom: 16, gap: 8 }}>
+        <View style={{ height: 12, borderRadius: 6, backgroundColor: colors.border }} />
+        <View style={{ height: 12, borderRadius: 6, backgroundColor: colors.border, width: '80%' }} />
+        <View style={{ height: 12, borderRadius: 6, backgroundColor: colors.border, width: '60%' }} />
+      </View>
+      {/* Strongest/Weakest placeholder */}
+      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
+        <View style={{ flex: 1, height: 60, borderRadius: 12, backgroundColor: skeletonBg }} />
+        <View style={{ flex: 1, height: 60, borderRadius: 12, backgroundColor: skeletonBg }} />
+      </View>
+    </Animated.View>
+  );
 }
 
 // ─── PhotoThumb ──────────────────────────────────────────────────────────────
@@ -937,8 +982,12 @@ export default function PersonDetailScreen() {
     strongest_trait: string;
     weakest_trait: string;
     traits?: { name: string; score: number }[];
+    green_flag_analysis?: string;
+    red_flag_analysis?: string;
+    recommendation?: string;
   } | null>(null);
   const [compatReportVisible, setCompatReportVisible] = useState(false);
+  const compatReportPersonId = useRef<string | null>(null);
 
   // person photos
   const [personPhotos, setPersonPhotos] = useState<{ id: string; photo_url: string; sort_order?: number }[]>([]);
@@ -1934,6 +1983,13 @@ export default function PersonDetailScreen() {
           <AnimatedPressable
             onPress={async () => {
               console.log('[PersonDetail] Compatibility Report pressed for person:', displayData.id);
+              // Show modal immediately (skeleton while loading, or cached data)
+              setCompatReportVisible(true);
+              // Use cached report if same person
+              if (compatReportPersonId.current === displayData.id && compatReport !== null) {
+                console.log('[PersonDetail] Using cached compatibility report for person:', displayData.id);
+                return;
+              }
               setCompatReportLoading(true);
               try {
                 const res = await apiGet<{
@@ -1943,15 +1999,19 @@ export default function PersonDetailScreen() {
                     strongest_trait: string;
                     weakest_trait: string;
                     traits?: { name: string; score: number }[];
+                    green_flag_analysis?: string;
+                    red_flag_analysis?: string;
+                    recommendation?: string;
                   }
                 }>(`/api/persons/${displayData.id}/compatibility-report`);
-                const report = res?.report ?? res as any;
+                const report = res?.report ?? (res as any);
                 console.log('[PersonDetail] Compatibility report loaded, score:', report?.overall_score);
                 setCompatReport(report);
-                setCompatReportVisible(true);
+                compatReportPersonId.current = displayData.id ?? null;
               } catch (e) {
                 console.error('[PersonDetail] Failed to get compatibility report:', e);
                 Alert.alert('Error', 'Could not load compatibility report. Try again.');
+                setCompatReportVisible(false);
               } finally {
                 setCompatReportLoading(false);
               }
@@ -3234,71 +3294,113 @@ export default function PersonDetailScreen() {
       {/* ── Conversation Starters Modal ─────────────────────────────────────── */}
       <Modal visible={startersModalVisible} transparent animationType="slide" onRequestClose={() => setStartersModalVisible(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={() => setStartersModalVisible(false)}>
-          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }}>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '85%' }}>
             <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 16 }}>✨ Conversation Starters</Text>
-            <View style={{ gap: 12 }}>
-              {starters.map((s, i) => (
-                <Pressable
-                  key={i}
-                  onPress={() => {
-                    console.log('[PersonDetail] Conversation starter tapped:', s.slice(0, 40));
-                    const hasPhone = !!(displayData.phone_number);
-                    if (hasPhone) {
-                      Alert.alert(
-                        'Send as Text?',
-                        s,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Send Text',
-                            onPress: () => {
-                              console.log('[PersonDetail] Opening SMS for starter');
-                              Linking.openURL('sms:' + (displayData.phone_number ?? ''));
-                            },
-                          },
-                        ]
-                      );
-                    } else {
-                      Alert.alert(
-                        'Send as Text?',
-                        'Copy this to send manually:\n\n' + s,
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Copy',
-                            onPress: () => {
-                              console.log('[PersonDetail] Copying starter to clipboard');
-                              Clipboard.setStringAsync(s);
-                            },
-                          },
-                        ]
-                      );
-                    }
-                  }}
-                  style={({ pressed }) => ({
-                    backgroundColor: pressed ? colors.surfaceSecondary : colors.surfaceSecondary,
-                    borderRadius: 12,
-                    padding: 14,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20, flex: 1 }}>{s}</Text>
-                  <Text style={{ color: '#BBBBBB', fontSize: 16, marginLeft: 8 }}>›</Text>
-                </Pressable>
-              ))}
-            </View>
-            <Pressable
-              onPress={() => {
-                console.log('[PersonDetail] Conversation starters modal closed');
-                setStartersModalVisible(false);
-              }}
-              style={{ marginTop: 20, backgroundColor: RED, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
-            >
-              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Done</Text>
-            </Pressable>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ gap: 12 }}>
+                {starters.map((s, i) => (
+                  <View
+                    key={i}
+                    style={{
+                      backgroundColor: colors.surfaceSecondary,
+                      borderRadius: 12,
+                      padding: 14,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                    }}
+                  >
+                    <Pressable
+                      onPress={() => {
+                        console.log('[PersonDetail] Conversation starter tapped:', s.slice(0, 40));
+                        const hasPhone = !!(displayData.phone_number);
+                        if (hasPhone) {
+                          Alert.alert(
+                            'Send as Text?',
+                            s,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Send Text',
+                                onPress: () => {
+                                  console.log('[PersonDetail] Opening SMS for starter');
+                                  Linking.openURL('sms:' + (displayData.phone_number ?? ''));
+                                },
+                              },
+                            ]
+                          );
+                        } else {
+                          Alert.alert(
+                            'Send as Text?',
+                            'Copy this to send manually:\n\n' + s,
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Copy',
+                                onPress: () => {
+                                  console.log('[PersonDetail] Copying starter to clipboard via alert');
+                                  Clipboard.setStringAsync(s);
+                                },
+                              },
+                            ]
+                          );
+                        }
+                      }}
+                      style={{ flex: 1 }}
+                    >
+                      <Text style={{ color: colors.text, fontSize: 14, lineHeight: 20 }}>{s}</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        console.log('[PersonDetail] Copy starter to clipboard:', s.slice(0, 40));
+                        Clipboard.setStringAsync(s);
+                        Alert.alert('Copied!', 'Starter copied to clipboard.');
+                      }}
+                      style={{ padding: 6 }}
+                    >
+                      <Text style={{ fontSize: 16 }}>📋</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </View>
+
+              <AnimatedPressable
+                onPress={async () => {
+                  console.log('[PersonDetail] Regenerate conversation starters pressed for person:', displayData.id);
+                  setStartersLoading(true);
+                  try {
+                    const res = await apiPost<{ starters: string[] }>(`/api/persons/${displayData.id}/conversation-starters`, {});
+                    console.log('[PersonDetail] Regenerated', res.starters?.length ?? 0, 'starters');
+                    setStarters(res.starters || []);
+                  } catch (e) {
+                    console.error('[PersonDetail] Failed to regenerate starters:', e);
+                    Alert.alert('Error', 'Could not regenerate starters.');
+                  } finally {
+                    setStartersLoading(false);
+                  }
+                }}
+                style={{ marginTop: 12, backgroundColor: colors.surfaceSecondary, borderRadius: 12, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: colors.border }}
+              >
+                {startersLoading ? (
+                  <ActivityIndicator color={colors.textSecondary} size="small" />
+                ) : (
+                  <>
+                    <Text style={{ fontSize: 14 }}>🔄</Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>Regenerate</Text>
+                  </>
+                )}
+              </AnimatedPressable>
+
+              <Pressable
+                onPress={() => {
+                  console.log('[PersonDetail] Conversation starters modal closed');
+                  setStartersModalVisible(false);
+                }}
+                style={{ marginTop: 12, backgroundColor: RED, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Done</Text>
+              </Pressable>
+            </ScrollView>
           </View>
         </Pressable>
       </Modal>
@@ -3306,10 +3408,49 @@ export default function PersonDetailScreen() {
       {/* ── Compatibility Report Modal ──────────────────────────────────────── */}
       <Modal visible={compatReportVisible} transparent animationType="slide" onRequestClose={() => setCompatReportVisible(false)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={() => setCompatReportVisible(false)}>
-          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '85%' }}>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '90%' }}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 4 }}>📊 Compatibility Report</Text>
-              {compatReport && (
+              {/* Header row with refresh button */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>📊 Compatibility Report</Text>
+                <Pressable
+                  onPress={async () => {
+                    console.log('[PersonDetail] Refresh compatibility report pressed for person:', displayData.id);
+                    setCompatReportLoading(true);
+                    try {
+                      const res = await apiGet<{
+                        report: {
+                          overall_score: number;
+                          summary: string;
+                          strongest_trait: string;
+                          weakest_trait: string;
+                          traits?: { name: string; score: number }[];
+                          green_flag_analysis?: string;
+                          red_flag_analysis?: string;
+                          recommendation?: string;
+                        }
+                      }>(`/api/persons/${displayData.id}/compatibility-report`);
+                      const report = res?.report ?? (res as any);
+                      console.log('[PersonDetail] Refreshed compatibility report, score:', report?.overall_score);
+                      setCompatReport(report);
+                      compatReportPersonId.current = displayData.id ?? null;
+                    } catch (e) {
+                      console.error('[PersonDetail] Failed to refresh compatibility report:', e);
+                      Alert.alert('Error', 'Could not refresh compatibility report. Try again.');
+                    } finally {
+                      setCompatReportLoading(false);
+                    }
+                  }}
+                  style={{ padding: 6 }}
+                >
+                  <Text style={{ fontSize: 18 }}>🔄</Text>
+                </Pressable>
+              </View>
+
+              {compatReportLoading && !compatReport ? (
+                /* Skeleton loading state */
+                <CompatReportSkeleton colors={colors} />
+              ) : compatReport ? (
                 <>
                   {/* Overall score */}
                   <View style={{ alignItems: 'center', marginVertical: 20 }}>
@@ -3350,7 +3491,7 @@ export default function PersonDetailScreen() {
                   ) : null}
 
                   {/* Strongest / Weakest */}
-                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                     {compatReport.strongest_trait ? (
                       <View style={{ flex: 1, backgroundColor: 'rgba(34,197,94,0.1)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(34,197,94,0.2)' }}>
                         <Text style={{ color: '#22C55E', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>Strongest</Text>
@@ -3364,8 +3505,35 @@ export default function PersonDetailScreen() {
                       </View>
                     ) : null}
                   </View>
+
+                  {/* Flag Analysis */}
+                  {(compatReport.green_flag_analysis || compatReport.red_flag_analysis) && (
+                    <View style={{ gap: 8, marginBottom: 16 }}>
+                      {compatReport.green_flag_analysis ? (
+                        <View style={{ backgroundColor: 'rgba(34,197,94,0.08)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(34,197,94,0.15)' }}>
+                          <Text style={{ color: '#22C55E', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>🟢 Green Flags</Text>
+                          <Text style={{ color: colors.text, fontSize: 13, lineHeight: 19 }}>{compatReport.green_flag_analysis}</Text>
+                        </View>
+                      ) : null}
+                      {compatReport.red_flag_analysis ? (
+                        <View style={{ backgroundColor: 'rgba(229,57,53,0.06)', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: 'rgba(229,57,53,0.12)' }}>
+                          <Text style={{ color: RED, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>🔴 Red Flags</Text>
+                          <Text style={{ color: colors.text, fontSize: 13, lineHeight: 19 }}>{compatReport.red_flag_analysis}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  )}
+
+                  {/* Recommendation */}
+                  {compatReport.recommendation ? (
+                    <View style={{ backgroundColor: 'rgba(168,85,247,0.08)', borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: 'rgba(168,85,247,0.15)' }}>
+                      <Text style={{ color: '#A855F7', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>💡 Recommendation</Text>
+                      <Text style={{ color: colors.text, fontSize: 14, lineHeight: 21 }}>{compatReport.recommendation}</Text>
+                    </View>
+                  ) : null}
                 </>
-              )}
+              ) : null}
+
               <Pressable
                 onPress={() => {
                   console.log('[PersonDetail] Compatibility report modal closed');
