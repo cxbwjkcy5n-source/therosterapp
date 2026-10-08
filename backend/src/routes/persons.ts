@@ -37,6 +37,7 @@ interface PersonInput {
   thingsILike?: string;
   isBenched?: boolean;
   benchReason?: string;
+  excludedRatings?: string[];
 }
 
 function toSnakePerson(person: any) {
@@ -81,6 +82,7 @@ function toSnakePerson(person: any) {
     is_benched: person.isBenched,
     bench_reason: person.benchReason,
     nickname: person.nickname,
+    excluded_ratings: person.excludedRatings,
     created_at: person.createdAt,
     updated_at: person.updatedAt,
   };
@@ -146,6 +148,7 @@ export function registerPersonsRoutes(app: App) {
                     is_benched: { type: 'boolean' },
                     bench_reason: { type: ['string', 'null'] },
                     nickname: { type: ['string', 'null'] },
+                    excluded_ratings: { type: ['array', 'null'], items: { type: 'string', enum: ['interest_level', 'attractiveness', 'sexual_chemistry', 'communication', 'overall_chemistry', 'consistency', 'emotional_availability', 'date_planning', 'alignment'] } },
                     created_at: { type: 'string', format: 'date-time' },
                     updated_at: { type: 'string', format: 'date-time' },
                   },
@@ -224,6 +227,7 @@ export function registerPersonsRoutes(app: App) {
             datingStatus: { type: ['string', 'null'] },
             tags: { type: ['array', 'null'], items: { type: 'string' } },
             thingsILike: { type: ['string', 'null'] },
+            excludedRatings: { type: ['array', 'null'], items: { type: 'string', enum: ['interest_level', 'attractiveness', 'sexual_chemistry', 'communication', 'overall_chemistry', 'consistency', 'emotional_availability', 'date_planning', 'alignment'] } },
           },
         },
         response: {
@@ -279,6 +283,7 @@ export function registerPersonsRoutes(app: App) {
           datingStatus: request.body.datingStatus,
           tags: request.body.tags,
           thingsILike: request.body.thingsILike,
+          excludedRatings: request.body.excludedRatings,
         })
         .returning();
 
@@ -343,6 +348,7 @@ export function registerPersonsRoutes(app: App) {
                   career: { type: ['string', 'null'] },
                   is_benched: { type: 'boolean' },
                   bench_reason: { type: ['string', 'null'] },
+                  excluded_ratings: { type: ['array', 'null'], items: { type: 'string', enum: ['interest_level', 'attractiveness', 'sexual_chemistry', 'communication', 'overall_chemistry', 'consistency', 'emotional_availability', 'date_planning', 'alignment'] } },
                   created_at: { type: 'string', format: 'date-time' },
                   updated_at: { type: 'string', format: 'date-time' },
                 },
@@ -445,6 +451,8 @@ export function registerPersonsRoutes(app: App) {
             is_benched: { type: 'boolean' },
             benchReason: { type: ['string', 'null'] },
             bench_reason: { type: ['string', 'null'] },
+            excludedRatings: { type: ['array', 'null'], items: { type: 'string', enum: ['interest_level', 'attractiveness', 'sexual_chemistry', 'communication', 'overall_chemistry', 'consistency', 'emotional_availability', 'date_planning', 'alignment'] } },
+            excluded_ratings: { type: ['array', 'null'], items: { type: 'string', enum: ['interest_level', 'attractiveness', 'sexual_chemistry', 'communication', 'overall_chemistry', 'consistency', 'emotional_availability', 'date_planning', 'alignment'] } },
           },
         },
         response: {
@@ -489,6 +497,7 @@ export function registerPersonsRoutes(app: App) {
                   career: { type: ['string', 'null'] },
                   isBenched: { type: 'boolean' },
                   benchReason: { type: ['string', 'null'] },
+                  excludedRatings: { type: ['array', 'null'], items: { type: 'string', enum: ['interest_level', 'attractiveness', 'sexual_chemistry', 'communication', 'overall_chemistry', 'consistency', 'emotional_availability', 'date_planning', 'alignment'] } },
                   createdAt: { type: 'string', format: 'date-time' },
                   updatedAt: { type: 'string', format: 'date-time' },
                 },
@@ -558,6 +567,7 @@ export function registerPersonsRoutes(app: App) {
       let tags = getFieldValue('tags', 'tags');
       let thingsILike = getFieldValue('things_i_like', 'thingsILike');
       let career = getFieldValue('career', 'career');
+      let excludedRatings = getFieldValue('excluded_ratings', 'excludedRatings');
 
       // SPECIAL CASE: Unbenching fast path
       if (isBenched === false) {
@@ -649,6 +659,7 @@ export function registerPersonsRoutes(app: App) {
           career: career !== undefined ? career : sql`career`,
           isBenched: isBenched !== undefined ? isBenched : sql`is_benched`,
           benchReason: benchReason !== undefined ? benchReason : sql`bench_reason`,
+          excludedRatings: excludedRatings !== undefined ? excludedRatings : sql`excluded_ratings`,
           updatedAt: new Date(),
         })
         .where(and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)))

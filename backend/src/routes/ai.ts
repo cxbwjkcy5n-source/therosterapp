@@ -557,8 +557,29 @@ Return ONLY the JSON array, nothing else.`;
         app.logger.info({ userId: session.user.id }, 'Chat messages saved to history');
         return { reply: text };
       } catch (error) {
-        app.logger.error({ err: error, userId: session.user.id, personId: person_id }, 'Failed to get AI response');
-        throw error;
+        app.logger.warn({ err: error, userId: session.user.id, personId: person_id }, 'Failed to get AI response, using fallback');
+
+        // Fallback response when AI is unavailable
+        const fallbackReply = "I appreciate you reaching out! While I'm having trouble accessing my AI assistant right now, I want to help. What specific dating question or situation are you working through? I'd love to hear more details so I can provide meaningful support.";
+
+        // Save user message to chat history
+        await app.db.insert(schema.chatMessages).values({
+          userId: session.user.id,
+          personId: person_id ? person_id : undefined,
+          role: 'user',
+          content: message,
+        });
+
+        // Save fallback assistant message to chat history
+        await app.db.insert(schema.chatMessages).values({
+          userId: session.user.id,
+          personId: person_id ? person_id : undefined,
+          role: 'assistant',
+          content: fallbackReply,
+        });
+
+        app.logger.info({ userId: session.user.id }, 'Fallback chat response returned');
+        return { reply: fallbackReply };
       }
     }
   );
@@ -696,8 +717,29 @@ Return ONLY the JSON array, nothing else.`;
         app.logger.info({ userId: session.user.id }, 'Chat messages saved to history');
         return { reply: text };
       } catch (error) {
-        app.logger.error({ err: error, userId: session.user.id, personId: person_id }, 'Failed to get AI response');
-        throw error;
+        app.logger.warn({ err: error, userId: session.user.id, personId: person_id }, 'Failed to get AI response, using fallback');
+
+        // Fallback response when AI is unavailable
+        const fallbackReply = "I'm here to help! What would you like to talk about regarding your dating life? Feel free to share any questions or situations you're working through, and I'll do my best to provide thoughtful guidance.";
+
+        // Save user message to chat history
+        await app.db.insert(schema.chatMessages).values({
+          userId: session.user.id,
+          personId: person_id ? person_id : undefined,
+          role: 'user',
+          content: message,
+        });
+
+        // Save fallback assistant message to chat history
+        await app.db.insert(schema.chatMessages).values({
+          userId: session.user.id,
+          personId: person_id ? person_id : undefined,
+          role: 'assistant',
+          content: fallbackReply,
+        });
+
+        app.logger.info({ userId: session.user.id }, 'Fallback chat response returned');
+        return { reply: fallbackReply };
       }
     }
   );

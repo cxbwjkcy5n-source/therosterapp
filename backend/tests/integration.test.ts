@@ -1149,6 +1149,81 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 400);
   });
 
+  // ========== AI Date Plan Ideas Tests ==========
+  test("Generate AI-powered personalized date ideas with required fields", async () => {
+    const res = await authenticatedApi("/api/date-plan/ideas", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.ideas).toBeDefined();
+    expect(Array.isArray(data.ideas)).toBe(true);
+    if (data.ideas.length > 0) {
+      const idea = data.ideas[0];
+      expect(idea.title).toBeDefined();
+      expect(idea.description).toBeDefined();
+      expect(idea.category).toBeDefined();
+    }
+  });
+
+  test("Generate date ideas with optional location and budget", async () => {
+    const res = await authenticatedApi("/api/date-plan/ideas", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        location: "San Francisco",
+        budget: 50,
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.ideas).toBeDefined();
+    expect(Array.isArray(data.ideas)).toBe(true);
+  });
+
+  test("Generate date ideas fails without required person_id", async () => {
+    const res = await authenticatedApi("/api/date-plan/ideas", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        location: "San Francisco",
+        budget: 50,
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Generate date ideas with invalid person_id format returns 400", async () => {
+    const res = await authenticatedApi("/api/date-plan/ideas", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: "invalid-uuid",
+        location: "San Francisco",
+        budget: 50,
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Generate date ideas with nonexistent person returns 404", async () => {
+    const res = await authenticatedApi("/api/date-plan/ideas", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: "00000000-0000-0000-0000-000000000000",
+        location: "San Francisco",
+        budget: 50,
+      }),
+    });
+    await expectStatus(res, 404);
+  });
+
   // ========== Safety Check-in Tests ==========
   test("Create a safety check-in", async () => {
     const res = await authenticatedApi("/api/safety-checkins", authToken, {
@@ -2309,6 +2384,18 @@ describe("API Integration Tests", () => {
       body: JSON.stringify({
         person_id: "00000000-0000-0000-0000-000000000000",
         budget: 100,
+      }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/date-plan/ideas returns 401", async () => {
+    const res = await api("/api/date-plan/ideas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        person_id: personId,
+        budget: 50,
       }),
     });
     await expectStatus(res, 401);

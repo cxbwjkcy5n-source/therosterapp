@@ -82,6 +82,7 @@ export const persons = pgTable('persons', {
   career: text('career'),
   isBenched: boolean('is_benched').default(false).notNull(),
   benchReason: text('bench_reason'),
+  excludedRatings: text('excluded_ratings').array(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
