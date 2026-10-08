@@ -13,7 +13,8 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.roster.app",
+      "bundleIdentifier": "com.d62de040124e438994b5a60819342428.app",
+      "buildNumber": "4",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Used to scan profile barcodes to add people to your roster.",
@@ -24,6 +25,7 @@
       }
     },
     "android": {
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/Roster App Icon.png",
         "backgroundColor": "#000000"
@@ -41,6 +43,9 @@
       "bundler": "metro"
     },
     "plugins": [
+      "./plugins/withUserScriptSandboxing",
+      "./plugins/withIosDeploymentTarget",
+      "./plugins/withEXConstantsQuotedPaths",
       [
         "onesignal-expo-plugin",
         {
