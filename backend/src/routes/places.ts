@@ -1,23 +1,17 @@
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 
-interface GeocodeFarmResult {
-  result_number: number;
-  formatted_address: string;
-  ADDRESS?: {
-    street_number?: string;
-    street_name?: string;
-    locality?: string;
-    admin_1?: string;
-    postal_code?: string;
+interface NominatimResult {
+  place_id: number;
+  display_name: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    county?: string;
+    state?: string;
+    country?: string;
   };
-}
-
-interface GeocodeFarmResponse {
-  STATUS: {
-    access: string;
-  };
-  RESULTS: GeocodeFarmResult[];
 }
 
 interface Prediction {
@@ -29,25 +23,20 @@ interface Prediction {
   };
 }
 
-function hasGeocodeFarmKey(): boolean {
-  return !!process.env.GEOCODE_FARM_API_KEY;
-}
-
 export function registerPlacesRoutes(app: App) {
-  const requireAuth = app.requireAuth();
-
-  // GET /api/places/autocomplete - Get place autocomplete suggestions
+  // GET /api/places/autocomplete - Get place autocomplete suggestions from Nominatim
   app.fastify.get(
     '/api/places/autocomplete',
     {
       schema: {
-        description: 'Get place autocomplete suggestions from Geocode Farm API',
+        description: 'Get place autocomplete suggestions from Nominatim (OpenStreetMap)',
         tags: ['places'],
         querystring: {
           type: 'object',
           required: ['input'],
           properties: {
             input: { type: 'string', description: 'Address text to search' },
+            sessiontoken: { type: 'string', description: 'Session token (ignored, for compatibility)' },
           },
         },
         response: {
@@ -73,108 +62,83 @@ export function registerPlacesRoutes(app: App) {
               },
             },
           },
-          400: { type: 'object', properties: { error: { type: 'string' } } },
-          401: { type: 'object', properties: { error: { type: 'string' } } },
-          500: { type: 'object', properties: { error: { type: 'string' } } },
-          502: { type: 'object', properties: { error: { type: 'string' } } },
         },
       },
     },
     async (
-      request: FastifyRequest<{ Querystring: { input?: string } }>,
+      request: FastifyRequest<{ Querystring: { input?: string; sessiontoken?: string } }>,
       reply: FastifyReply
     ) => {
-      const session = await requireAuth(request, reply);
-      if (!session) return;
-
       const { input } = request.query;
 
-      app.logger.info({ userId: session.user.id, input }, 'Getting place autocomplete suggestions');
+      app.logger.info({ query: input }, 'Getting place autocomplete suggestions');
 
-      // Check if input is provided
+      // Check if query is provided
       if (!input || input.trim() === '') {
-        app.logger.warn({ userId: session.user.id }, 'input is required');
-        return reply.status(400).send({ error: 'input is required' });
-      }
-
-      // If API key is not configured, return mock predictions for testing
-      if (!hasGeocodeFarmKey()) {
-        const mockPredictions = [
-          {
-            place_id: 'mock_place_1',
-            description: `${input} (mock)`,
-            structured_formatting: {
-              main_text: input,
-              secondary_text: 'Mock Location',
-            },
-          },
-          {
-            place_id: 'mock_place_2',
-            description: `${input} City (mock)`,
-            structured_formatting: {
-              main_text: `${input} City`,
-              secondary_text: 'Mock State, Mock Country',
-            },
-          },
-        ];
-        app.logger.info(
-          { userId: session.user.id, input },
-          'Returning mock place predictions (GEOCODE_FARM_API_KEY not configured)'
-        );
-        return {
-          predictions: mockPredictions,
-        };
+        app.logger.warn({}, 'input parameter is required');
+        return reply.status(400).send({ error: 'input parameter is required' });
       }
 
       try {
-        const apiKey = process.env.GEOCODE_FARM_API_KEY!;
-        const encodedInput = encodeURIComponent(input);
+        const encodedQuery = encodeURIComponent(input);
 
-        // Build Geocode Farm API URL
-        const urlString = `https://www.geocode.farm/v3/json/forward/?addr=${encodedInput}&key=${apiKey}&country=US&count=5`;
+        // Call Nominatim API
+        const urlString = `https://nominatim.openstreetmap.org/search?q=${encodedQuery}&format=json&limit=5&addressdetails=1`;
 
-        // Call Geocode Farm API
-        const response = await fetch(urlString);
-        const data = (await response.json()) as GeocodeFarmResponse;
+        app.logger.info({ query: input, url: urlString }, 'Calling Nominatim API');
 
-        app.logger.info(
-          { userId: session.user.id, status: data.STATUS.access },
-          'Geocode Farm API response received'
-        );
+        const response = await fetch(urlString, {
+          headers: {
+            'User-Agent': 'TheRosterApp/1.0',
+            'Accept-Language': 'en',
+          },
+        });
 
-        // Check response status
-        if (data.STATUS.access !== 'SUCCESS') {
-          app.logger.info({ userId: session.user.id }, 'No results from Geocode Farm API');
+        if (!response.ok) {
+          app.logger.warn({ query: input, statusCode: response.status }, 'Nominatim API error');
           return {
             predictions: [],
           };
         }
 
-        // Transform results to predictions format
-        const predictions: Prediction[] = (data.RESULTS || []).map((result) => {
+        const data = (await response.json()) as NominatimResult[];
+
+        app.logger.info({ query: input, resultCount: data.length }, 'Nominatim API response received');
+
+        if (!Array.isArray(data) || data.length === 0) {
+          app.logger.info({ query: input }, 'No results from Nominatim API');
+          return {
+            predictions: [],
+          };
+        }
+
+        // Transform results to predictions format (up to 5 results)
+        const predictions: Prediction[] = data.slice(0, 5).map((result: NominatimResult) => {
           let mainText: string;
           let secondaryText: string;
 
-          if (result.ADDRESS) {
-            // If ADDRESS fields exist, construct from components
-            const streetNumber = result.ADDRESS.street_number || '';
-            const streetName = result.ADDRESS.street_name || '';
-            mainText = (streetNumber + ' ' + streetName).trim();
-
-            const locality = result.ADDRESS.locality || '';
-            const admin1 = result.ADDRESS.admin_1 || '';
-            const postalCode = result.ADDRESS.postal_code || '';
-            secondaryText = [locality, admin1, postalCode].filter(Boolean).join(', ');
+          // Extract main text from address components or display_name
+          if (result.address?.city) {
+            mainText = result.address.city;
+          } else if (result.address?.town) {
+            mainText = result.address.town;
+          } else if (result.address?.village) {
+            mainText = result.address.village;
+          } else if (result.address?.county) {
+            mainText = result.address.county;
           } else {
-            // Otherwise split on first comma
-            const parts = result.formatted_address.split(',');
-            mainText = parts[0].trim();
-            secondaryText = parts.slice(1).join(',').trim();
+            // Fallback to first part of display_name
+            mainText = result.display_name.split(',')[0].trim();
           }
 
+          // Extract secondary text from state and country
+          const state = result.address?.state;
+          const country = result.address?.country;
+          secondaryText = [state, country].filter(Boolean).join(', ');
+
           return {
-            place_id: String(result.result_number),
-            description: result.formatted_address,
+            place_id: String(result.place_id),
+            description: result.display_name,
             structured_formatting: {
               main_text: mainText,
               secondary_text: secondaryText,
@@ -182,17 +146,16 @@ export function registerPlacesRoutes(app: App) {
           };
         });
 
-        app.logger.info(
-          { userId: session.user.id, count: predictions.length },
-          'Place predictions retrieved'
-        );
+        app.logger.info({ query: input, count: predictions.length }, 'Place predictions retrieved');
 
         return {
           predictions,
         };
       } catch (error) {
-        app.logger.error({ userId: session.user.id, err: error }, 'Failed to get place autocomplete');
-        return reply.status(500).send({ error: 'Internal server error' });
+        app.logger.error({ err: error, query: input }, 'Failed to get place autocomplete');
+        return {
+          predictions: [],
+        };
       }
     }
   );

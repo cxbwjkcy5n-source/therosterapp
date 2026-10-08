@@ -1,0 +1,1 @@
+ALTER TABLE "share_tokens" ADD COLUMN IF NOT EXISTS "share_fields" text[];

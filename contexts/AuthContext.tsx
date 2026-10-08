@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { Platform } from "react-native";
 import * as Linking from "expo-linking";
+import { router } from "expo-router";
 import { authClient, setBearerToken, clearAuthTokens } from "@/lib/auth";
 import { nativeAppleSignIn } from "@/lib/appleAuth";
 
@@ -14,12 +15,13 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isReady: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, name?: string) => Promise<void>;
   signInWithApple: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  fetchUser: () => Promise<void>;
+  fetchUser: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,9 +72,12 @@ function openOAuthPopup(provider: string): Promise<string> {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);   // true only during initial session check
+  const [isReady, setIsReady] = useState(false);  // true once initial check is done
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
+    // Initial session check on mount
     fetchUser();
 
     const subscription = Linking.addEventListener("url", (event) => {
@@ -81,8 +86,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isAuthCallback) {
         console.log("[Auth] Auth callback deep link received, refreshing user session:", url);
         fetchUser();
-      } else {
-        console.log("[Auth] Deep link received (non-auth), skipping session refresh:", url);
       }
     });
 
@@ -96,41 +99,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const fetchUser = async () => {
+  const fetchUser = async (): Promise<User | null> => {
     try {
-      setLoading(true);
       const session = await authClient.getSession();
       if (session?.data?.user) {
-        setUser(session.data.user as User);
+        const u = session.data.user as User;
+        setUser(prev => (prev?.id === u.id ? prev : u));
         if (session.data.session?.token) {
           await setBearerToken(session.data.session.token);
         }
+        return u;
       } else {
-        setUser(null);
+        setUser(prev => prev === null ? prev : null);
         await clearAuthTokens();
+        return null;
       }
     } catch (error) {
       console.error("Failed to fetch user:", error);
       setUser(null);
+      return null;
     } finally {
-      setLoading(false);
+      // Only flip loading/isReady on the very first call (app startup)
+      // Subsequent calls (after sign-in, background refresh) must NOT re-trigger the layout guard
+      if (!hasInitialized.current) {
+        hasInitialized.current = true;
+        setLoading(false);
+        setIsReady(true);
+      }
     }
+  };
+
+  const fetchUserWithRetry = async (attempts = 3, delayMs = 400): Promise<User | null> => {
+    for (let i = 0; i < attempts; i++) {
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+      const u = await fetchUser();
+      if (u) return u;
+      console.log(`[Auth] Session not ready yet, retry ${i + 1}/${attempts}`);
+    }
+    return null;
   };
 
   const signInWithEmail = async (email: string, password: string) => {
     try {
-      await authClient.signIn.email({ email, password });
-      await fetchUser();
+      console.log("[Auth] Attempting email sign in");
+      const result = await authClient.signIn.email({ email, password });
+      if (result?.error) {
+        throw new Error(result.error.message || result.error.code || result.error.status?.toString() || 'Sign in failed');
+      }
+      console.log("[Auth] Sign in API succeeded, fetching session");
+      const u = await fetchUserWithRetry();
+      if (u) {
+        console.log("[Auth] Session confirmed, navigating to home");
+      } else {
+        console.log("[Auth] Session not confirmed after retries, navigating to home anyway");
+      }
+      router.replace("/(tabs)/(home)");
     } catch (error) {
-      console.error("Email sign in failed:", error);
+      console.error("Email sign in failed:", error instanceof Error ? error.message : error);
       throw error;
     }
   };
 
   const signUpWithEmail = async (email: string, password: string, name?: string) => {
     try {
-      await authClient.signUp.email({ email, password, name });
-      await fetchUser();
+      console.log("[Auth] Attempting email sign up");
+      const result = await authClient.signUp.email({ email, password, name: name ?? '' });
+      if (result?.error) {
+        throw new Error(result.error.message || result.error.code || result.error.status?.toString() || 'Sign up failed');
+      }
+      console.log("[Auth] Sign up API succeeded, fetching session");
+      const u = await fetchUserWithRetry();
+      if (u) {
+        console.log("[Auth] Session confirmed, navigating to home");
+      } else {
+        console.log("[Auth] Session not confirmed after retries, navigating to home anyway");
+      }
+      router.replace("/(tabs)/(home)");
     } catch (error) {
       console.error("Email sign up failed:", error);
       throw error;
@@ -141,7 +187,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (Platform.OS === "web") {
       const token = await openOAuthPopup(provider);
       await setBearerToken(token);
-      await fetchUser();
+      const u = await fetchUser();
+      if (u) router.replace("/(tabs)/(home)");
     } else {
       const { error } = await authClient.signIn.social({
         provider,
@@ -150,7 +197,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) {
         throw new Error(error.message || "Social sign in failed");
       }
-      await fetchUser();
+      // For native OAuth, the deep link listener will call fetchUser
+      // But also try immediately in case the session is already set
+      const u = await fetchUser();
+      if (u) router.replace("/(tabs)/(home)");
     }
   };
 
@@ -162,12 +212,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const identityToken = await nativeAppleSignIn();
       const { error } = await authClient.signIn.social({
         provider: "apple",
-        idToken: identityToken,
+        idToken: { token: identityToken },
       });
       if (error) {
         throw new Error(error.message || "Apple sign in failed");
       }
-      await fetchUser();
+      console.log("[Auth] Apple sign in successful, navigating to home");
+      router.replace("/(tabs)/(home)");
+      fetchUser().catch(console.error);
     } else {
       // Web / Android: OAuth redirect flow
       await signInWithSocial("apple");
@@ -175,6 +227,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    console.log("[Auth] Signing out");
     try {
       await authClient.signOut();
     } catch (error) {
@@ -182,6 +235,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       await clearAuthTokens();
+      router.replace("/auth-screen");
     }
   };
 
@@ -190,6 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         loading,
+        isReady,
         signInWithEmail,
         signUpWithEmail,
         signInWithApple,

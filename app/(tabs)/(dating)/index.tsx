@@ -1,17 +1,17 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, Animated, useWindowDimensions, Pressable } from 'react-native';
-import { Stack, router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import {
   Calendar,
   Sparkles,
   Shield,
   MessageCircle,
-  MoreHorizontal,
   Heart,
   Users,
   Star,
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,16 +44,18 @@ interface DateEntry {
   notes?: string;
 }
 
-function StatCard({ label, value, icon, color }: { label: string; value: string | number; icon: React.ReactNode; color: string }) {
+type ThemeColors = typeof COLORS;
+
+function StatCard({ label, value, icon, color, colors }: { label: string; value: string | number; icon: React.ReactNode; color: string; colors: ThemeColors }) {
   return (
     <View
       style={{
         flex: 1,
-        backgroundColor: COLORS.surface,
+        backgroundColor: colors.surface,
         borderRadius: 14,
         padding: 14,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
         alignItems: 'center',
         gap: 6,
       }}
@@ -70,8 +72,8 @@ function StatCard({ label, value, icon, color }: { label: string; value: string 
       >
         {icon}
       </View>
-      <Text style={{ color: COLORS.text, fontSize: 20, fontWeight: '700' }}>{value}</Text>
-      <Text style={{ color: COLORS.textSecondary, fontSize: 11, textAlign: 'center' }}>{label}</Text>
+      <Text style={{ color: colors.text, fontSize: 20, fontWeight: '700' }}>{value}</Text>
+      <Text style={{ color: colors.textSecondary, fontSize: 11, textAlign: 'center' }}>{label}</Text>
     </View>
   );
 }
@@ -83,18 +85,19 @@ interface ActionCardProps {
   accentColor: string;
   onPress: () => void;
   cardWidth: number;
+  colors: ThemeColors;
 }
 
-function ActionCard({ title, description, icon, accentColor, onPress, cardWidth }: ActionCardProps) {
+function ActionCard({ title, description, icon, accentColor, onPress, cardWidth, colors }: ActionCardProps) {
   return (
     <AnimatedPressable onPress={onPress} style={{ width: cardWidth }}>
       <View
         style={{
-          backgroundColor: COLORS.surface,
+          backgroundColor: colors.surface,
           borderRadius: 16,
           padding: 18,
           borderWidth: 1,
-          borderColor: COLORS.border,
+          borderColor: colors.border,
           gap: 10,
           height: 130,
           alignItems: 'center',
@@ -114,10 +117,10 @@ function ActionCard({ title, description, icon, accentColor, onPress, cardWidth 
           {icon}
         </View>
         <View style={{ alignItems: 'center' }}>
-          <Text style={{ color: COLORS.text, fontSize: 15, fontWeight: '700', marginBottom: 3, textAlign: 'center' }}>
+          <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 3, textAlign: 'center' }}>
             {title}
           </Text>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 12, lineHeight: 17, textAlign: 'center' }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 12, lineHeight: 17, textAlign: 'center' }}>
             {description}
           </Text>
         </View>
@@ -126,7 +129,7 @@ function ActionCard({ title, description, icon, accentColor, onPress, cardWidth 
   );
 }
 
-function DateCard({ entry, persons, onPress }: { entry: DateEntry; persons: Person[]; onPress: () => void }) {
+function DateCard({ entry, persons, onPress, colors }: { entry: DateEntry; persons: Person[]; onPress: () => void; colors: ThemeColors }) {
   const dateStr = entry.date_time || entry.scheduled_at;
   const dateLabel = dateStr
     ? new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -143,11 +146,11 @@ function DateCard({ entry, persons, onPress }: { entry: DateEntry; persons: Pers
     <AnimatedPressable
       onPress={onPress}
       style={{
-        backgroundColor: '#fff',
+        backgroundColor: colors.surface,
         borderRadius: 12,
         padding: 12,
         borderWidth: 1,
-        borderColor: COLORS.border,
+        borderColor: colors.border,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
@@ -161,7 +164,7 @@ function DateCard({ entry, persons, onPress }: { entry: DateEntry; persons: Pers
       {/* Type badge */}
       <View
         style={{
-          backgroundColor: '#E53935',
+          backgroundColor: colors.primary,
           borderRadius: 8,
           paddingHorizontal: 8,
           paddingVertical: 4,
@@ -176,10 +179,10 @@ function DateCard({ entry, persons, onPress }: { entry: DateEntry; persons: Pers
 
       {/* Center info */}
       <View style={{ flex: 1 }}>
-        <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '700' }} numberOfLines={1}>
+        <Text style={{ color: colors.text, fontSize: 14, fontWeight: '700' }} numberOfLines={1}>
           {personName}
         </Text>
-        <Text style={{ color: COLORS.textTertiary, fontSize: 12, marginTop: 1 }}>
+        <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 1 }}>
           {dateLabel}
         </Text>
       </View>
@@ -187,7 +190,7 @@ function DateCard({ entry, persons, onPress }: { entry: DateEntry; persons: Pers
       {/* Rating */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
         <Text style={{ fontSize: 13 }}>⭐</Text>
-        <Text style={{ color: COLORS.text, fontSize: 13, fontWeight: '700' }}>{ratingDisplay}</Text>
+        <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{ratingDisplay}</Text>
       </View>
     </AnimatedPressable>
   );
@@ -195,10 +198,12 @@ function DateCard({ entry, persons, onPress }: { entry: DateEntry; persons: Pers
 
 export default function DatingScreen() {
   const { user } = useAuth();
+  const { colors } = useTheme();
   const { width } = useWindowDimensions();
   const [analytics, setAnalytics] = useState<Analytics>({});
   const [recentDates, setRecentDates] = useState<DateEntry[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
+  const [weeklySummary, setWeeklySummary] = useState<any>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Card width: (screenWidth - 16 left - 16 right - 8 gap) / 2
@@ -207,7 +212,7 @@ export default function DatingScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!user) return;
-      console.log('[Dating] Loading analytics, persons, and recent dates');
+      console.log('[Dating] Loading analytics, persons, recent dates, and weekly summary');
       Promise.all([
         apiGet<Analytics>('/api/analytics').catch((e) => {
           console.error('[Dating] Failed to load analytics:', e);
@@ -221,8 +226,10 @@ export default function DatingScreen() {
           console.error('[Dating] Failed to load dates:', e);
           return { dates: [] };
         }),
-      ]).then(([analyticsData, personsData, datesData]) => {
-        console.log('[Dating] Analytics, persons, and dates loaded');
+        apiGet<{ summary: any }>('/api/analytics/weekly-summary').catch(() => ({ summary: null })),
+      ]).then((data) => {
+        const [analyticsData, personsData, datesData] = data;
+        console.log('[Dating] Analytics, persons, dates, and weekly summary loaded');
         setAnalytics(analyticsData);
         setPersons(personsData.persons || []);
         const datesList = datesData.dates || [];
@@ -233,6 +240,7 @@ export default function DatingScreen() {
           return bTime - aTime;
         });
         setRecentDates(sorted.slice(0, 3));
+        setWeeklySummary(data[3]?.summary ?? null);
         Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -244,90 +252,83 @@ export default function DatingScreen() {
   const avgInterest = analytics.avg_interest_level ? Number(analytics.avg_interest_level).toFixed(1) : '—';
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-      <Stack.Screen
-        options={{
-          title: 'Dating',
-          headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 8, marginRight: 4 }}>
-              <AnimatedPressable
-                onPress={() => {
-                  console.log('[Dating] Analytics pressed');
-                  router.push('/analytics');
-                }}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: COLORS.surface,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Heart size={18} color={COLORS.primary} />
-              </AnimatedPressable>
-              <AnimatedPressable
-                onPress={() => console.log('[Dating] Menu pressed')}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: COLORS.surface,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <MoreHorizontal size={18} color={COLORS.textSecondary} />
-              </AnimatedPressable>
-            </View>
-          ),
-        }}
-      />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
 
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingTop: 16, paddingBottom: 100, gap: 20 }}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
+        {/* Quick Actions */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginBottom: 4 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
+          {[
+            { label: '📅 Log a Date', route: '/date-have' },
+            { label: '✨ Plan a Date', route: '/date-plan' },
+            { label: '➕ Add Person', route: '/add-person' },
+          ].map((action) => (
+            <Pressable
+              key={action.route}
+              onPress={() => {
+                console.log('[Dating] Quick Action pressed:', action.label, action.route);
+                router.push(action.route as any);
+              }}
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 20,
+                paddingHorizontal: 16,
+                paddingVertical: 9,
+                borderWidth: 1,
+                borderColor: colors.border,
+              }}
+            >
+              <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>{action.label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
         {/* Stats */}
         <Animated.View style={{ opacity: fadeAnim }}>
-          <Text style={{ color: '#999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
+          <Text style={{ color: colors.textTertiary, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
             Overview
           </Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <StatCard
               label="Active"
               value={totalActive}
-              icon={<Users size={18} color={COLORS.primary} />}
-              color={COLORS.primary}
+              icon={<Users size={18} color={colors.primary} />}
+              color={colors.primary}
+              colors={colors}
             />
             <StatCard
               label="Dates"
               value={totalDates}
-              icon={<Calendar size={18} color={COLORS.accent} />}
-              color={COLORS.accent}
+              icon={<Calendar size={18} color={colors.accent} />}
+              color={colors.accent}
+              colors={colors}
             />
             <StatCard
               label="Avg Interest"
               value={avgInterest}
-              icon={<Star size={18} color={COLORS.success} />}
-              color={COLORS.success}
+              icon={<Star size={18} color={colors.success} />}
+              color={colors.success}
+              colors={colors}
             />
           </View>
         </Animated.View>
 
         {/* Action cards */}
         <View>
-          <Text style={{ color: '#999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
+          <Text style={{ color: colors.textTertiary, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
             Actions
           </Text>
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
             <ActionCard
               title="I Have a Date"
               description="Log an upcoming date"
-              icon={<Calendar size={22} color={COLORS.primary} />}
-              accentColor={COLORS.primary}
+              icon={<Calendar size={22} color={colors.primary} />}
+              accentColor={colors.primary}
               cardWidth={cardWidth}
+              colors={colors}
               onPress={() => {
                 console.log('[Dating] I Have a Date pressed');
                 router.push('/date-have');
@@ -336,9 +337,10 @@ export default function DatingScreen() {
             <ActionCard
               title="Plan a Date"
               description="AI-powered date ideas"
-              icon={<Sparkles size={22} color={COLORS.accent} />}
-              accentColor={COLORS.accent}
+              icon={<Sparkles size={22} color={colors.accent} />}
+              accentColor={colors.accent}
               cardWidth={cardWidth}
+              colors={colors}
               onPress={() => {
                 console.log('[Dating] Plan a Date pressed');
                 router.push('/date-plan');
@@ -349,9 +351,10 @@ export default function DatingScreen() {
             <ActionCard
               title="I'm on a Date"
               description="Safety check-in"
-              icon={<Shield size={22} color={COLORS.success} />}
-              accentColor={COLORS.success}
+              icon={<Shield size={22} color={colors.success} />}
+              accentColor={colors.success}
               cardWidth={cardWidth}
+              colors={colors}
               onPress={() => {
                 console.log('[Dating] Safety check-in pressed');
                 router.push('/date-safety');
@@ -363,6 +366,7 @@ export default function DatingScreen() {
               icon={<MessageCircle size={22} color="#A855F7" />}
               accentColor="#A855F7"
               cardWidth={cardWidth}
+              colors={colors}
               onPress={() => {
                 console.log('[Dating] Dating Coach pressed');
                 router.push('/coach');
@@ -371,25 +375,57 @@ export default function DatingScreen() {
           </View>
         </View>
 
+        {/* This Week vs Last Week */}
+        {weeklySummary && (
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border }}>
+            <Text style={{ color: colors.textTertiary, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>
+              This Week vs Last Week
+            </Text>
+            {[
+              { label: 'Dates', thisWeek: weeklySummary.this_week_dates ?? 0, lastWeek: weeklySummary.last_week_dates ?? 0 },
+              { label: 'People added', thisWeek: weeklySummary.this_week_persons_added ?? 0, lastWeek: weeklySummary.last_week_persons_added ?? 0 },
+              { label: 'Notes written', thisWeek: weeklySummary.this_week_notes ?? 0, lastWeek: weeklySummary.last_week_notes ?? 0 },
+            ].map((row) => {
+              const up = row.thisWeek > row.lastWeek;
+              const same = row.thisWeek === row.lastWeek;
+              const arrowColor = same ? colors.textTertiary : up ? '#4CAF50' : colors.primary;
+              const arrowChar = same ? '—' : up ? '↑' : '↓';
+              const lastWeekStr = String(row.lastWeek);
+              const thisWeekStr = String(row.thisWeek);
+              return (
+                <View key={row.label} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <Text style={{ flex: 1, color: colors.text, fontSize: 14, fontWeight: '500' }}>{row.label}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8 }}>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{lastWeekStr}</Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13 }}>{' → '}</Text>
+                    <Text style={{ color: colors.text, fontSize: 13, fontWeight: '700' }}>{thisWeekStr}</Text>
+                  </View>
+                  <Text style={{ fontSize: 14, color: arrowColor, fontWeight: '700' }}>{arrowChar}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
         {/* Recent Dates */}
         <Animated.View style={{ opacity: fadeAnim }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-            <Text style={{ flex: 1, color: '#999', fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+            <Text style={{ flex: 1, color: colors.textTertiary, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase' }}>
               Recent Dates
             </Text>
             <Pressable
               onPress={() => {
                 console.log('[Dating] See All dates pressed');
-                router.push('/date-review');
+                router.push('/analytics');
               }}
             >
-              <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '600' }}>See All</Text>
+              <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>See All</Text>
             </Pressable>
           </View>
 
           {recentDates.length === 0 ? (
             <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-              <Text style={{ color: '#999', fontSize: 14 }}>No dates logged yet</Text>
+              <Text style={{ color: colors.textTertiary, fontSize: 14 }}>No dates logged yet</Text>
             </View>
           ) : (
             <View style={{ gap: 8 }}>
@@ -402,6 +438,7 @@ export default function DatingScreen() {
                     key={entry.id}
                     entry={entry}
                     persons={persons}
+                    colors={colors}
                     onPress={() => {
                       console.log('[Dating] Date card pressed, dateId:', entry.id, 'person:', personName);
                       router.push({ pathname: '/date-review', params: { dateId: entry.id, personName, personPhoto } });
@@ -413,6 +450,7 @@ export default function DatingScreen() {
           )}
         </Animated.View>
       </ScrollView>
+
     </View>
   );
 }

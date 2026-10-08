@@ -1,6 +1,8 @@
 import type { App } from '../index.js';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, count, sql } from 'drizzle-orm';
+import { generateText } from 'ai';
+import { gateway } from '@specific-dev/framework';
 import * as schema from '../db/schema/schema.js';
 
 interface PersonInput {
@@ -30,6 +32,9 @@ interface PersonInput {
   hobbies?: string[];
   redFlags?: string[];
   greenFlags?: string[];
+  datingStatus?: string;
+  tags?: string[];
+  thingsILike?: string;
   isBenched?: boolean;
   benchReason?: string;
 }
@@ -69,6 +74,10 @@ function toSnakePerson(person: any) {
     hobbies: person.hobbies,
     green_flags: person.greenFlags,
     red_flags: person.redFlags,
+    dating_status: person.datingStatus,
+    tags: person.tags,
+    things_i_like: person.thingsILike,
+    career: person.career,
     is_benched: person.isBenched,
     bench_reason: person.benchReason,
     nickname: person.nickname,
@@ -130,6 +139,10 @@ export function registerPersonsRoutes(app: App) {
                     hobbies: { type: ['array', 'null'], items: { type: 'string' } },
                     red_flags: { type: ['array', 'null'], items: { type: 'string' } },
                     green_flags: { type: ['array', 'null'], items: { type: 'string' } },
+                    dating_status: { type: ['string', 'null'] },
+                    tags: { type: ['array', 'null'], items: { type: 'string' } },
+                    things_i_like: { type: ['string', 'null'] },
+                    career: { type: ['string', 'null'] },
                     is_benched: { type: 'boolean' },
                     bench_reason: { type: ['string', 'null'] },
                     nickname: { type: ['string', 'null'] },
@@ -208,6 +221,9 @@ export function registerPersonsRoutes(app: App) {
             hobbies: { type: ['array', 'null'], items: { type: 'string' } },
             redFlags: { type: ['array', 'null'], items: { type: 'string' } },
             greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
+            datingStatus: { type: ['string', 'null'] },
+            tags: { type: ['array', 'null'], items: { type: 'string' } },
+            thingsILike: { type: ['string', 'null'] },
           },
         },
         response: {
@@ -260,6 +276,9 @@ export function registerPersonsRoutes(app: App) {
           hobbies: request.body.hobbies,
           redFlags: request.body.redFlags,
           greenFlags: request.body.greenFlags,
+          datingStatus: request.body.datingStatus,
+          tags: request.body.tags,
+          thingsILike: request.body.thingsILike,
         })
         .returning();
 
@@ -318,6 +337,10 @@ export function registerPersonsRoutes(app: App) {
                   hobbies: { type: ['array', 'null'], items: { type: 'string' } },
                   red_flags: { type: ['array', 'null'], items: { type: 'string' } },
                   green_flags: { type: ['array', 'null'], items: { type: 'string' } },
+                  dating_status: { type: ['string', 'null'] },
+                  tags: { type: ['array', 'null'], items: { type: 'string' } },
+                  things_i_like: { type: ['string', 'null'] },
+                  career: { type: ['string', 'null'] },
                   is_benched: { type: 'boolean' },
                   bench_reason: { type: ['string', 'null'] },
                   created_at: { type: 'string', format: 'date-time' },
@@ -376,6 +399,7 @@ export function registerPersonsRoutes(app: App) {
             location: { type: 'string' },
             photoUrl: { type: 'string' },
             photo_url: { type: ['string', 'null'] },
+            nickname: { type: ['string', 'null'] },
             age: { type: 'integer' },
             birthday: { type: 'string' },
             zodiac: { type: ['string', 'null'] },
@@ -411,6 +435,12 @@ export function registerPersonsRoutes(app: App) {
             red_flags: { type: ['array', 'null'], items: { type: 'string' } },
             greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
             green_flags: { type: ['array', 'null'], items: { type: 'string' } },
+            datingStatus: { type: ['string', 'null'] },
+            dating_status: { type: ['string', 'null'] },
+            tags: { type: ['array', 'null'], items: { type: 'string' } },
+            thingsILike: { type: ['string', 'null'] },
+            things_i_like: { type: ['string', 'null'] },
+            career: { type: ['string', 'null'] },
             isBenched: { type: 'boolean' },
             is_benched: { type: 'boolean' },
             benchReason: { type: ['string', 'null'] },
@@ -429,6 +459,7 @@ export function registerPersonsRoutes(app: App) {
                   name: { type: 'string' },
                   location: { type: 'string' },
                   photoUrl: { type: ['string', 'null'] },
+                  nickname: { type: ['string', 'null'] },
                   age: { type: ['integer', 'null'] },
                   birthday: { type: ['string', 'null'] },
                   zodiac: { type: ['string', 'null'] },
@@ -452,6 +483,10 @@ export function registerPersonsRoutes(app: App) {
                   hobbies: { type: ['array', 'null'], items: { type: 'string' } },
                   redFlags: { type: ['array', 'null'], items: { type: 'string' } },
                   greenFlags: { type: ['array', 'null'], items: { type: 'string' } },
+                  datingStatus: { type: ['string', 'null'] },
+                  tags: { type: ['array', 'null'], items: { type: 'string' } },
+                  thingsILike: { type: ['string', 'null'] },
+                  career: { type: ['string', 'null'] },
                   isBenched: { type: 'boolean' },
                   benchReason: { type: ['string', 'null'] },
                   createdAt: { type: 'string', format: 'date-time' },
@@ -483,6 +518,7 @@ export function registerPersonsRoutes(app: App) {
       // Extract all fields, accepting both naming conventions
       let name = getFieldValue('name', 'name');
       let location = getFieldValue('location', 'location');
+      let nickname = getFieldValue('nickname', 'nickname');
       let age = getFieldValue('age', 'age');
       let birthday = getFieldValue('birthday', 'birthday');
       let zodiac = getFieldValue('zodiac', 'zodiac');
@@ -513,6 +549,15 @@ export function registerPersonsRoutes(app: App) {
       let isBenched = getFieldValue('is_benched', 'isBenched');
       let benchReason = getFieldValue('bench_reason', 'benchReason');
       if (benchReason === '') benchReason = null;
+
+      let favoriteFoods = getFieldValue('favorite_foods', 'favoriteFoods');
+      let hobbies = getFieldValue('hobbies', 'hobbies');
+      let redFlags = getFieldValue('red_flags', 'redFlags');
+      let greenFlags = getFieldValue('green_flags', 'greenFlags');
+      let datingStatus = getFieldValue('dating_status', 'datingStatus');
+      let tags = getFieldValue('tags', 'tags');
+      let thingsILike = getFieldValue('things_i_like', 'thingsILike');
+      let career = getFieldValue('career', 'career');
 
       // SPECIAL CASE: Unbenching fast path
       if (isBenched === false) {
@@ -573,6 +618,7 @@ export function registerPersonsRoutes(app: App) {
         .set({
           name: name !== undefined ? name : sql`name`,
           location: location !== undefined ? location : sql`location`,
+          nickname: nickname !== undefined ? nickname : sql`nickname`,
           age: age !== undefined ? age : sql`age`,
           birthday: birthday !== undefined ? birthday : sql`birthday`,
           zodiac: zodiac !== undefined ? zodiac : sql`zodiac`,
@@ -593,6 +639,14 @@ export function registerPersonsRoutes(app: App) {
           datePlanning: datePlanning !== undefined ? datePlanning : sql`date_planning`,
           alignment: alignment !== undefined ? alignment : sql`alignment`,
           photoUrl: photoUrl !== undefined ? photoUrl : sql`photo_url`,
+          favoriteFoods: favoriteFoods !== undefined ? favoriteFoods : sql`favorite_foods`,
+          hobbies: hobbies !== undefined ? hobbies : sql`hobbies`,
+          redFlags: redFlags !== undefined ? redFlags : sql`red_flags`,
+          greenFlags: greenFlags !== undefined ? greenFlags : sql`green_flags`,
+          datingStatus: datingStatus !== undefined ? datingStatus : sql`dating_status`,
+          tags: tags !== undefined ? tags : sql`tags`,
+          thingsILike: thingsILike !== undefined ? thingsILike : sql`things_i_like`,
+          career: career !== undefined ? career : sql`career`,
           isBenched: isBenched !== undefined ? isBenched : sql`is_benched`,
           benchReason: benchReason !== undefined ? benchReason : sql`bench_reason`,
           updatedAt: new Date(),
@@ -965,6 +1019,608 @@ export function registerPersonsRoutes(app: App) {
 
       app.logger.info({ userId: session.user.id, stats }, 'Stats retrieved');
       return stats;
+    }
+  );
+
+  // POST /api/persons/:id/conversation-starters - Generate conversation starters
+  app.fastify.post(
+    '/api/persons/:id/conversation-starters',
+    {
+      schema: {
+        description: 'Generate conversation starters for a person using AI',
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              starters: {
+                type: 'array',
+                items: { type: 'string' },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+          500: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      app.logger.info({ userId: session.user.id, personId: id }, 'Generating conversation starters');
+
+      // Fetch the person
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      // Build the prompt with comprehensive person data
+      const hobbiesList = person.hobbies?.join(', ') || '';
+      const foodsList = person.favoriteFoods?.join(', ') || '';
+      const tagsList = person.tags?.join(', ') || '';
+      const redFlagsList = person.redFlags?.join(', ') || '';
+      const greenFlagsList = person.greenFlags?.join(', ') || '';
+      const connectionTypeLabel = person.connectionTypeCustom || person.connectionType || 'unknown';
+      const thingsILike = person.thingsILike || '';
+
+      const prompt = `Generate 5 creative, personalized conversation starters for someone named ${person.name}. They are a ${connectionTypeLabel}. Their hobbies include ${hobbiesList || 'not specified'}. Their favorite foods include ${foodsList || 'not specified'}. Things I like about them: ${thingsILike || 'not specified'}. Tags: ${tagsList || 'none'}. Make them natural, fun, witty, and not cheesy. If little info is available, generate charming generic starters. Return ONLY a valid JSON array of 5 strings, no other text.`;
+
+      // Check if API key is available
+      if (!process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY.trim() === '') {
+        app.logger.info({ userId: session.user.id, personId: id }, 'OPENAI_API_KEY not set, using default starters');
+        // Return default conversation starters for testing/demo purposes
+        const defaultStarters = [
+          `Hi ${person.name}! I'd love to hear more about your interests.`,
+          "What's your favorite way to spend a weekend?",
+          `I'm intrigued by someone who enjoys ${hobbiesList || 'exploring new things'}. Tell me more?`,
+          `Do you have any hidden talents or hobbies we haven't talked about?`,
+          `If you could go on an adventure anywhere, where would it be?`,
+        ];
+        app.logger.info({ userId: session.user.id, personId: id, count: defaultStarters.length }, 'Conversation starters generated (default)');
+        return { starters: defaultStarters };
+      }
+
+      try {
+        app.logger.info({ userId: session.user.id, personId: id }, 'Calling AI API');
+
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: 0.7,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          app.logger.error({ userId: session.user.id, personId: id, statusCode: response.status, error }, 'AI API error');
+          return reply.status(500).send({ error: 'Failed to generate conversation starters' });
+        }
+
+        const data = (await response.json()) as any;
+        const aiResponse = data.choices[0]?.message?.content || '[]';
+
+        // Parse the JSON array from the response
+        let starters: string[] = [];
+        try {
+          starters = JSON.parse(aiResponse);
+        } catch (parseError) {
+          app.logger.error({ userId: session.user.id, personId: id, aiResponse }, 'Failed to parse AI response');
+          return reply.status(500).send({ error: 'Failed to parse conversation starters' });
+        }
+
+        app.logger.info({ userId: session.user.id, personId: id, count: starters.length }, 'Conversation starters generated');
+        return { starters };
+      } catch (error) {
+        app.logger.error({ err: error, userId: session.user.id, personId: id }, 'Error generating conversation starters');
+        return reply.status(500).send({ error: 'Failed to generate conversation starters' });
+      }
+    }
+  );
+
+  // GET /api/persons/:id/photos - Get all photos for a person
+  app.fastify.get(
+    '/api/persons/:id/photos',
+    {
+      schema: {
+        description: 'Get all photos for a person',
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              photos: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    photo_url: { type: 'string' },
+                    sort_order: { type: 'integer' },
+                    created_at: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      app.logger.info({ userId: session.user.id, personId: id }, 'Getting photos for person');
+
+      // Verify ownership
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      const photos = await app.db.query.personPhotos.findMany({
+        where: eq(schema.personPhotos.personId, id),
+        orderBy: schema.personPhotos.sortOrder,
+      });
+
+      app.logger.info({ userId: session.user.id, personId: id, count: photos.length }, 'Photos retrieved');
+      return {
+        photos: photos.map((photo) => ({
+          id: photo.id,
+          photo_url: photo.photoUrl,
+          sort_order: photo.sortOrder,
+          created_at: photo.createdAt,
+        })),
+      };
+    }
+  );
+
+  // POST /api/persons/:id/photos - Upload a new photo
+  app.fastify.post(
+    '/api/persons/:id/photos',
+    {
+      schema: {
+        description: 'Upload a new photo for a person',
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        body: {
+          type: 'object',
+          required: ['photo_url'],
+          properties: {
+            photo_url: { type: 'string' },
+            sort_order: { type: ['integer', 'null'] },
+          },
+        },
+        response: {
+          201: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              userId: { type: 'string' },
+              personId: { type: 'string', format: 'uuid' },
+              photoUrl: { type: 'string' },
+              sortOrder: { type: 'integer' },
+              createdAt: { type: 'string', format: 'date-time' },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Params: { id: string };
+        Body: { photo_url: string; sort_order?: number };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      const { photo_url, sort_order } = request.body;
+
+      app.logger.info({ userId: session.user.id, personId: id }, 'Uploading photo');
+
+      // Verify ownership
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      const [photo] = await app.db
+        .insert(schema.personPhotos)
+        .values({
+          userId: session.user.id,
+          personId: id,
+          photoUrl: photo_url,
+          sortOrder: sort_order ?? 0,
+        })
+        .returning();
+
+      app.logger.info({ userId: session.user.id, personId: id, photoId: photo.id }, 'Photo uploaded');
+      reply.status(201);
+      return {
+        id: photo.id,
+        userId: photo.userId,
+        personId: photo.personId,
+        photoUrl: photo.photoUrl,
+        sortOrder: photo.sortOrder,
+        createdAt: photo.createdAt,
+      };
+    }
+  );
+
+  // DELETE /api/persons/:id/photos/:photoId - Delete a photo
+  app.fastify.delete(
+    '/api/persons/:id/photos/:photoId',
+    {
+      schema: {
+        description: 'Delete a photo for a person',
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id', 'photoId'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            photoId: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (
+      request: FastifyRequest<{
+        Params: { id: string; photoId: string };
+      }>,
+      reply: FastifyReply
+    ) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id, photoId } = request.params;
+      app.logger.info({ userId: session.user.id, personId: id, photoId }, 'Deleting photo');
+
+      // Verify the photo belongs to the authenticated user
+      const photo = await app.db.query.personPhotos.findFirst({
+        where: eq(schema.personPhotos.id, photoId),
+      });
+
+      if (!photo) {
+        app.logger.warn({ userId: session.user.id, photoId }, 'Photo not found');
+        return reply.status(404).send({ error: 'Photo not found' });
+      }
+
+      // Verify photo belongs to the user
+      if (photo.userId !== session.user.id) {
+        app.logger.warn({ userId: session.user.id, photoId, photoUserId: photo.userId }, 'Photo not found');
+        return reply.status(404).send({ error: 'Photo not found' });
+      }
+
+      await app.db.delete(schema.personPhotos).where(eq(schema.personPhotos.id, photoId));
+
+      app.logger.info({ userId: session.user.id, personId: id, photoId }, 'Photo deleted');
+      return { success: true };
+    }
+  );
+
+  // GET /api/persons/:id/compatibility-report - Get AI compatibility report
+  app.fastify.get(
+    '/api/persons/:id/compatibility-report',
+    {
+      schema: {
+        description: 'Get AI-generated compatibility report for a person',
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              report: {
+                type: 'object',
+                properties: {
+                  overall_score: { type: 'number' },
+                  summary: { type: 'string' },
+                  strongest_trait: { type: ['string', 'null'] },
+                  weakest_trait: { type: ['string', 'null'] },
+                  traits: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        score: { type: 'integer' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+          500: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      app.logger.info({ userId: session.user.id, personId: id }, 'Generating compatibility report');
+
+      // Fetch the person
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      // Map rating keys with their display names
+      const ratingKeys: Array<[string, string]> = [
+        ['interestLevel', 'Interest Level'],
+        ['attractiveness', 'Attractiveness'],
+        ['sexualChemistry', 'Sexual Chemistry'],
+        ['communication', 'Communication'],
+        ['overallChemistry', 'Overall Chemistry'],
+        ['consistency', 'Consistency'],
+        ['emotionalAvailability', 'Emotional Availability'],
+        ['datePlanning', 'Date Planning'],
+        ['alignment', 'Alignment'],
+      ];
+
+      // Extract rating values and filter out nulls to build traits array
+      const traits: Array<{ name: string; score: number }> = [];
+      let totalScore = 0;
+
+      for (const [key, displayName] of ratingKeys) {
+        const value = (person as any)[key];
+        const numValue = typeof value === 'number' && !isNaN(value) ? value : null;
+
+        if (numValue !== null) {
+          traits.push({ name: displayName, score: numValue });
+          totalScore += numValue;
+        }
+      }
+
+      // Calculate overall score BEFORE AI call - default to 5 if no traits
+      const overallScore = traits.length > 0 ? Math.round((totalScore / traits.length) * 10) / 10 : 5;
+
+      // Ensure overall_score is always a valid finite number
+      if (!isFinite(overallScore)) {
+        app.logger.error({ userId: session.user.id, personId: id, overallScore }, 'Invalid overall_score calculated');
+        return reply.status(500).send({ error: 'Failed to calculate compatibility score' });
+      }
+
+      // Find strongest and weakest traits from the traits array
+      let strongestTrait: string = 'Overall Connection';
+      let weakestTrait: string = 'Needs More Time';
+
+      if (traits.length > 0) {
+        const sorted = [...traits].sort((a, b) => b.score - a.score);
+        strongestTrait = sorted[0].name;
+        weakestTrait = sorted[sorted.length - 1].name;
+      }
+
+      // Determine summary with AI call and fallback
+      let summary: string;
+
+      // Try AI call only if we have traits
+      if (traits.length > 0) {
+        try {
+          const ratingsText = traits.map(t => `${t.name.toLowerCase()}: ${t.score}/10`).join(', ');
+          const prompt = `You are a dating coach. Based on these ratings for ${person.name}: ${ratingsText}. Overall score: ${overallScore}/10. Strongest trait: ${strongestTrait}. Weakest trait: ${weakestTrait}. Write a 2-sentence compatibility summary. Respond with ONLY a JSON object with this format: {"summary": "...", "strongest_trait": "...", "weakest_trait": "..."}`;
+
+          const { text } = await generateText({
+            model: gateway('openai/gpt-4o-mini'),
+            prompt,
+          });
+
+          // Try to parse JSON response
+          try {
+            const parsed = JSON.parse(text);
+            if (parsed.summary && typeof parsed.summary === 'string') {
+              summary = parsed.summary;
+              // Update strongest/weakest if AI provided them
+              if (parsed.strongest_trait && typeof parsed.strongest_trait === 'string') {
+                strongestTrait = parsed.strongest_trait;
+              }
+              if (parsed.weakest_trait && typeof parsed.weakest_trait === 'string') {
+                weakestTrait = parsed.weakest_trait;
+              }
+              app.logger.info({ userId: session.user.id, personId: id }, 'AI summary generated and parsed');
+            } else {
+              throw new Error('JSON missing required fields');
+            }
+          } catch (parseError) {
+            app.logger.warn({ err: parseError, userId: session.user.id, personId: id }, 'Failed to parse AI JSON response, using fallback');
+            // Use fallback summary
+            summary =
+              overallScore >= 7
+                ? 'Strong connection with great potential. Keep nurturing this relationship.'
+                : overallScore >= 5
+                  ? 'Decent connection with room to grow. Focus on communication and shared experiences.'
+                  : 'Early days with some challenges. Take your time and see how things develop.';
+          }
+        } catch (error) {
+          app.logger.warn({ err: error, userId: session.user.id, personId: id }, 'Failed to call AI, using fallback summary');
+          // Use fallback summary based on overall_score
+          summary =
+            overallScore >= 7
+              ? 'Strong connection with great potential. Keep nurturing this relationship.'
+              : overallScore >= 5
+                ? 'Decent connection with room to grow. Focus on communication and shared experiences.'
+                : 'Early days with some challenges. Take your time and see how things develop.';
+        }
+      } else {
+        // No traits - use simple summary
+        summary = 'Add some ratings to generate a full compatibility summary.';
+      }
+
+      app.logger.info({ userId: session.user.id, personId: id, overallScore }, 'Compatibility report generated');
+      return {
+        report: {
+          overall_score: overallScore,
+          summary,
+          strongest_trait: strongestTrait,
+          weakest_trait: weakestTrait,
+          traits,
+        },
+      };
+    }
+  );
+
+  // GET /api/persons/:id/dates - Get all dates for a person
+  app.fastify.get(
+    '/api/persons/:id/dates',
+    {
+      schema: {
+        description: "Get all dates associated with a person",
+        tags: ['persons'],
+        params: {
+          type: 'object',
+          required: ['id'],
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+          },
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              dates: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    id: { type: 'string', format: 'uuid' },
+                    title: { type: 'string' },
+                    location: { type: ['string', 'null'] },
+                    dateTime: { type: ['string', 'null'] },
+                    budget: { type: ['string', 'null'] },
+                    status: { type: 'string' },
+                    rating: { type: ['integer', 'null'] },
+                    wentWell: { type: ['string', 'null'] },
+                    wentPoorly: { type: ['string', 'null'] },
+                    wantAnotherDate: { type: ['boolean', 'null'] },
+                    createdAt: { type: 'string', format: 'date-time' },
+                  },
+                },
+              },
+            },
+          },
+          401: { type: 'object', properties: { error: { type: 'string' } } },
+          404: { type: 'object', properties: { error: { type: 'string' } } },
+        },
+      },
+    },
+    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      const session = await requireAuth(request, reply);
+      if (!session) return;
+
+      const { id } = request.params;
+      app.logger.info({ userId: session.user.id, personId: id }, 'Getting dates for person');
+
+      // Verify person exists and belongs to user
+      const person = await app.db.query.persons.findFirst({
+        where: and(eq(schema.persons.id, id), eq(schema.persons.userId, session.user.id)),
+      });
+
+      if (!person) {
+        app.logger.warn({ userId: session.user.id, personId: id }, 'Person not found');
+        return reply.status(404).send({ error: 'Person not found' });
+      }
+
+      const dates = await app.db.query.dates.findMany({
+        where: eq(schema.dates.personId, id),
+        orderBy: schema.dates.createdAt,
+      });
+
+      app.logger.info({ userId: session.user.id, personId: id, count: dates.length }, 'Dates retrieved');
+      return {
+        dates: dates.map((date) => ({
+          id: date.id,
+          title: date.title,
+          location: date.location,
+          dateTime: date.dateTime,
+          budget: date.budget,
+          status: date.status,
+          rating: date.rating,
+          wentWell: date.wentWell,
+          wentPoorly: date.wentPoorly,
+          wantAnotherDate: date.wantAnotherDate,
+          createdAt: date.createdAt,
+        })),
+      };
     }
   );
 }

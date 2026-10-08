@@ -52,6 +52,7 @@ export const persons = pgTable('persons', {
   name: text('name').notNull(),
   location: text('location').notNull(),
   photoUrl: text('photo_url'),
+  nickname: text('nickname'),
   age: integer('age'),
   birthday: text('birthday'),
   zodiac: zodiacEnum('zodiac'),
@@ -75,6 +76,10 @@ export const persons = pgTable('persons', {
   hobbies: text('hobbies').array(),
   redFlags: text('red_flags').array(),
   greenFlags: text('green_flags').array(),
+  datingStatus: text('dating_status'),
+  tags: text('tags').array(),
+  thingsILike: text('things_i_like'),
+  career: text('career'),
   isBenched: boolean('is_benched').default(false).notNull(),
   benchReason: text('bench_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -114,6 +119,7 @@ export const safetyCheckins = pgTable('safety_checkins', {
 export const chatMessages = pgTable('chat_messages', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  personId: uuid('person_id').references(() => persons.id, { onDelete: 'set null' }),
   role: chatRoleEnum('role').notNull(),
   content: text('content').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -179,6 +185,7 @@ export const shareTokens = pgTable('share_tokens', {
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
   token: text('token').notNull().unique(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  shareFields: text('share_fields').array(),
   used: boolean('used').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -190,4 +197,48 @@ export const userPreferences = pgTable('user_preferences', {
   darkModeEnabled: boolean('dark_mode_enabled').default(false).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const weeklyCheckins = pgTable('weekly_checkins', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  mood: integer('mood').notNull(),
+  mostExcitedPerson: text('most_excited_person'),
+  oneThingToChange: text('one_thing_to_change'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const personPhotos = pgTable('person_photos', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  personId: uuid('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  photoUrl: text('photo_url').notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const onboardingState = pgTable('onboarding_state', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
+  completed: boolean('completed').default(false).notNull(),
+  step: integer('step').default(0).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const streaks = pgTable('streaks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().unique().references(() => user.id, { onDelete: 'cascade' }),
+  currentStreak: integer('current_streak').default(0).notNull(),
+  longestStreak: integer('longest_streak').default(0).notNull(),
+  lastCheckinAt: timestamp('last_checkin_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const pushTokens = pgTable('push_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  platform: text('platform').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });

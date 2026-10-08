@@ -4,7 +4,7 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 // Must be a plain string — never a URL object — iOS NSURLSession requires it
-const API_URL = "https://kkyh7hgw5z9k9kxk549x3rehamjuzdjx.app.specular.dev";
+const API_URL = "https://uaxhw3cgtsaywuceh8acsw2e26ww2ycx.app.specular.dev";
 
 export const BEARER_TOKEN_KEY = "roster_bearer_token";
 
@@ -14,17 +14,19 @@ const storage = Platform.OS === "web"
       getItem: (key: string) => localStorage.getItem(key),
       setItem: (key: string, value: string) => localStorage.setItem(key, value),
       deleteItem: (key: string) => localStorage.removeItem(key),
+      setItemAsync: async (key: string, value: string) => localStorage.setItem(key, value),
+      getItemAsync: async (key: string) => localStorage.getItem(key),
     }
   : SecureStore;
 
 // iOS native fetch (NSURLSession) cannot coerce a URL object to a string.
 // This wrapper ensures the first argument is always a plain string.
 const safeFetch: typeof fetch = (input, init?) => {
-  if (Platform.OS === "ios" && input instanceof URL) {
-    console.log("[Auth] iOS safeFetch: coercing URL object to string:", input.toString());
-    return fetch(input.toString(), init);
-  }
-  return fetch(input, init);
+  const url = input instanceof URL ? input.toString() : typeof input === "string" ? input : (input as Request).url;
+  const headers = new Headers((init?.headers as HeadersInit | undefined) ?? {});
+  headers.set("Origin", API_URL);
+  console.log("[Auth] safeFetch: injecting Origin header for request to", url);
+  return fetch(url, { ...init, headers });
 };
 
 export const authClient = createAuthClient({
@@ -38,7 +40,6 @@ export const authClient = createAuthClient({
   ],
   fetchOptions: Platform.OS === "web"
     ? {
-        credentials: "include",
         auth: {
           type: "Bearer" as const,
           token: () => localStorage.getItem(BEARER_TOKEN_KEY) || "",

@@ -45,11 +45,19 @@ export function registerDatesRoutes(app: App) {
                     id: { type: 'string', format: 'uuid' },
                     person_id: { type: 'string', format: 'uuid' },
                     title: { type: 'string' },
+                    type: { type: ['string', 'null'] },
                     date_time: { type: ['string', 'null'] },
                     rating: { type: ['integer', 'null'] },
                     status: { type: 'string' },
                     location: { type: ['string', 'null'] },
                     notes: { type: ['string', 'null'] },
+                    budget: { type: ['string', 'null'] },
+                    reminder_3_days: { type: 'boolean' },
+                    reminder_1_day: { type: 'boolean' },
+                    reminder_1_hour: { type: 'boolean' },
+                    went_well: { type: ['string', 'null'] },
+                    went_poorly: { type: ['string', 'null'] },
+                    want_another_date: { type: ['boolean', 'null'] },
                     created_at: { type: 'string', format: 'date-time' },
                   },
                 },
@@ -83,6 +91,10 @@ export function registerDatesRoutes(app: App) {
           status: schema.dates.status,
           location: schema.dates.location,
           notes: schema.dates.notes,
+          budget: schema.dates.budget,
+          reminder3Days: schema.dates.reminder3Days,
+          reminder1Day: schema.dates.reminder1Day,
+          reminder1Hour: schema.dates.reminder1Hour,
           wentWell: schema.dates.wentWell,
           wentPoorly: schema.dates.wentPoorly,
           wantAnotherDate: schema.dates.wantAnotherDate,
@@ -103,6 +115,10 @@ export function registerDatesRoutes(app: App) {
         status: date.status,
         location: date.location,
         notes: date.notes,
+        budget: date.budget,
+        reminder_3_days: date.reminder3Days,
+        reminder_1_day: date.reminder1Day,
+        reminder_1_hour: date.reminder1Hour,
         went_well: date.wentWell,
         went_poorly: date.wentPoorly,
         want_another_date: date.wantAnotherDate,
@@ -366,7 +382,7 @@ export function registerDatesRoutes(app: App) {
             rating: { type: 'integer', minimum: 1, maximum: 5 },
             went_well: { type: 'string' },
             went_poorly: { type: 'string' },
-            want_another_date: { type: 'boolean' },
+            want_another_date: { type: ['boolean', 'string'], description: 'Accept boolean or string "true"/"false"' },
             status: { type: 'string', enum: ['planned', 'confirmed', 'completed', 'cancelled'] },
           },
         },
@@ -396,7 +412,7 @@ export function registerDatesRoutes(app: App) {
           rating?: number;
           went_well?: string;
           went_poorly?: string;
-          want_another_date?: boolean;
+          want_another_date?: boolean | string;
           status?: string;
         };
       }>,
@@ -426,7 +442,14 @@ export function registerDatesRoutes(app: App) {
       if (request.body.rating !== undefined) updateData.rating = request.body.rating;
       if (request.body.went_well !== undefined) updateData.wentWell = request.body.went_well;
       if (request.body.went_poorly !== undefined) updateData.wentPoorly = request.body.went_poorly;
-      if (request.body.want_another_date !== undefined) updateData.wantAnotherDate = request.body.want_another_date;
+      if (request.body.want_another_date !== undefined) {
+        // Convert string boolean values to proper booleans
+        let boolValue: boolean = request.body.want_another_date as any;
+        if (typeof boolValue === 'string') {
+          boolValue = (boolValue as string).toLowerCase() === 'true';
+        }
+        updateData.wantAnotherDate = boolValue;
+      }
 
       // Set status to completed if not already set and review is being added
       if (request.body.status !== undefined) {
@@ -435,17 +458,24 @@ export function registerDatesRoutes(app: App) {
         updateData.status = 'completed';
       }
 
-      await app.db
-        .update(schema.dates)
-        .set(updateData)
-        .where(eq(schema.dates.id, id));
+      try {
+        await app.db
+          .update(schema.dates)
+          .set(updateData)
+          .where(eq(schema.dates.id, id));
+
+        app.logger.info({ userId: session.user.id, dateId: id }, 'Date review updated');
+        console.log('Date review saved:', id, { rating: request.body.rating, want_another_date: request.body.want_another_date });
+      } catch (error) {
+        app.logger.error({ err: error, userId: session.user.id, dateId: id }, 'Failed to update date review');
+        console.error('Date review failed:', error);
+        return reply.status(500).send({ error: 'Failed to update date review' });
+      }
 
       // Fetch the updated record to ensure all fields are returned
       const updatedDate = await app.db.query.dates.findFirst({
         where: eq(schema.dates.id, id),
       });
-
-      app.logger.info({ userId: session.user.id, dateId: id }, 'Date review updated');
 
       // Convert camelCase to snake_case for response
       return {
@@ -500,30 +530,16 @@ export function registerDatesRoutes(app: App) {
       app.logger.info({ userId: session.user.id }, 'Getting dates pending review');
 
       // Query dates that are past their scheduled time, not completed/cancelled, and have no rating
-      const dates = await app.db
+      const datesData = await app.db
         .select({
           id: schema.dates.id,
-          userId: schema.dates.userId,
           personId: schema.dates.personId,
           title: schema.dates.title,
-          location: schema.dates.location,
           dateTime: schema.dates.dateTime,
-          budget: schema.dates.budget,
-          status: schema.dates.status,
-          reminder3Days: schema.dates.reminder3Days,
-          reminder1Day: schema.dates.reminder1Day,
-          reminder1Hour: schema.dates.reminder1Hour,
-          notes: schema.dates.notes,
           rating: schema.dates.rating,
-          wentWell: schema.dates.wentWell,
-          wentPoorly: schema.dates.wentPoorly,
-          wantAnotherDate: schema.dates.wantAnotherDate,
-          createdAt: schema.dates.createdAt,
-          person: {
-            id: schema.persons.id,
-            name: schema.persons.name,
-            photoUrl: schema.persons.photoUrl,
-          },
+          status: schema.dates.status,
+          personName: schema.persons.name,
+          personPhotoUrl: schema.persons.photoUrl,
         })
         .from(schema.dates)
         .leftJoin(schema.persons, eq(schema.dates.personId, schema.persons.id))
@@ -538,6 +554,22 @@ export function registerDatesRoutes(app: App) {
             )
           )
         );
+
+      // Map the flattened results to include nested person object
+      const dates = datesData.map((date) => ({
+        id: date.id,
+        title: date.title,
+        status: date.status,
+        dateTime: date.dateTime,
+        rating: date.rating,
+        person: date.personId
+          ? {
+              id: date.personId,
+              name: date.personName,
+              photoUrl: date.personPhotoUrl,
+            }
+          : null,
+      }));
 
       app.logger.info({ userId: session.user.id, count: dates.length }, 'Retrieved pending review dates');
       return dates;

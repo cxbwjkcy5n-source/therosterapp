@@ -1,17 +1,22 @@
 import 'react-native-reanimated';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
-import { Stack, router, useSegments } from 'expo-router';
+import { Stack, router } from 'expo-router';
+import { X } from 'lucide-react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { SystemBars } from 'react-native-edge-to-edge';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { ThemeProvider, DefaultTheme } from '@react-navigation/native';
+import { ThemeProvider as NavThemeProvider, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { COLORS } from '@/constants/Colors';
+import { registerForPushNotifications } from '@/utils/notifications';
+import { apiGet, apiPut } from '@/utils/api';
 
 const DevErrorBoundary = __DEV__
   ? ErrorBoundary
@@ -90,7 +95,7 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
       Animated.timing(screenOpacity, {
         toValue: 1,
         duration: 400,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       // 2. Logo scales up + fades in simultaneously
       Animated.parallel([
@@ -98,19 +103,19 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
           toValue: 1,
           friction: 6,
           tension: 80,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(logoOpacity, {
           toValue: 1,
           duration: 500,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ]),
       // 3. Phrase fades in
       Animated.timing(phraseOpacity, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       // 4. Hold for 1.8s
       Animated.delay(1800),
@@ -118,7 +123,7 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
       Animated.timing(screenOpacity, {
         toValue: 0,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start(() => {
       stableOnDone();
@@ -141,43 +146,86 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
 }
 
 function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplashDone: () => void }) {
-  const { user, loading } = useAuth();
-  const segments = useSegments();
+  const { user, loading, isReady } = useAuth();
+  const { isDark } = useTheme();
+  const hasNavigated = useRef(false); // only navigate once on initial load
+  const onboardingChecked = useRef(false);
 
   // Show red placeholder while splash is playing OR while auth is still loading
   const showPlaceholder = showSplash || loading;
 
-  // Once auth resolves and we're on a protected route with no user, redirect
+  // Register push notifications once user is authenticated
   useEffect(() => {
-    if (loading || showSplash) return;
-    const currentRoute = segments[0] ?? '';
-    const isPublicRoute = PUBLIC_ROUTES.includes(currentRoute);
-    if (!user && !isPublicRoute) {
-      console.log('[AppContent] No user on protected route, redirecting to auth-screen');
+    if (user) {
+      console.log('[AppContent] User authenticated, registering push notifications');
+      registerForPushNotifications();
+    }
+  }, [user]);
+
+  // One-shot guard: fires exactly once when auth finishes loading for the first time.
+  // Never re-fires after navigation — prevents the sign-in redirect loop.
+  useEffect(() => {
+    if (!isReady || showSplash || hasNavigated.current) return;
+    hasNavigated.current = true;
+
+    if (user) {
+      console.log('[AppContent] Session found on startup, checking onboarding state');
+      // Check onboarding state before navigating
+      if (!onboardingChecked.current) {
+        onboardingChecked.current = true;
+        apiGet<{ completed: boolean; step?: number }>('/api/onboarding/state')
+          .then(async (state) => {
+            console.log('[AppContent] Onboarding state:', state);
+            if (state?.completed) {
+              router.replace('/(tabs)/(home)');
+              return;
+            }
+            // Check if user already has data — if so, skip onboarding
+            try {
+              const personsRes = await apiGet<{ persons: any[] }>('/api/persons');
+              if (personsRes?.persons?.length > 0) {
+                console.log('[AppContent] Existing user with persons, skipping onboarding');
+                apiPut('/api/onboarding/state', { completed: true }).catch(() => {});
+                router.replace('/(tabs)/(home)');
+                return;
+              }
+            } catch {}
+            // Truly new user
+            router.replace('/onboarding');
+          })
+          .catch((e) => {
+            console.log('[AppContent] Could not check onboarding state, going to home:', e?.message);
+            router.replace('/(tabs)/(home)');
+          });
+      }
+    } else {
+      console.log('[AppContent] No session on startup, navigating to auth');
       router.replace('/auth-screen');
     }
-  }, [user, loading, showSplash, segments]);
+  }, [isReady, showSplash]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
-      {showPlaceholder ? (
-        <View style={{ flex: 1, backgroundColor: '#E53935' }} />
-      ) : (
-        <View style={{ flex: 1, backgroundColor: COLORS.background }}>
-          <Stack screenOptions={{ headerShown: false, headerBackTitle: '' }}>
+      <StatusBar style={isDark ? 'light' : 'dark'} animated />
+      <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+        <Stack screenOptions={{ headerShown: false, headerBackTitle: '' }}>
             <Stack.Screen name="auth-screen" options={{ headerShown: false }} />
             <Stack.Screen name="auth-popup" options={{ headerShown: false }} />
             <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false, headerBackTitle: '', title: '' }} />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false, headerBackTitle: '', title: '', gestureEnabled: false }} />
             <Stack.Screen
-              name="person/[id]"
+              name="onboarding"
               options={{
-                headerShown: true,
-                headerStyle: { backgroundColor: COLORS.background },
-                headerTintColor: COLORS.text,
-                headerShadowVisible: false,
-                title: '',
-                headerBackTitle: '',
+                headerShown: false,
+                presentation: 'fullScreenModal',
+                gestureEnabled: false,
+              }}
+            />
+            <Stack.Screen
+              name="person"
+              options={{
+                headerShown: false,
+                gestureEnabled: false,
               }}
             />
             <Stack.Screen
@@ -189,6 +237,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Dating Coach',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -200,6 +259,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Insights',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -211,6 +281,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Review Date',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -223,9 +304,34 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 title: 'Add Person',
                 headerBackTitle: '',
                 presentation: 'modal',
+                headerBackVisible: false,
+                gestureEnabled: false,
                 headerLeft: () => (
                   <Pressable onPress={() => { console.log('[add-person] Cancel pressed'); router.back(); }} style={{ paddingRight: 8 }}>
                     <Text style={{ color: COLORS.primary, fontSize: 16 }}>Cancel</Text>
+                  </Pressable>
+                ),
+              }}
+            />
+            <Stack.Screen
+              name="weekly-checkin"
+              options={{
+                presentation: 'modal',
+                headerShown: true,
+                headerStyle: { backgroundColor: COLORS.background },
+                headerTintColor: COLORS.text,
+                headerShadowVisible: false,
+                title: 'Weekly Check-in',
+                headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: true,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
                   </Pressable>
                 ),
               }}
@@ -275,10 +381,63 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Reminders',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
-            <Stack.Screen name="share-profile" options={{ headerShown: false }} />
-            <Stack.Screen name="scan-code" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="share-profile"
+              options={{
+                headerShown: true,
+                headerStyle: { backgroundColor: COLORS.background },
+                headerTintColor: COLORS.text,
+                headerShadowVisible: false,
+                title: 'My Share Code',
+                headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
+              }}
+            />
+            <Stack.Screen
+              name="scan-code"
+              options={{
+                headerShown: true,
+                headerStyle: { backgroundColor: COLORS.background },
+                headerTintColor: COLORS.text,
+                headerShadowVisible: false,
+                title: 'Scan Code',
+                headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
+              }}
+            />
             <Stack.Screen
               name="privacy"
               options={{
@@ -288,6 +447,17 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Privacy Policy',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color="#1A1A1A" />
+                  </Pressable>
+                ),
               }}
             />
             <Stack.Screen
@@ -299,12 +469,46 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 headerShadowVisible: false,
                 title: 'Terms & Conditions',
                 headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color="#1A1A1A" />
+                  </Pressable>
+                ),
+              }}
+            />
+            <Stack.Screen
+              name="notification-preferences"
+              options={{
+                headerShown: true,
+                headerStyle: { backgroundColor: COLORS.background },
+                headerTintColor: COLORS.text,
+                headerShadowVisible: false,
+                title: 'Notifications',
+                headerBackTitle: '',
+                headerBackVisible: false,
+                gestureEnabled: false,
+                headerLeft: () => (
+                  <Pressable
+                    onPress={() => router.back()}
+                    style={{ paddingLeft: 4, paddingRight: 12, paddingVertical: 4 }}
+                    hitSlop={8}
+                  >
+                    <X size={22} color={COLORS.text} />
+                  </Pressable>
+                ),
               }}
             />
           </Stack>
-        </View>
+      </View>
+      {showPlaceholder && (
+        <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: '#E53935', zIndex: 998 }} />
       )}
-
       {showSplash && (
         <CustomSplash onDone={onSplashDone} />
       )}
@@ -322,15 +526,18 @@ export default function RootLayout() {
 
   return (
     <DevErrorBoundary>
-      <StatusBar style="dark" animated />
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <ThemeProvider value={AppLightTheme}>
+          <NavThemeProvider value={AppLightTheme}>
             <AuthProvider>
-              <AppContent showSplash={showSplash} onSplashDone={() => setShowSplash(false)} />
-              <SystemBars style="dark" />
-            </AuthProvider>
-          </ThemeProvider>
+        <NotificationProvider>
+              <ThemeProvider>
+                <AppContent showSplash={showSplash} onSplashDone={() => setShowSplash(false)} />
+                <SystemBars style="dark" />
+              </ThemeProvider>
+            </NotificationProvider>
+        </AuthProvider>
+          </NavThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </DevErrorBoundary>

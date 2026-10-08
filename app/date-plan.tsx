@@ -8,18 +8,21 @@ import {
   ActivityIndicator,
   Animated,
   Linking,
+  Share,
 } from 'react-native';
 import { router } from 'expo-router';
-import { X, Sparkles, ExternalLink, ChevronDown, Check } from 'lucide-react-native';
+import { X, Sparkles, ExternalLink, ChevronDown, Check, Share2 } from 'lucide-react-native';
 import { AddressAutocomplete } from '@/components/AddressAutocomplete';
-import { COLORS } from '@/constants/Colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { apiGet, apiPost } from '@/utils/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Person {
   id: string;
   name: string;
+  is_benched?: boolean;
 }
 
 interface DateIdea {
@@ -38,7 +41,9 @@ const BUDGETS = [
 ];
 
 export default function DatePlanScreen() {
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [persons, setPersons] = useState<Person[]>([]);
   const [selectedPersonId, setSelectedPersonId] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -49,16 +54,31 @@ export default function DatePlanScreen() {
   const sparkleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    console.log('[DatePlan] Loading persons');
-    apiGet<{ persons: Person[] }>('/api/persons')
-      .then((data) => {
-        const active = (data.persons || []).filter((p: any) => !p.is_benched);
-        console.log('[DatePlan] Loaded', active.length, 'persons');
-        setPersons(active);
-        if (active.length > 0) setSelectedPersonId(active[0].id);
-      })
-      .catch((e) => console.error('[DatePlan] Failed to load persons:', e));
-  }, []);
+    if (!user) return;
+    console.log('[DatePlan] Loading all persons (active + benched)');
+    Promise.all([
+      apiGet<{ persons: Person[] }>('/api/persons').catch(() => ({ persons: [] })),
+      apiGet<{ persons: Person[] }>('/api/persons?benched=true').catch(() => ({ persons: [] })),
+    ]).then(([activeData, benchedData]) => {
+      const active = activeData.persons || [];
+      const benched = benchedData.persons || [];
+      const allMap = new Map<string, Person>();
+      for (const p of active) allMap.set(p.id, { ...p, is_benched: false });
+      for (const p of benched) allMap.set(p.id, { ...p, is_benched: true });
+      const all = Array.from(allMap.values());
+      console.log('[DatePlan] Loaded', active.length, 'active +', benched.length, 'benched');
+      setPersons(all);
+      const firstActive = all.find((p) => !p.is_benched);
+      if (firstActive) setSelectedPersonId(firstActive.id);
+      else if (all.length > 0) setSelectedPersonId(all[0].id);
+    });
+  }, [user]);
+
+  useEffect(() => {
+    return () => {
+      sparkleAnim.stopAnimation();
+    };
+  }, [sparkleAnim]);
 
   const startSparkleAnimation = () => {
     Animated.loop(
@@ -97,7 +117,7 @@ export default function DatePlanScreen() {
   const selectedPersonName = selectedPerson ? selectedPerson.name : '';
 
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* FIXED HEADER */}
       <View
         style={{
@@ -105,10 +125,10 @@ export default function DatePlanScreen() {
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: 20,
-          paddingTop: 60,
+          paddingTop: Math.max(insets.top, 16),
           paddingBottom: 16,
           borderBottomWidth: 1,
-          borderBottomColor: COLORS.border,
+          borderBottomColor: colors.border,
         }}
       >
         <AnimatedPressable
@@ -120,14 +140,14 @@ export default function DatePlanScreen() {
             width: 36,
             height: 36,
             borderRadius: 18,
-            backgroundColor: COLORS.surface,
+            backgroundColor: colors.surface,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <X size={18} color={COLORS.textSecondary} />
+          <X size={18} color={colors.textSecondary} />
         </AnimatedPressable>
-        <Text style={{ color: COLORS.text, fontSize: 17, fontWeight: '700' }}>Plan a Date ✨</Text>
+        <Text style={{ color: colors.text, fontSize: 17, fontWeight: '700' }}>Plan a Date ✨</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -139,7 +159,7 @@ export default function DatePlanScreen() {
       >
         {/* Person dropdown */}
         <View style={{ zIndex: 100, position: 'relative' }}>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>
             Who's this date with?
           </Text>
           <Pressable
@@ -148,22 +168,37 @@ export default function DatePlanScreen() {
               setDropdownOpen(!dropdownOpen);
             }}
             style={{
-              backgroundColor: COLORS.surface,
+              backgroundColor: colors.surface,
               borderRadius: 12,
               padding: 14,
               borderWidth: 1,
-              borderColor: COLORS.border,
+              borderColor: colors.border,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
             }}
           >
-            {selectedPersonName ? (
-              <Text style={{ color: COLORS.text, fontSize: 15 }}>{selectedPersonName}</Text>
-            ) : (
-              <Text style={{ color: COLORS.textTertiary, fontSize: 15 }}>Select a person...</Text>
-            )}
-            <ChevronDown size={16} color={COLORS.textSecondary} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+              {selectedPerson && (
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: selectedPerson.is_benched ? '#E53935' : '#2E7D32',
+                  }}
+                />
+              )}
+              {selectedPersonName ? (
+                <Text style={{ color: colors.text, fontSize: 15 }}>{selectedPersonName}</Text>
+              ) : (
+                <Text style={{ color: colors.textTertiary, fontSize: 15 }}>Select a person...</Text>
+              )}
+              {selectedPerson?.is_benched && (
+                <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
+              )}
+            </View>
+            <ChevronDown size={16} color={colors.textSecondary} />
           </Pressable>
           {dropdownOpen && (
             <View
@@ -173,10 +208,10 @@ export default function DatePlanScreen() {
                 left: 0,
                 right: 0,
                 zIndex: 999,
-                backgroundColor: COLORS.surface,
+                backgroundColor: colors.surface,
                 borderRadius: 12,
                 borderWidth: 1,
-                borderColor: COLORS.border,
+                borderColor: colors.border,
                 marginTop: 4,
                 overflow: 'hidden',
                 shadowColor: '#000',
@@ -189,11 +224,12 @@ export default function DatePlanScreen() {
               {persons.map((p, index) => {
                 const isSelected = selectedPersonId === p.id;
                 const isLast = index === persons.length - 1;
+                const dotColor = p.is_benched ? '#E53935' : '#2E7D32';
                 return (
                   <Pressable
                     key={p.id}
                     onPress={() => {
-                      console.log('[DatePlan] Person selected from dropdown:', p.id, p.name);
+                      console.log('[DatePlan] Person selected from dropdown:', p.id, p.name, 'benched:', p.is_benched);
                       setSelectedPersonId(p.id);
                       setDropdownOpen(false);
                     }}
@@ -201,14 +237,20 @@ export default function DatePlanScreen() {
                       paddingHorizontal: 16,
                       paddingVertical: 14,
                       borderBottomWidth: isLast ? 0 : 1,
-                      borderBottomColor: COLORS.border,
+                      borderBottomColor: colors.border,
                       flexDirection: 'row',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                     }}
                   >
-                    <Text style={{ color: COLORS.text, fontSize: 15 }}>{p.name}</Text>
-                    {isSelected && <Check size={16} color={COLORS.primary} />}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
+                      <Text style={{ color: colors.text, fontSize: 15 }}>{p.name}</Text>
+                      {p.is_benched && (
+                        <Text style={{ color: '#E53935', fontSize: 11, fontWeight: '600' }}>Benched</Text>
+                      )}
+                    </View>
+                    {isSelected && <Check size={16} color={colors.primary} />}
                   </Pressable>
                 );
               })}
@@ -232,15 +274,15 @@ export default function DatePlanScreen() {
 
         {/* Budget */}
         <View>
-          <Text style={{ color: COLORS.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 10 }}>
             Budget
           </Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {BUDGETS.map((b) => {
               const isSelected = budget === b.value;
-              const btnBg = isSelected ? COLORS.accentMuted : COLORS.surface;
-              const btnBorder = isSelected ? COLORS.accent : COLORS.border;
-              const labelColor = isSelected ? COLORS.accent : COLORS.textSecondary;
+              const btnBg = isSelected ? colors.accentMuted : colors.surface;
+              const btnBorder = isSelected ? colors.accent : colors.border;
+              const labelColor = isSelected ? colors.accent : colors.textSecondary;
               return (
                 <Pressable
                   key={b.value}
@@ -272,7 +314,7 @@ export default function DatePlanScreen() {
           onPress={handleGetIdeas}
           disabled={!selectedPersonId || loading}
           style={{
-            backgroundColor: COLORS.accent,
+            backgroundColor: colors.accent,
             borderRadius: 14,
             paddingVertical: 16,
             alignItems: 'center',
@@ -301,18 +343,45 @@ export default function DatePlanScreen() {
         {/* Results */}
         {ideas.length > 0 && (
           <View style={{ gap: 12 }}>
-            <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700' }}>
-              Date Ideas ✨
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>
+                Date Ideas ✨
+              </Text>
+              <Pressable
+                onPress={async () => {
+                  console.log('[DatePlan] Share button pressed, sharing', ideas.length, 'ideas');
+                  const ideaLines = ideas.map((idea) => `• ${idea.title}: ${idea.description}`).join('\n');
+                  const message = `Hey! I was thinking we could:\n\n${ideaLines}\n\nWhat do you think? 😊`;
+                  try {
+                    await Share.share({ message });
+                    console.log('[DatePlan] Share sheet opened successfully');
+                  } catch (e) {
+                    console.error('[DatePlan] Share failed:', e);
+                  }
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: colors.accentMuted,
+                  borderRadius: 10,
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                }}
+              >
+                <Share2 size={15} color={colors.accent} />
+                <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600' }}>Share</Text>
+              </Pressable>
+            </View>
             {ideas.map((idea, index) => (
               <View
                 key={index}
                 style={{
-                  backgroundColor: COLORS.surface,
+                  backgroundColor: colors.surface,
                   borderRadius: 16,
                   padding: 16,
                   borderWidth: 1,
-                  borderColor: COLORS.border,
+                  borderColor: colors.border,
                   gap: 8,
                 }}
               >
@@ -320,23 +389,23 @@ export default function DatePlanScreen() {
                   <View
                     style={{
                       alignSelf: 'flex-start',
-                      backgroundColor: COLORS.accentMuted,
+                      backgroundColor: colors.accentMuted,
                       borderRadius: 6,
                       paddingHorizontal: 8,
                       paddingVertical: 3,
                     }}
                   >
-                    <Text style={{ color: COLORS.accent, fontSize: 11, fontWeight: '600' }}>
+                    <Text style={{ color: colors.accent, fontSize: 11, fontWeight: '600' }}>
                       {idea.category}
                     </Text>
                   </View>
                 )}
-                <Text style={{ color: COLORS.text, fontSize: 16, fontWeight: '700' }}>{idea.title}</Text>
-                <Text style={{ color: COLORS.textSecondary, fontSize: 14, lineHeight: 20 }}>
+                <Text style={{ color: colors.text, fontSize: 16, fontWeight: '700' }}>{idea.title}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 14, lineHeight: 20 }}>
                   {idea.description}
                 </Text>
                 {idea.estimated_cost && (
-                  <Text style={{ color: COLORS.accent, fontSize: 13, fontWeight: '600' }}>
+                  <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600' }}>
                     Est. cost: {idea.estimated_cost}
                   </Text>
                 )}
@@ -353,15 +422,15 @@ export default function DatePlanScreen() {
                       alignItems: 'center',
                       gap: 6,
                       alignSelf: 'flex-start',
-                      backgroundColor: COLORS.accentMuted,
+                      backgroundColor: colors.accentMuted,
                       borderRadius: 8,
                       paddingHorizontal: 12,
                       paddingVertical: 7,
                       marginTop: 4,
                     }}
                   >
-                    <ExternalLink size={14} color={COLORS.accent} />
-                    <Text style={{ color: COLORS.accent, fontSize: 13, fontWeight: '600' }}>Explore</Text>
+                    <ExternalLink size={14} color={colors.accent} />
+                    <Text style={{ color: colors.accent, fontSize: 13, fontWeight: '600' }}>Explore</Text>
                   </AnimatedPressable>
                 )}
               </View>

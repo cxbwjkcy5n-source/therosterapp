@@ -70,13 +70,13 @@ function ColumnPicker({
     <View style={{ flex: 1, height: ITEM_HEIGHT * 5, overflow: 'hidden' }}>
       {/* Selection highlight */}
       <View
-        pointerEvents="none"
         style={{
           position: 'absolute',
           top: ITEM_HEIGHT * 2,
           left: 0,
           right: 0,
           height: ITEM_HEIGHT,
+          pointerEvents: 'none',
           backgroundColor: 'rgba(229,57,53,0.12)',
           borderTopWidth: 1,
           borderBottomWidth: 1,

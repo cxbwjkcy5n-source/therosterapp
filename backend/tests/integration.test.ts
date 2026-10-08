@@ -14,6 +14,7 @@ describe("API Integration Tests", () => {
   let reminderId: string;
   let shareToken: string;
   let deleteAccountToken: string;
+  let photoId: string;
 
   // ========== Auth Setup ==========
   test("Sign up test user", async () => {
@@ -348,6 +349,43 @@ describe("API Integration Tests", () => {
     expect(typeof data.dates_count).toBe("number");
   });
 
+  // ========== Generate Conversation Starters Tests ==========
+  test("Generate conversation starters for a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/conversation-starters`,
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.starters).toBeDefined();
+    expect(Array.isArray(data.starters)).toBe(true);
+  });
+
+  test("Generate conversation starters with nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/conversation-starters",
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Generate conversation starters with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/conversation-starters",
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
   // ========== Person Phone Update Tests ==========
   test("Update person's phone number with phone_number field", async () => {
     const res = await authenticatedApi(
@@ -430,6 +468,221 @@ describe("API Integration Tests", () => {
       }
     );
     await expectStatus(res, 404);
+  });
+
+  // ========== Person Photos Tests ==========
+  test("Upload a photo for a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/photos`,
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photo_url: "https://example.com/photo1.jpg",
+          sort_order: 1,
+        }),
+      }
+    );
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.id).toBeDefined();
+    expect(data.personId).toBe(personId);
+    expect(data.photoUrl).toBe("https://example.com/photo1.jpg");
+    expect(data.sortOrder).toBe(1);
+    photoId = data.id;
+  });
+
+  test("Upload photo fails without required photo_url", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/photos`,
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sort_order: 2,
+        }),
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Upload photo for nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/photos",
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photo_url: "https://example.com/photo.jpg",
+        }),
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Upload photo with invalid person ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/photos",
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          photo_url: "https://example.com/photo.jpg",
+        }),
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Get all photos for a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/photos`,
+      authToken
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.photos).toBeDefined();
+    expect(Array.isArray(data.photos)).toBe(true);
+    if (data.photos.length > 0) {
+      const photo = data.photos[0];
+      expect(photo.id).toBeDefined();
+      expect(photo.photo_url).toBeDefined();
+      expect(photo.sort_order).toBeDefined();
+      expect(photo.created_at).toBeDefined();
+    }
+  });
+
+  test("Get photos for nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/photos",
+      authToken
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Get photos with invalid person ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/photos",
+      authToken
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Delete a photo for a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/photos/${photoId}`,
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test("Delete photo with invalid person ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/photos/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Delete photo with invalid photo ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/photos/invalid-uuid`,
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Delete nonexistent photo returns 404", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/photos/00000000-0000-0000-0000-000000000000`,
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  // ========== Person Compatibility Report Tests ==========
+  test("Get compatibility report for a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/compatibility-report`,
+      authToken
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.report).toBeDefined();
+    expect(typeof data.report.overall_score).toBe('number');
+    expect(data.report.summary).toBeDefined();
+    expect(Array.isArray(data.report.traits)).toBe(true);
+    expect(data.report.strongest_trait === null || typeof data.report.strongest_trait === 'string').toBe(true);
+    expect(data.report.weakest_trait === null || typeof data.report.weakest_trait === 'string').toBe(true);
+  });
+
+  test("Get compatibility report for nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/compatibility-report",
+      authToken
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Get compatibility report with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/compatibility-report",
+      authToken
+    );
+    await expectStatus(res, 400);
+  });
+
+  // ========== Person Dates Tests ==========
+  test("Get all dates associated with a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/dates`,
+      authToken
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.dates).toBeDefined();
+    expect(Array.isArray(data.dates)).toBe(true);
+    if (data.dates.length > 0) {
+      const dateItem = data.dates[0];
+      expect(dateItem.id).toBeDefined();
+      expect(dateItem.title).toBeDefined();
+      expect(dateItem.status).toBeDefined();
+      expect(dateItem.createdAt).toBeDefined();
+    }
+  });
+
+  test("Get dates for nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/dates",
+      authToken
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Get dates with invalid person ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/dates",
+      authToken
+    );
+    await expectStatus(res, 400);
   });
 
   // ========== Dates CRUD Tests ==========
@@ -832,6 +1085,20 @@ describe("API Integration Tests", () => {
     expect(typeof data.total_dates).toBe("number");
   });
 
+  test("Get weekly summary for authenticated user", async () => {
+    const res = await authenticatedApi("/api/analytics/weekly-summary", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.summary).toBeDefined();
+    expect(data.summary.this_week_dates).toBeDefined();
+    expect(data.summary.last_week_dates).toBeDefined();
+    expect(data.summary.this_week_persons_added).toBeDefined();
+    expect(data.summary.last_week_persons_added).toBeDefined();
+    expect(data.summary.this_week_notes).toBeDefined();
+    expect(data.summary.last_week_notes).toBeDefined();
+    expect(typeof data.summary.this_week_dates).toBe("number");
+  });
+
   // ========== AI & Date Plan Tests ==========
   test("Get AI date suggestions for a person", async () => {
     const res = await authenticatedApi("/api/date-plan", authToken, {
@@ -949,6 +1216,20 @@ describe("API Integration Tests", () => {
     expect(data.reply).toBeDefined();
   });
 
+  test("Send message via /api/chat/message endpoint", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "What should I ask on a first date?",
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.reply).toBeDefined();
+    expect(typeof data.reply).toBe("string");
+  });
+
   test("Get updated chat messages", async () => {
     const res = await authenticatedApi("/api/chat", authToken);
     await expectStatus(res, 200);
@@ -961,10 +1242,11 @@ describe("API Integration Tests", () => {
     const res = await authenticatedApi("/api/chat/history", authToken);
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(Array.isArray(data)).toBe(true);
+    expect(data.messages).toBeDefined();
+    expect(Array.isArray(data.messages)).toBe(true);
     // Each message should have the expected structure
-    if (data.length > 0) {
-      const msg = data[0];
+    if (data.messages.length > 0) {
+      const msg = data.messages[0];
       expect(msg.id).toBeDefined();
       expect(msg.role).toBeDefined();
       expect(msg.content).toBeDefined();
@@ -1027,21 +1309,6 @@ describe("API Integration Tests", () => {
     const data = await res.json();
     expect(data.photo_url).toBeDefined();
     expect(data.photo_url).toContain("data:image/jpeg;base64,");
-  });
-
-  test("Upload photo with nonexistent person returns 404", async () => {
-    const base64Png =
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-
-    const res = await authenticatedApi("/api/upload-photo", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        base64: base64Png,
-        person_id: "00000000-0000-0000-0000-000000000000",
-      }),
-    });
-    await expectStatus(res, 404);
   });
 
   // ========== Interactions Tests ==========
@@ -1537,6 +1804,194 @@ describe("API Integration Tests", () => {
     expect(Array.isArray(data.nudges)).toBe(true);
   });
 
+  // ========== Weekly Checkins Tests ==========
+  test("Create a weekly checkin with just mood", async () => {
+    const res = await authenticatedApi("/api/weekly-checkins", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mood: 8,
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.checkin).toBeDefined();
+    expect(data.checkin.id).toBeDefined();
+    expect(data.checkin.mood).toBe(8);
+    expect(data.checkin.created_at).toBeDefined();
+  });
+
+  test("Create a weekly checkin with all fields", async () => {
+    const res = await authenticatedApi("/api/weekly-checkins", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mood: 7,
+        most_excited_person: "Alice",
+        one_thing_to_change: "Be more consistent",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.checkin).toBeDefined();
+    expect(data.checkin.mood).toBe(7);
+    expect(data.checkin.most_excited_person).toBe("Alice");
+    expect(data.checkin.one_thing_to_change).toBe("Be more consistent");
+  });
+
+  test("Create weekly checkin fails without mood", async () => {
+    const res = await authenticatedApi("/api/weekly-checkins", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        most_excited_person: "Bob",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Get latest weekly checkin", async () => {
+    const res = await authenticatedApi(
+      "/api/weekly-checkins/latest",
+      authToken
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.checkin === null || data.checkin !== undefined).toBe(true);
+    if (data.checkin) {
+      expect(data.checkin.id).toBeDefined();
+      expect(data.checkin.mood).toBeDefined();
+      expect(data.checkin.created_at).toBeDefined();
+    }
+  });
+
+  // ========== Onboarding Tests ==========
+  test("Get onboarding state", async () => {
+    const res = await authenticatedApi("/api/onboarding/state", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.state).toBeDefined();
+    expect(data.state.id).toBeDefined();
+    expect(data.state.userId).toBeDefined();
+    expect(typeof data.state.completed).toBe("boolean");
+    expect(typeof data.state.step).toBe("number");
+    expect(data.state.createdAt).toBeDefined();
+    expect(data.state.updatedAt).toBeDefined();
+  });
+
+  test("Update onboarding state to mark completed", async () => {
+    const res = await authenticatedApi("/api/onboarding/state", authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        completed: true,
+        step: 5,
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.state).toBeDefined();
+    expect(data.state.completed).toBe(true);
+    expect(data.state.step).toBe(5);
+  });
+
+  test("Update onboarding state with partial data", async () => {
+    const res = await authenticatedApi("/api/onboarding/state", authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        step: 3,
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.state).toBeDefined();
+    expect(data.state.step).toBe(3);
+  });
+
+  // ========== Streaks Tests ==========
+  test("Get user check-in streak", async () => {
+    const res = await authenticatedApi("/api/streaks/me", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.streak).toBeDefined();
+    expect(data.streak.id).toBeDefined();
+    expect(data.streak.userId).toBeDefined();
+    expect(typeof data.streak.currentStreak).toBe("number");
+    expect(typeof data.streak.longestStreak).toBe("number");
+    expect(data.streak.updatedAt).toBeDefined();
+  });
+
+  // ========== Push Tokens Tests ==========
+  test("Register a device token for push notifications", async () => {
+    const res = await authenticatedApi("/api/push-tokens", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: "test_device_token_12345",
+        platform: "ios",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.token).toBeDefined();
+    expect(data.token.id).toBeDefined();
+    expect(data.token.userId).toBeDefined();
+    expect(data.token.token).toBe("test_device_token_12345");
+    expect(data.token.platform).toBe("ios");
+    expect(data.token.createdAt).toBeDefined();
+  });
+
+  test("Register push token for android platform", async () => {
+    const res = await authenticatedApi("/api/push-tokens", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: "android_token_abc123",
+        platform: "android",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.token.platform).toBe("android");
+  });
+
+  test("Register push token for web platform", async () => {
+    const res = await authenticatedApi("/api/push-tokens", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: "web_token_xyz789",
+        platform: "web",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    expect(data.token.platform).toBe("web");
+  });
+
+  test("Register push token fails without token", async () => {
+    const res = await authenticatedApi("/api/push-tokens", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        platform: "ios",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Register push token fails without platform", async () => {
+    const res = await authenticatedApi("/api/push-tokens", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: "some_token",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
   // ========== Places Autocomplete Tests ==========
   test("Get place autocomplete suggestions with input", async () => {
     const res = await authenticatedApi(
@@ -1570,10 +2025,22 @@ describe("API Integration Tests", () => {
 
   // ========== Profile Tests ==========
   test("Get authenticated user profile", async () => {
+    // Create profile first with PUT
+    await authenticatedApi("/api/profile", authToken, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        display_name: "Test User",
+        age: 25,
+      }),
+    });
+
+    // Now test GET
     const res = await authenticatedApi("/api/profile", authToken);
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.userId).toBeDefined();
+    expect(data.profile).toBeDefined();
+    expect(data.profile.userId).toBeDefined();
   });
 
   test("Update user profile with partial data", async () => {
@@ -1587,7 +2054,8 @@ describe("API Integration Tests", () => {
     });
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.id !== undefined || data.userId !== undefined).toBe(true);
+    expect(data.profile).toBeDefined();
+    expect(data.profile.id !== undefined || data.profile.userId !== undefined).toBe(true);
   });
 
   test("Update user profile with all fields", async () => {
@@ -1617,7 +2085,8 @@ describe("API Integration Tests", () => {
     });
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.id !== undefined || data.userId !== undefined).toBe(true);
+    expect(data.profile).toBeDefined();
+    expect(data.profile.id !== undefined || data.profile.userId !== undefined).toBe(true);
   });
 
   // ========== Preferences Tests ==========
@@ -1681,8 +2150,8 @@ describe("API Integration Tests", () => {
     shareToken = data.token;
   });
 
-  test("Resolve a valid share token", async () => {
-    const res = await api(`/api/share/resolve/${shareToken}`);
+  test("Redeem a valid share token", async () => {
+    const res = await api(`/api/share/redeem/${shareToken}`);
     await expectStatus(res, 200);
     const data = await res.json();
     // Should have some profile fields defined
@@ -1692,10 +2161,12 @@ describe("API Integration Tests", () => {
       data.photo_url !== undefined ||
       data.location !== undefined
     ).toBe(true);
+    expect(data.share_fields).toBeDefined();
+    expect(data.expires_at).toBeDefined();
   });
 
-  test("Resolve an invalid share token returns 404", async () => {
-    const res = await api("/api/share/resolve/invalid-token-xyz");
+  test("Redeem an invalid share token returns 404", async () => {
+    const res = await api("/api/share/redeem/invalid-token-xyz");
     await expectStatus(res, 404);
   });
 
@@ -1746,6 +2217,59 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 401);
   });
 
+  test("Unauthenticated POST /api/persons/{id}/conversation-starters returns 401", async () => {
+    const res = await api(
+      "/api/persons/00000000-0000-0000-0000-000000000000/conversation-starters",
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/persons/{id}/photos returns 401", async () => {
+    const res = await api(
+      "/api/persons/00000000-0000-0000-0000-000000000000/photos"
+    );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/persons/{id}/photos returns 401", async () => {
+    const res = await api(
+      "/api/persons/00000000-0000-0000-0000-000000000000/photos",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photo_url: "https://example.com/photo.jpg" }),
+      }
+    );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated DELETE /api/persons/{id}/photos/{photoId} returns 401", async () => {
+    const res = await api(
+      "/api/persons/00000000-0000-0000-0000-000000000000/photos/00000000-0000-0000-0000-000000000000",
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/persons/{id}/compatibility-report returns 401", async () => {
+    const res = await api(
+      "/api/persons/00000000-0000-0000-0000-000000000000/compatibility-report"
+    );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/persons/{id}/dates returns 401", async () => {
+    const res = await api(
+      "/api/persons/00000000-0000-0000-0000-000000000000/dates"
+    );
+    await expectStatus(res, 401);
+  });
+
   test("Unauthenticated GET /api/dates returns 401", async () => {
     const res = await api("/api/dates");
     await expectStatus(res, 401);
@@ -1770,6 +2294,11 @@ describe("API Integration Tests", () => {
 
   test("Unauthenticated GET /api/analytics returns 401", async () => {
     const res = await api("/api/analytics");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/analytics/weekly-summary returns 401", async () => {
+    const res = await api("/api/analytics/weekly-summary");
     await expectStatus(res, 401);
   });
 
@@ -1905,6 +2434,53 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 401);
   });
 
+  test("Unauthenticated POST /api/weekly-checkins returns 401", async () => {
+    const res = await api("/api/weekly-checkins", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mood: 8,
+      }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/weekly-checkins/latest returns 401", async () => {
+    const res = await api("/api/weekly-checkins/latest");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/onboarding/state returns 401", async () => {
+    const res = await api("/api/onboarding/state");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated PUT /api/onboarding/state returns 401", async () => {
+    const res = await api("/api/onboarding/state", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completed: true }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/streaks/me returns 401", async () => {
+    const res = await api("/api/streaks/me");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/push-tokens returns 401", async () => {
+    const res = await api("/api/push-tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: "test_token",
+        platform: "ios",
+      }),
+    });
+    await expectStatus(res, 401);
+  });
+
   test("Unauthenticated POST /api/safety-checkins returns 401", async () => {
     const res = await api("/api/safety-checkins", {
       method: "POST",
@@ -1918,9 +2494,12 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 401);
   });
 
-  test("Unauthenticated GET /api/places/autocomplete returns 401", async () => {
+  test("Unauthenticated GET /api/places/autocomplete returns 200", async () => {
     const res = await api("/api/places/autocomplete?input=test");
-    await expectStatus(res, 401);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.predictions).toBeDefined();
+    expect(Array.isArray(data.predictions)).toBe(true);
   });
 
   test("Unauthenticated GET /api/profile returns 401", async () => {

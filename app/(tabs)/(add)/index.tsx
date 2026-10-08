@@ -1,5 +1,5 @@
-import { Redirect } from 'expo-router';
+import { View } from 'react-native';
 
-export default function AddRedirect() {
-  return <Redirect href="/add-person" />;
+export default function AddTab() {
+  return <View style={{ flex: 1 }} />;
 }

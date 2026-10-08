@@ -15,6 +15,10 @@ import { registerNotesRemindersRoutes } from './routes/notes-reminders.js';
 import { registerSafetyCheckinsRoutes } from './routes/safety-checkins.js';
 import { registerShareRoutes } from './routes/share.js';
 import { registerPreferencesRoutes } from './routes/preferences.js';
+import { registerWeeklyCheckinsRoutes } from './routes/weekly-checkins.js';
+import { registerOnboardingRoutes } from './routes/onboarding.js';
+import { registerStreaksRoutes } from './routes/streaks.js';
+import { registerPushTokensRoutes } from './routes/push-tokens.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -26,10 +30,18 @@ export const app = await createApplication(schema);
 export type App = typeof app;
 
 // Enable authentication with email/password and OAuth providers
+// Google and Apple OAuth are handled automatically by the proxy
 app.withAuth();
 
 // Enable file storage for uploads
 app.withStorage();
+
+// Set global body size limit to 10MB for large payloads (base64 photos, data URIs, etc.)
+await app.fastify.register(async (fastify) => {
+  fastify.addContentTypeParser('application/json', { bodyLimit: 10 * 1024 * 1024 }, async (request, body) => {
+    return JSON.parse(body.toString());
+  });
+});
 
 // Register routes - IMPORTANT: Always use registration functions to avoid circular dependency issues
 registerPersonsRoutes(app);
@@ -44,6 +56,10 @@ registerNotesRemindersRoutes(app);
 registerSafetyCheckinsRoutes(app);
 registerShareRoutes(app);
 registerPreferencesRoutes(app);
+registerWeeklyCheckinsRoutes(app);
+registerOnboardingRoutes(app);
+registerStreaksRoutes(app);
+registerPushTokensRoutes(app);
 
 await app.run();
 app.logger.info('Application running');
