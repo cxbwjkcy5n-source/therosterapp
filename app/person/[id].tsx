@@ -1,19 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-
-async function uploadToCloudinary(base64: string, mimeType: string = 'image/jpeg'): Promise<string> {
-  console.log('[Cloudinary] Uploading image, mimeType:', mimeType);
-  const formData = new FormData();
-  formData.append('file', `data:${mimeType};base64,${base64}`);
-  formData.append('upload_preset', 'Roster');
-  const res = await fetch('https://api.cloudinary.com/v1_1/dfssa7ecv/image/upload', {
-    method: 'POST',
-    body: formData,
-  });
-  const data = await res.json();
-  if (!data.secure_url) throw new Error('Cloudinary upload failed');
-  console.log('[Cloudinary] Upload successful:', data.secure_url);
-  return data.secure_url;
-}
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -60,6 +45,21 @@ import { BirthdayPicker, formatBirthdayDisplay } from '@/components/BirthdayPick
 import { apiGet, apiPut, apiDelete, apiPost, apiPatch } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ImageSourcePropType } from 'react-native';
+
+async function uploadToCloudinary(base64: string, mimeType: string = 'image/jpeg'): Promise<string> {
+  console.log('[Cloudinary] Uploading image, mimeType:', mimeType);
+  const formData = new FormData();
+  formData.append('file', `data:${mimeType};base64,${base64}`);
+  formData.append('upload_preset', 'Roster');
+  const res = await fetch('https://api.cloudinary.com/v1_1/dfssa7ecv/image/upload', {
+    method: 'POST',
+    body: formData,
+  });
+  const data = await res.json();
+  if (!data.secure_url) throw new Error('Cloudinary upload failed');
+  console.log('[Cloudinary] Upload successful:', data.secure_url);
+  return data.secure_url;
+}
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -952,6 +952,7 @@ export default function PersonDetailScreen() {
       }, 100);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [addingNote]);
 
   // ── loaders ──────────────────────────────────────────────────────────────

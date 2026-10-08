@@ -67,9 +67,8 @@ interface NotificationProviderProps {
 export function NotificationProvider({ children }: NotificationProviderProps) {
   // Get user from auth context for notification targeting
   // Safe: handles different auth context shapes (Better Auth, Supabase, etc.)
-  const auth = useAuth() as Record<string, unknown> | null;
-  const session = auth?.session as Record<string, unknown> | undefined;
-  const user = (auth?.user ?? session?.user ?? null) as { id?: string } | null;
+  const auth = useAuth();
+  const user = auth?.user ?? null;
 
   const [hasPermission, setHasPermission] = useState(false);
   const [permissionDenied, setPermissionDenied] = useState(false);
@@ -92,6 +91,9 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       return;
     }
 
+    let foregroundHandler: ((event: NotificationWillDisplayEvent) => void) | undefined;
+    let permissionHandler: ((granted: boolean) => void) | undefined;
+
     try {
       // Initialize OneSignal
       OneSignal.initialize(ONESIGNAL_APP_ID);
@@ -105,7 +107,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setHasPermission(permissionStatus);
 
       // Listen for notification events
-      const foregroundHandler = (event: NotificationWillDisplayEvent) => {
+      foregroundHandler = (event: NotificationWillDisplayEvent) => {
         // Display the notification
         event.getNotification().display();
 
@@ -119,21 +121,25 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       OneSignal.Notifications.addEventListener("foregroundWillDisplay", foregroundHandler);
 
       // Listen for permission changes
-      const permissionHandler = (granted: boolean) => {
+      permissionHandler = (granted: boolean) => {
         setHasPermission(granted);
         setPermissionDenied(!granted);
       };
       OneSignal.Notifications.addEventListener("permissionChange", permissionHandler);
-
-      return () => {
-        OneSignal.Notifications.removeEventListener("foregroundWillDisplay", foregroundHandler);
-        OneSignal.Notifications.removeEventListener("permissionChange", permissionHandler);
-      };
     } catch (error) {
       console.error("[OneSignal] Failed to initialize:", error);
     } finally {
       setLoading(false);
     }
+
+    return () => {
+      if (foregroundHandler) {
+        OneSignal.Notifications.removeEventListener("foregroundWillDisplay", foregroundHandler);
+      }
+      if (permissionHandler) {
+        OneSignal.Notifications.removeEventListener("permissionChange", permissionHandler);
+      }
+    };
   }, []);
 
   // Sync OneSignal external user ID with authenticated user

@@ -241,11 +241,7 @@ const PersonCard = React.memo(function PersonCard({ item, index }: { item: Perso
 
   const hasPhoto = !!item.photo_url;
   const initials = getInitials(item.name);
-  const score = useMemo(() => computeScore(item), [
-    item.attractiveness, item.sexual_chemistry, item.overall_chemistry,
-    item.communication, item.consistency, item.emotional_availability,
-    item.date_planning, item.alignment,
-  ]);
+  const score = useMemo(() => computeScore(item), [item]); // eslint-disable-line react-hooks/exhaustive-deps
   const categoryLabel = getCategoryLabel(item.connection_type, item.connection_type_custom);
 
   const trendColor = item.interest_level != null

@@ -153,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUpWithEmail = async (email: string, password: string, name?: string) => {
     try {
       console.log("[Auth] Attempting email sign up");
-      const result = await authClient.signUp.email({ email, password, name });
+      const result = await authClient.signUp.email({ email, password, name: name ?? '' });
       if (result?.error) {
         throw new Error(result.error.message || result.error.code || result.error.status?.toString() || 'Sign up failed');
       }
@@ -200,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const identityToken = await nativeAppleSignIn();
       const { error } = await authClient.signIn.social({
         provider: "apple",
-        idToken: identityToken,
+        idToken: { token: identityToken },
       });
       if (error) {
         throw new Error(error.message || "Apple sign in failed");
