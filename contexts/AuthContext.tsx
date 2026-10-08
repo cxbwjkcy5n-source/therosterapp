@@ -129,6 +129,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const fetchUserWithRetry = async (attempts = 3, delayMs = 400): Promise<User | null> => {
+    for (let i = 0; i < attempts; i++) {
+      if (i > 0) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+      const u = await fetchUser();
+      if (u) return u;
+      console.log(`[Auth] Session not ready yet, retry ${i + 1}/${attempts}`);
+    }
+    return null;
+  };
+
   const signInWithEmail = async (email: string, password: string) => {
     try {
       console.log("[Auth] Attempting email sign in");
@@ -137,13 +149,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(result.error.message || result.error.code || result.error.status?.toString() || 'Sign in failed');
       }
       console.log("[Auth] Sign in API succeeded, fetching session");
-      const u = await fetchUser();
+      const u = await fetchUserWithRetry();
       if (u) {
         console.log("[Auth] Session confirmed, navigating to home");
-        router.replace("/(tabs)/(home)");
       } else {
-        throw new Error("Sign in succeeded but session could not be confirmed. Please try again.");
+        console.log("[Auth] Session not confirmed after retries, navigating to home anyway");
       }
+      router.replace("/(tabs)/(home)");
     } catch (error) {
       console.error("Email sign in failed:", error instanceof Error ? error.message : error);
       throw error;
@@ -158,13 +170,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(result.error.message || result.error.code || result.error.status?.toString() || 'Sign up failed');
       }
       console.log("[Auth] Sign up API succeeded, fetching session");
-      const u = await fetchUser();
+      const u = await fetchUserWithRetry();
       if (u) {
         console.log("[Auth] Session confirmed, navigating to home");
-        router.replace("/(tabs)/(home)");
       } else {
-        throw new Error("Sign up succeeded but session could not be confirmed. Please try again.");
+        console.log("[Auth] Session not confirmed after retries, navigating to home anyway");
       }
+      router.replace("/(tabs)/(home)");
     } catch (error) {
       console.error("Email sign up failed:", error);
       throw error;

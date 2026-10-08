@@ -201,7 +201,7 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
       console.log('[AppContent] No session on startup, navigating to auth');
       router.replace('/auth-screen');
     }
-  }, [isReady, showSplash, user]);
+  }, [isReady, showSplash]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
