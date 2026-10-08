@@ -7,6 +7,8 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Camera, Plus, X, ScanLine } from 'lucide-react-native';
@@ -337,6 +339,7 @@ export default function AddPersonScreen() {
       if (connectionType) payload.connection_type = connectionType;
       if (connectionType === 'other' && connectionTypeCustom) payload.connection_type_custom = connectionTypeCustom;
       if (career) payload.career = career;
+      payload.excluded_ratings = Array.from(excludedRatings);
 
       console.log('[AddPerson] POST /api/persons');
       const created = await apiPost<{ person: { id: string } }>('/api/persons', payload);
@@ -461,7 +464,11 @@ export default function AddPersonScreen() {
   const compatPctStr = `${compatPct}%`;
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={insets.top + 44}
+    >
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 4 }}
         showsVerticalScrollIndicator={false}
@@ -892,6 +899,6 @@ export default function AddPersonScreen() {
           )}
         </AnimatedPressable>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

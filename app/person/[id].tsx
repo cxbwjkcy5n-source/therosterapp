@@ -205,6 +205,7 @@ function normalizePerson(raw: any): Person {
     dating_status: raw.dating_status ?? raw.datingStatus,
     tags: raw.tags,
     career: raw.career,
+    excluded_ratings: raw.excluded_ratings ?? raw.excludedRatings ?? [],
   };
 }
 
@@ -250,6 +251,7 @@ interface Person {
   dating_status?: string;
   tags?: string[];
   career?: string;
+  excluded_ratings?: string[];
 }
 
 interface DateEntry {
@@ -577,6 +579,7 @@ function TextModal({ visible, name, phone, onClose, onConfirm }: { visible: bool
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={{
           backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
           padding: 24, paddingBottom: 40,
@@ -595,7 +598,7 @@ function TextModal({ visible, name, phone, onClose, onConfirm }: { visible: bool
           </View>
 
           <Text style={{ fontSize: 13, fontWeight: '700', color: '#1A1A1A', marginBottom: 12 }}>Quick Messages</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ marginBottom: 20 }}>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {QUICK_MESSAGES.map((msg) => (
                 <Pressable
@@ -642,6 +645,7 @@ function TextModal({ visible, name, phone, onClose, onConfirm }: { visible: bool
             </Pressable>
           </View>
         </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -969,6 +973,7 @@ export default function PersonDetailScreen() {
       }
       setPerson(resolved ?? null);
       setEditData(resolved ?? {});
+      setExcludedRatings(new Set<string>(resolved?.excluded_ratings ?? []));
     } catch (e) {
       console.error('[PersonDetail] Failed to load person:', e);
     } finally {
@@ -1053,22 +1058,24 @@ export default function PersonDetailScreen() {
     hasMountedRef.current = true;
   }, [id, isReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Refresh sub-data (not person itself) when navigating back to this screen
+  // Refresh person + sub-data when navigating back to this screen
   useFocusEffect(
     useCallback(() => {
       if (!hasMountedRef.current) return;
-      console.log('[PersonDetail] Screen focused — refreshing dates, notes, reminders, interactions');
+      console.log('[PersonDetail] Screen focused — refreshing person, dates, notes, reminders, interactions');
+      loadPerson();
       loadDates();
       loadNotes();
       loadReminders();
       loadInteractions();
-    }, [loadDates, loadNotes, loadReminders, loadInteractions])
+    }, [loadPerson, loadDates, loadNotes, loadReminders, loadInteractions])
   );
 
   // ── actions ──────────────────────────────────────────────────────────────
 
   const handleEdit = () => {
     console.log('[PersonDetail] Edit mode toggled on');
+    setExcludedRatings(new Set<string>(person?.excluded_ratings ?? []));
     const sliderDefaults = {
       interest_level: person?.interest_level ?? 5,
       attractiveness: person?.attractiveness ?? 5,
@@ -1104,6 +1111,7 @@ export default function PersonDetailScreen() {
         'emotional_availability', 'date_planning', 'alignment',
         'favorite_foods', 'hobbies', 'green_flags', 'red_flags', 'photo_url',
         'things_i_like', 'dating_status', 'tags', 'career', 'nickname',
+        'excluded_ratings',
       ];
       const payload: Record<string, any> = {};
       for (const key of ALLOWED_FIELDS) {
@@ -1116,6 +1124,8 @@ export default function PersonDetailScreen() {
         }
         payload[key] = val;
       }
+      // Always include excluded_ratings from state (it's a Set, not in editData)
+      payload.excluded_ratings = Array.from(excludedRatings);
       // Upload new photo to Cloudinary before saving
       if (newPhotoBase64) {
         try {
@@ -1362,6 +1372,14 @@ export default function PersonDetailScreen() {
 
   const update = (key: keyof Person, value: any) => setEditData((prev) => ({ ...prev, [key]: value }));
 
+  const handleToggleExclude = useCallback((key: string) => {
+    setExcludedRatings((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) { next.delete(key); } else { next.add(key); }
+      return next;
+    });
+  }, []);
+
   // ── derived ───────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -1508,6 +1526,7 @@ export default function PersonDetailScreen() {
                     if (val !== undefined) payload[key] = val;
                   }
                   payload.green_flags = newFlags;
+                  payload.excluded_ratings = Array.from(excludedRatings);
                   console.log('[PersonDetail] PUT green flag payload keys:', Object.keys(payload));
                   await apiPut(`/api/persons/${id}`, payload);
                   const raw = await apiGet<any>(`/api/persons/${id}`);
@@ -1578,6 +1597,7 @@ export default function PersonDetailScreen() {
                     if (val !== undefined) payload[key] = val;
                   }
                   payload.red_flags = newFlags;
+                  payload.excluded_ratings = Array.from(excludedRatings);
                   console.log('[PersonDetail] PUT red flag payload keys:', Object.keys(payload));
                   await apiPut(`/api/persons/${id}`, payload);
                   const raw = await apiGet<any>(`/api/persons/${id}`);
@@ -1632,11 +1652,7 @@ export default function PersonDetailScreen() {
               label={f.label}
               value={(person?.[f.key] as number) ?? 0}
               excluded={excludedRatings.has(f.key)}
-              onToggleExclude={() => setExcludedRatings((prev) => {
-                const next = new Set(prev);
-                if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
-                return next;
-              })}
+              onToggleExclude={() => handleToggleExclude(f.key)}
             />
           ))}
           <View style={{ height: 1, backgroundColor: '#EEEEEE', marginVertical: 16 }} />
@@ -2513,7 +2529,7 @@ export default function PersonDetailScreen() {
         }}
       />
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={insets.top + 44} style={{ flex: 1 }}>
       <ScrollView
         ref={scrollViewRef}
         contentContainerStyle={{ paddingBottom: editing ? insets.bottom + 32 : 8 }}
@@ -2830,11 +2846,7 @@ export default function PersonDetailScreen() {
                     value={editData[f.key] as number}
                     onChange={(v) => update(f.key, v)}
                     excluded={excludedRatings.has(f.key)}
-                    onToggleExclude={() => setExcludedRatings((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(f.key)) next.delete(f.key); else next.add(f.key);
-                      return next;
-                    })}
+                    onToggleExclude={() => handleToggleExclude(f.key)}
                   />
                 ))}
               </View>

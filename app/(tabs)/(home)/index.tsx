@@ -518,6 +518,10 @@ export default function RosterScreen() {
     }
   }, [authLoading, user]);
 
+  const renderPersonCard = useCallback(({ item, index }: { item: Person; index: number }) => (
+    <PersonCard item={item} index={index} />
+  ), []);
+
   if (!authLoading && !user) return null;
 
   // ── filtering + sorting ──
@@ -888,7 +892,7 @@ export default function RosterScreen() {
           <FlatList
             data={sorted}
             keyExtractor={(item) => item.id}
-            renderItem={({ item, index }) => <PersonCard item={item} index={index} />}
+            renderItem={renderPersonCard}
             contentContainerStyle={{ paddingTop: 8, paddingBottom: 80 }}
             showsVerticalScrollIndicator={false}
             removeClippedSubviews={true}

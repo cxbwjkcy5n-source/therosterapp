@@ -9,6 +9,8 @@ import {
   Animated,
   Linking,
   Share,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { X, Sparkles, ExternalLink, ChevronDown, Check, Share2 } from 'lucide-react-native';
@@ -117,7 +119,11 @@ export default function DatePlanScreen() {
   const selectedPersonName = selectedPerson ? selectedPerson.name : '';
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={insets.top + 44}
+    >
       {/* FIXED HEADER */}
       <View
         style={{
@@ -438,6 +444,6 @@ export default function DatePlanScreen() {
           </View>
         )}
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

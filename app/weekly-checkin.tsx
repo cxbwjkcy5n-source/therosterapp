@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { apiGet, apiPost } from '@/utils/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function WeeklyCheckinScreen() {
   const { user, loading: authLoading } = useAuth();
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const [mood, setMood] = useState(7);
   const [mostExcited, setMostExcited] = useState('');
   const [oneThingToChange, setOneThingToChange] = useState('');
@@ -111,8 +113,13 @@ export default function WeeklyCheckinScreen() {
   }
 
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={insets.top + 44}
+    >
+    <ScrollView
+      style={{ flex: 1 }}
       contentContainerStyle={{ padding: 24, paddingBottom: 60 }}
       keyboardShouldPersistTaps="handled"
     >
@@ -204,5 +211,6 @@ export default function WeeklyCheckinScreen() {
         )}
       </Pressable>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
