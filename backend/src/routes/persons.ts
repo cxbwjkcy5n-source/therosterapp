@@ -1436,24 +1436,32 @@ export function registerPersonsRoutes(app: App) {
         return reply.status(404).send({ error: 'Person not found' });
       }
 
-      // Map rating keys with their display names
-      const ratingKeys: Array<[string, string]> = [
-        ['interestLevel', 'Interest Level'],
-        ['attractiveness', 'Attractiveness'],
-        ['sexualChemistry', 'Sexual Chemistry'],
-        ['communication', 'Communication'],
-        ['overallChemistry', 'Overall Chemistry'],
-        ['consistency', 'Consistency'],
-        ['emotionalAvailability', 'Emotional Availability'],
-        ['datePlanning', 'Date Planning'],
-        ['alignment', 'Alignment'],
+      // Map rating keys with their display names and database field names for exclusion check
+      const ratingKeys: Array<[string, string, string]> = [
+        ['interestLevel', 'Interest Level', 'interest_level'],
+        ['attractiveness', 'Attractiveness', 'attractiveness'],
+        ['sexualChemistry', 'Sexual Chemistry', 'sexual_chemistry'],
+        ['communication', 'Communication', 'communication'],
+        ['overallChemistry', 'Overall Chemistry', 'overall_chemistry'],
+        ['consistency', 'Consistency', 'consistency'],
+        ['emotionalAvailability', 'Emotional Availability', 'emotional_availability'],
+        ['datePlanning', 'Date Planning', 'date_planning'],
+        ['alignment', 'Alignment', 'alignment'],
       ];
+
+      // Build excluded ratings set
+      const excludedSet = new Set(person.excludedRatings || []);
 
       // Extract rating values and filter out nulls to build traits array
       const traits: Array<{ name: string; score: number }> = [];
       let totalScore = 0;
 
-      for (const [key, displayName] of ratingKeys) {
+      for (const [key, displayName, fieldName] of ratingKeys) {
+        // Skip if this rating is in the excluded_ratings array
+        if (excludedSet.has(fieldName)) {
+          continue;
+        }
+
         const value = (person as any)[key];
         const numValue = typeof value === 'number' && !isNaN(value) ? value : null;
 

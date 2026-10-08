@@ -1099,129 +1099,115 @@ describe("API Integration Tests", () => {
     expect(typeof data.summary.this_week_dates).toBe("number");
   });
 
-  // ========== AI & Date Plan Tests ==========
-  test("Get AI date suggestions for a person", async () => {
-    const res = await authenticatedApi("/api/date-plan", authToken, {
+  // ========== Chat Message Tests ==========
+  test("Send a message to dating coach", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        person_id: personId,
-        location: "San Francisco",
-        budget: 75,
-        date_time: "2026-05-20T18:00:00Z",
+        messages: [
+          {
+            role: "user",
+            content: "How do I start a conversation?",
+          },
+        ],
       }),
     });
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.suggestions).toBeDefined();
-    expect(Array.isArray(data.suggestions)).toBe(true);
-    if (data.suggestions.length > 0) {
-      const sugg = data.suggestions[0];
-      expect(sugg.title).toBeDefined();
-      expect(sugg.description).toBeDefined();
-      expect(sugg.category).toBeDefined();
-    }
+    expect(data.message).toBeDefined();
+    expect(data.message.role).toBeDefined();
+    expect(data.message.content).toBeDefined();
   });
 
-  test("Get date plan fails with nonexistent person", async () => {
-    const res = await authenticatedApi("/api/date-plan", authToken, {
+  test("Send message without messages array fails", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        person_id: "00000000-0000-0000-0000-000000000000",
-        location: "San Francisco",
-        budget: 75,
-      }),
-    });
-    await expectStatus(res, 404);
-  });
-
-  test("Get date plan fails without required fields", async () => {
-    const res = await authenticatedApi("/api/date-plan", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        person_id: personId,
-        location: "San Francisco",
-        // missing budget
-      }),
+      body: JSON.stringify({}),
     });
     await expectStatus(res, 400);
   });
 
-  // ========== AI Date Plan Ideas Tests ==========
-  test("Generate AI-powered personalized date ideas with required fields", async () => {
-    const res = await authenticatedApi("/api/date-plan/ideas", authToken, {
+  test("Send message with optional person_id", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        messages: [
+          {
+            role: "user",
+            content: "Tell me about this person",
+          },
+        ],
         person_id: personId,
       }),
     });
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.ideas).toBeDefined();
-    expect(Array.isArray(data.ideas)).toBe(true);
-    if (data.ideas.length > 0) {
-      const idea = data.ideas[0];
-      expect(idea.title).toBeDefined();
-      expect(idea.description).toBeDefined();
-      expect(idea.category).toBeDefined();
-    }
+    expect(data.message).toBeDefined();
   });
 
-  test("Generate date ideas with optional location and budget", async () => {
-    const res = await authenticatedApi("/api/date-plan/ideas", authToken, {
+  test("Send message with invalid person_id format returns 400", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        person_id: personId,
-        location: "San Francisco",
-        budget: 50,
-      }),
-    });
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.ideas).toBeDefined();
-    expect(Array.isArray(data.ideas)).toBe(true);
-  });
-
-  test("Generate date ideas fails without required person_id", async () => {
-    const res = await authenticatedApi("/api/date-plan/ideas", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        location: "San Francisco",
-        budget: 50,
-      }),
-    });
-    await expectStatus(res, 400);
-  });
-
-  test("Generate date ideas with invalid person_id format returns 400", async () => {
-    const res = await authenticatedApi("/api/date-plan/ideas", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+        messages: [
+          {
+            role: "user",
+            content: "Test message",
+          },
+        ],
         person_id: "invalid-uuid",
-        location: "San Francisco",
-        budget: 50,
       }),
     });
     await expectStatus(res, 400);
   });
 
-  test("Generate date ideas with nonexistent person returns 404", async () => {
-    const res = await authenticatedApi("/api/date-plan/ideas", authToken, {
+  test("Send message with nonexistent person returns 404", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        messages: [
+          {
+            role: "user",
+            content: "Test message",
+          },
+        ],
         person_id: "00000000-0000-0000-0000-000000000000",
-        location: "San Francisco",
-        budget: 50,
       }),
     });
     await expectStatus(res, 404);
+  });
+
+  // ========== Chat Stream Tests ==========
+  test("Stream a message from dating coach", async () => {
+    const res = await authenticatedApi("/api/chat/message/stream", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "user",
+            content: "What should I ask on a first date?",
+          },
+        ],
+      }),
+    });
+    await expectStatus(res, 200);
+    // Stream response content-type should be text/event-stream or similar
+    // Just verify the response is OK
+  });
+
+  test("Stream message without messages array fails", async () => {
+    const res = await authenticatedApi("/api/chat/message/stream", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    await expectStatus(res, 400);
   });
 
   // ========== Safety Check-in Tests ==========
@@ -1253,89 +1239,6 @@ describe("API Integration Tests", () => {
     });
     // Should succeed as person_id is optional in the schema
     await expectStatus(res, 201);
-  });
-
-  // ========== Chat Tests ==========
-  test("Get chat messages (initially empty)", async () => {
-    const res = await authenticatedApi("/api/chat", authToken);
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.messages).toBeDefined();
-    expect(Array.isArray(data.messages)).toBe(true);
-  });
-
-  test("Send a message to dating coach", async () => {
-    const res = await authenticatedApi("/api/chat", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "How do I start a conversation?",
-      }),
-    });
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.reply).toBeDefined();
-    expect(typeof data.reply).toBe("string");
-  });
-
-  test("Send another message", async () => {
-    const res = await authenticatedApi("/api/chat", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "Any tips for first dates?",
-      }),
-    });
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.reply).toBeDefined();
-  });
-
-  test("Send message via /api/chat/message endpoint", async () => {
-    const res = await authenticatedApi("/api/chat/message", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "What should I ask on a first date?",
-      }),
-    });
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.reply).toBeDefined();
-    expect(typeof data.reply).toBe("string");
-  });
-
-  test("Get updated chat messages", async () => {
-    const res = await authenticatedApi("/api/chat", authToken);
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.messages).toBeDefined();
-    expect(Array.isArray(data.messages)).toBe(true);
-  });
-
-  test("Get chat message history", async () => {
-    const res = await authenticatedApi("/api/chat/history", authToken);
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.messages).toBeDefined();
-    expect(Array.isArray(data.messages)).toBe(true);
-    // Each message should have the expected structure
-    if (data.messages.length > 0) {
-      const msg = data.messages[0];
-      expect(msg.id).toBeDefined();
-      expect(msg.role).toBeDefined();
-      expect(msg.content).toBeDefined();
-      expect(msg.createdAt).toBeDefined();
-    }
-  });
-
-  test("Send message without content fails", async () => {
-    const res = await authenticatedApi("/api/chat", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    await expectStatus(res, 400);
   });
 
   // ========== Photo Upload Tests ==========
@@ -2377,46 +2280,35 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 401);
   });
 
-  test("Unauthenticated POST /api/date-plan returns 401", async () => {
-    const res = await api("/api/date-plan", {
+  test("Unauthenticated POST /api/chat/message returns 401", async () => {
+    const res = await api("/api/chat/message", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        person_id: "00000000-0000-0000-0000-000000000000",
-        budget: 100,
+        messages: [
+          {
+            role: "user",
+            content: "Test",
+          },
+        ],
       }),
     });
     await expectStatus(res, 401);
   });
 
-  test("Unauthenticated POST /api/date-plan/ideas returns 401", async () => {
-    const res = await api("/api/date-plan/ideas", {
+  test("Unauthenticated POST /api/chat/message/stream returns 401", async () => {
+    const res = await api("/api/chat/message/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        person_id: personId,
-        budget: 50,
+        messages: [
+          {
+            role: "user",
+            content: "Test",
+          },
+        ],
       }),
     });
-    await expectStatus(res, 401);
-  });
-
-  test("Unauthenticated GET /api/chat returns 401", async () => {
-    const res = await api("/api/chat");
-    await expectStatus(res, 401);
-  });
-
-  test("Unauthenticated POST /api/chat returns 401", async () => {
-    const res = await api("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "Test" }),
-    });
-    await expectStatus(res, 401);
-  });
-
-  test("Unauthenticated GET /api/chat/history returns 401", async () => {
-    const res = await api("/api/chat/history");
     await expectStatus(res, 401);
   });
 
