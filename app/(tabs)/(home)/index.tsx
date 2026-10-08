@@ -25,8 +25,6 @@ import type { ImageSourcePropType } from 'react-native';
 
 const RED = '#E53935';
 
-let cachedProfilePhotoUrl: string | null = null;
-
 interface Person {
   id: string;
   name: string;
@@ -405,6 +403,7 @@ export default function RosterScreen() {
   const [sortBy, setSortBy] = useState<SortOption>('Newest');
   const [selectedStatus, setSelectedStatus] = useState('All');
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
+  const cachedProfilePhotoUrl = useRef<string | null>(null);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [checkinBannerDismissed, setCheckinBannerDismissed] = useState(false);
   const [currentStreak, setCurrentStreak] = useState<number>(0);
@@ -469,9 +468,9 @@ export default function RosterScreen() {
           });
       }
       if (user) {
-        if (cachedProfilePhotoUrl !== null) {
+        if (cachedProfilePhotoUrl.current !== null) {
           console.log('[Roster] Profile photo served from cache');
-          setProfilePhotoUrl(cachedProfilePhotoUrl);
+          setProfilePhotoUrl(cachedProfilePhotoUrl.current);
         } else {
           console.log('[Roster] Fetching profile photo from /api/profile');
           apiGet<any>('/api/profile')
@@ -494,7 +493,7 @@ export default function RosterScreen() {
               }
 
               console.log('[Roster] Profile photo resolved, length:', finalUrl.length, 'prefix:', finalUrl.slice(0, 30));
-              cachedProfilePhotoUrl = finalUrl;
+              cachedProfilePhotoUrl.current = finalUrl;
               setProfilePhotoUrl(finalUrl);
             })
             .catch((e) => {
@@ -573,6 +572,7 @@ export default function RosterScreen() {
   });
 
   // ── Who needs attention ──
+  // created_at is used as a proxy for last interaction (no last_interaction_at field yet)
   const needsAttention = persons
     .filter((p) => {
       if (!p.created_at) return false;
@@ -585,7 +585,8 @@ export default function RosterScreen() {
       const bDate = new Date(b.created_at!);
       const aTime = isNaN(aDate.getTime()) ? 0 : aDate.getTime();
       const bTime = isNaN(bDate.getTime()) ? 0 : bDate.getTime();
-      return aTime - bTime;
+      // Descending: most recently added (but still neglected) first
+      return bTime - aTime;
     })
     .slice(0, 5);
 

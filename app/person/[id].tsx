@@ -941,9 +941,6 @@ export default function PersonDetailScreen() {
   const [photosLoading, setPhotosLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
-  // edit date
-  const [editingDateId, setEditingDateId] = useState<string | null>(null);
-
   // scroll to end when note input appears so keyboard doesn't cover it
   useEffect(() => {
     if (addingNote) {
@@ -1034,6 +1031,8 @@ export default function PersonDetailScreen() {
     }
   }, [id]);
 
+  const hasMountedRef = useRef(false);
+
   useEffect(() => {
     if (!id || !isReady) return;
     const personId = Array.isArray(id) ? id[0] : id;
@@ -1051,7 +1050,20 @@ export default function PersonDetailScreen() {
         setPersonPhotos(photos);
       })
       .catch((e) => console.error('[PersonDetail] Failed to load photos:', e));
+    hasMountedRef.current = true;
   }, [id, isReady]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Refresh sub-data (not person itself) when navigating back to this screen
+  useFocusEffect(
+    useCallback(() => {
+      if (!hasMountedRef.current) return;
+      console.log('[PersonDetail] Screen focused — refreshing dates, notes, reminders, interactions');
+      loadDates();
+      loadNotes();
+      loadReminders();
+      loadInteractions();
+    }, [loadDates, loadNotes, loadReminders, loadInteractions])
+  );
 
   // ── actions ──────────────────────────────────────────────────────────────
 
@@ -1104,10 +1116,17 @@ export default function PersonDetailScreen() {
         }
         payload[key] = val;
       }
-      // Include base64 photo directly in the main PUT payload
+      // Upload new photo to Cloudinary before saving
       if (newPhotoBase64) {
-        payload.photo_url = `data:image/jpeg;base64,${newPhotoBase64}`;
-        console.log('[PersonDetail] Including new photo in save payload');
+        try {
+          console.log('[PersonDetail] Uploading new photo to Cloudinary');
+          const cloudinaryUrl = await uploadToCloudinary(newPhotoBase64);
+          payload.photo_url = cloudinaryUrl;
+          console.log('[PersonDetail] Photo uploaded to Cloudinary:', cloudinaryUrl);
+        } catch (photoErr) {
+          console.error('[PersonDetail] Photo upload failed:', photoErr);
+          // continue saving without photo update
+        }
       }
 
       await apiPut(`/api/persons/${id}`, payload);
@@ -1744,7 +1763,7 @@ export default function PersonDetailScreen() {
                   displayData.dating_status === 'on_hold' ? '#FF9800' : '#CCC',
               }} />
               <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600', textTransform: 'capitalize' }}>
-                {displayData.dating_status.replace('_', ' ')}
+                {displayData.dating_status.replace(/_/g, ' ')}
               </Text>
             </View>
           ) : (
@@ -3072,7 +3091,7 @@ export default function PersonDetailScreen() {
                     status === 'fading' ? '#9E9E9E' :
                     '#FF9800';
                   const isSelected = inlineEditValue === status;
-                  const statusLabel = status.replace('_', ' ');
+                  const statusLabel = status.replace(/_/g, ' ');
                   return (
                     <Pressable
                       key={status}

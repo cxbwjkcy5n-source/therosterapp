@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -46,10 +46,17 @@ export default function AuthScreen() {
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [socialLoading, setSocialLoading] = useState<'apple' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [forgotPassword, setForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
 
   const handleEmailAuth = async () => {
+    if (submittingRef.current) return;
     if (!email.trim() || !password.trim()) {
       setError('Please fill in all fields');
       return;
@@ -59,6 +66,7 @@ export default function AuthScreen() {
       return;
     }
     console.log('[Auth] Email auth attempt, mode:', mode);
+    submittingRef.current = true;
     setSubmitting(true);
     setError(null);
     try {
@@ -82,7 +90,36 @@ export default function AuthScreen() {
         setError(msg || 'Authentication failed. Please try again.');
       }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail.trim()) {
+      setForgotError('Please enter your email address.');
+      return;
+    }
+    console.log('[Auth] Forgot password requested for:', forgotEmail.trim());
+    setForgotLoading(true);
+    setForgotError(null);
+    try {
+      const res = await fetch(`https://uaxhw3cgtsaywuceh8acsw2e26ww2ycx.app.specular.dev/api/auth/forget-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail.trim(), redirectTo: 'roster://auth-callback' }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Request failed');
+      }
+      console.log('[Auth] Forgot password email sent');
+      setForgotSuccess(true);
+    } catch (e: any) {
+      console.error('[Auth] Forgot password failed:', e);
+      setForgotError(e?.message || 'Could not send reset link. Please try again.');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -306,6 +343,80 @@ export default function AuthScreen() {
           </View>
 
         </View>
+
+        {/* Forgot password link — sign-in mode only */}
+        {isSignIn && !forgotPassword && (
+          <Pressable
+            onPress={() => {
+              console.log('[Auth] Forgot password link pressed');
+              setForgotPassword(true);
+              setForgotEmail(email);
+              setForgotSuccess(false);
+              setForgotError(null);
+            }}
+            style={{ alignSelf: 'flex-end', marginBottom: 16, marginTop: -4 }}
+          >
+            <Text style={{ color: COLORS.primary, fontSize: 13, fontWeight: '600' }}>Forgot password?</Text>
+          </Pressable>
+        )}
+
+        {/* Forgot password inline form */}
+        {isSignIn && forgotPassword && (
+          <View style={{ backgroundColor: COLORS.surfaceSecondary, borderRadius: 14, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: COLORS.border }}>
+            <Text style={{ color: COLORS.text, fontSize: 14, fontWeight: '700', marginBottom: 10 }}>Reset your password</Text>
+            {forgotSuccess ? (
+              <Text style={{ color: '#4CAF50', fontSize: 13, lineHeight: 18 }}>Check your email for a reset link.</Text>
+            ) : (
+              <>
+                <TextInput
+                  value={forgotEmail}
+                  onChangeText={setForgotEmail}
+                  placeholder="your@email.com"
+                  placeholderTextColor={COLORS.textTertiary}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={{
+                    backgroundColor: COLORS.background,
+                    borderRadius: 10,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    color: COLORS.text,
+                    fontSize: 14,
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                    marginBottom: 10,
+                  }}
+                />
+                {forgotError ? (
+                  <Text style={{ color: COLORS.danger, fontSize: 12, marginBottom: 8 }}>{forgotError}</Text>
+                ) : null}
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <AnimatedPressable
+                    onPress={handleForgotPassword}
+                    disabled={forgotLoading}
+                    style={{ flex: 1, backgroundColor: COLORS.primary, borderRadius: 10, paddingVertical: 12, alignItems: 'center' }}
+                  >
+                    {forgotLoading ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Send reset link</Text>
+                    )}
+                  </AnimatedPressable>
+                  <Pressable
+                    onPress={() => {
+                      console.log('[Auth] Forgot password cancelled');
+                      setForgotPassword(false);
+                    }}
+                    style={{ paddingHorizontal: 14, justifyContent: 'center' }}
+                  >
+                    <Text style={{ color: COLORS.textSecondary, fontSize: 14 }}>Cancel</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+          </View>
+        )}
 
         {error ? (
           <View

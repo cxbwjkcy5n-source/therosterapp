@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export default function WeeklyCheckinScreen() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { colors } = useTheme();
   const [mood, setMood] = useState(7);
   const [mostExcited, setMostExcited] = useState('');
@@ -15,6 +15,13 @@ export default function WeeklyCheckinScreen() {
   const [saving, setSaving] = useState(false);
   const [recentCheckin, setRecentCheckin] = useState<{ days: number } | null>(null);
   const [showAnyway, setShowAnyway] = useState(false);
+
+  useEffect(() => {
+    if (!user && !authLoading) {
+      console.log('[WeeklyCheckin] No user, redirecting to auth');
+      router.replace('/auth-screen');
+    }
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (!user) return;

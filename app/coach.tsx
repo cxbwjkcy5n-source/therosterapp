@@ -110,7 +110,15 @@ export default function CoachScreen() {
       });
     } catch (e: any) {
       console.error('[Coach] Failed to send message:', e);
-      setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
+      setMessages((prev) => {
+        const filtered = prev.filter((m) => m.id !== tempUserMsg.id);
+        return [...filtered, tempUserMsg, {
+          id: `error-${Date.now()}`,
+          role: 'assistant' as const,
+          content: "Sorry, I couldn't respond right now. Please try again.",
+          created_at: new Date().toISOString(),
+        }];
+      });
     } finally {
       setLoading(false);
     }

@@ -619,7 +619,7 @@ export default function AddPersonScreen() {
             <Text style={{ color: colors.textSecondary, fontSize: 13, fontWeight: '500', marginBottom: 6 }}>Age</Text>
             <TextInput
               value={age}
-              onChangeText={setAge}
+              onChangeText={(v) => setAge(v.replace(/[^0-9]/g, ''))}
               placeholder="e.g. 28"
               placeholderTextColor={colors.textTertiary}
               keyboardType="numeric"

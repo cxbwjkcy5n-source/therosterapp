@@ -92,15 +92,11 @@ export default function OnboardingScreen() {
       setSaving(false);
     }
 
-    // Navigate to the route for this step
+    // Advance step first, then navigate
+    if (step < STEPS.length - 1) {
+      animateToStep(step + 1);
+    }
     router.push(currentStep.route as any);
-
-    // Advance to next step after a short delay
-    setTimeout(() => {
-      if (step < STEPS.length - 1) {
-        animateToStep(step + 1);
-      }
-    }, 300);
   };
 
   const handleSkip = async () => {

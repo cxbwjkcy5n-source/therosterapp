@@ -11,7 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider as NavThemeProvider, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { ThemeProvider } from '@/contexts/ThemeContext';
+import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { COLORS } from '@/constants/Colors';
@@ -147,6 +147,7 @@ function CustomSplash({ onDone }: { onDone: () => void }) {
 
 function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplashDone: () => void }) {
   const { user, loading, isReady } = useAuth();
+  const { isDark } = useTheme();
   const hasNavigated = useRef(false); // only navigate once on initial load
   const onboardingChecked = useRef(false);
 
@@ -205,6 +206,7 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
 
   return (
     <>
+      <StatusBar style={isDark ? 'light' : 'dark'} animated />
       <View style={{ flex: 1, backgroundColor: COLORS.background }}>
         <Stack screenOptions={{ headerShown: false, headerBackTitle: '' }}>
             <Stack.Screen name="auth-screen" options={{ headerShown: false }} />
@@ -524,7 +526,6 @@ export default function RootLayout() {
 
   return (
     <DevErrorBoundary>
-      <StatusBar style="dark" animated />
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <NavThemeProvider value={AppLightTheme}>
