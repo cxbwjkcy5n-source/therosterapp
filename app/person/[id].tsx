@@ -63,6 +63,13 @@ async function uploadToCloudinary(base64: string, mimeType: string = 'image/jpeg
   return data.secure_url;
 }
 
+// ─── module-level constants ──────────────────────────────────────────────────
+
+const RATING_KEYS = new Set([
+  'interest_level', 'attractiveness', 'sexual_chemistry', 'overall_chemistry',
+  'communication', 'consistency', 'emotional_availability', 'date_planning', 'alignment',
+]);
+
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 // mmdd format: "MM-DD"
@@ -1456,15 +1463,56 @@ export default function PersonDetailScreen() {
     ]);
   };
 
-  const update = (key: keyof Person, value: any) => setEditData((prev) => ({ ...prev, [key]: value }));
+  const ratingsAutoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const autoSaveRatings = useCallback((updatedEditData: Partial<Person>, updatedExcluded: Set<string>) => {
+    if (!id) return;
+    if (ratingsAutoSaveTimer.current) clearTimeout(ratingsAutoSaveTimer.current);
+    ratingsAutoSaveTimer.current = setTimeout(async () => {
+      try {
+        const ratingKeys = [
+          'interest_level', 'attractiveness', 'sexual_chemistry', 'overall_chemistry',
+          'communication', 'consistency', 'emotional_availability', 'date_planning', 'alignment',
+        ];
+        const payload: Record<string, any> = { excluded_ratings: Array.from(updatedExcluded) };
+        for (const key of ratingKeys) {
+          const val = (updatedEditData as any)[key];
+          if (val !== undefined && val !== null) payload[key] = val;
+        }
+        console.log('[PersonDetail] Auto-saving ratings for person:', id);
+        await apiPut(`/api/persons/${id}`, payload);
+        setPerson((prev) => prev ? { ...prev, ...payload, excluded_ratings: Array.from(updatedExcluded) } : prev);
+        console.log('[PersonDetail] Ratings auto-saved');
+      } catch (e) {
+        console.error('[PersonDetail] Ratings auto-save failed:', e);
+      }
+    }, 600);
+  }, [id]);
+
+  useEffect(() => {
+    return () => {
+      if (ratingsAutoSaveTimer.current) clearTimeout(ratingsAutoSaveTimer.current);
+    };
+  }, []);
+
+  const update = useCallback((key: keyof Person, value: any) => {
+    setEditData((prev) => {
+      const next = { ...prev, [key]: value };
+      if (RATING_KEYS.has(key as string)) {
+        autoSaveRatings(next, excludedRatings);
+      }
+      return next;
+    });
+  }, [autoSaveRatings, excludedRatings]);
 
   const handleToggleExclude = useCallback((key: string) => {
     setExcludedRatings((prev) => {
       const next = new Set(prev);
       if (next.has(key)) { next.delete(key); } else { next.add(key); }
+      autoSaveRatings(editData, next);
       return next;
     });
-  }, []);
+  }, [autoSaveRatings, editData]);
 
   const handleMarkContacted = async () => {
     if (!id) return;
@@ -2799,7 +2847,11 @@ export default function PersonDetailScreen() {
                       {
                         text: 'Discard',
                         style: 'destructive',
-                        onPress: () => router.back(),
+                        onPress: async () => {
+                          console.log('[PersonDetail] Discarding unsaved changes, reloading from server');
+                          await loadPerson();
+                          router.back();
+                        },
                       },
                       {
                         text: 'Save',
