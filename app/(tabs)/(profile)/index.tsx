@@ -10,6 +10,7 @@ import {
   Pressable,
   Animated,
   Image as RNImage,
+  Modal,
 } from 'react-native';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import {
@@ -32,7 +33,9 @@ import {
   Share2,
   Trash2,
   AlertTriangle,
+  Lock,
 } from 'lucide-react-native';
+import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -248,7 +251,12 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [newPhotoBase64, setNewPhotoBase64] = useState<string | null>(null);
+  const [dataPrivacyVisible, setDataPrivacyVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+  const buildNumber = Constants.expoConfig?.ios?.buildNumber ?? '4';
+  const versionLabel = `Version ${appVersion} (${buildNumber})`;
 
   useFocusEffect(
     useCallback(() => {
@@ -913,11 +921,52 @@ export default function ProfileScreen() {
             </AnimatedPressable>
 
             <AnimatedPressable onPress={() => { console.log('[Profile] Share profile pressed'); router.push('/share-profile'); }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16 }}>
                 <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: colors.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                   <Share2 size={18} color={colors.primary} />
                 </View>
                 <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>My Share Code</Text>
+                <ChevronRight size={18} color={colors.textTertiary} />
+              </View>
+            </AnimatedPressable>
+          </View>
+
+          {/* Privacy & Security section */}
+          <Text
+            style={{
+              color: colors.textSecondary,
+              fontSize: 12,
+              fontWeight: '600',
+              letterSpacing: 0.8,
+              textTransform: 'uppercase',
+              marginTop: 16,
+              marginBottom: 4,
+              marginLeft: 4,
+            }}
+          >
+            Privacy &amp; Security
+          </Text>
+
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: colors.border,
+              overflow: 'hidden',
+            }}
+          >
+            <AnimatedPressable
+              onPress={() => {
+                console.log('[Profile] Data & Privacy pressed — opening modal');
+                setDataPrivacyVisible(true);
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: colors.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Lock size={18} color={colors.primary} />
+                </View>
+                <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>Data &amp; Privacy</Text>
                 <ChevronRight size={18} color={colors.textTertiary} />
               </View>
             </AnimatedPressable>
@@ -937,7 +986,7 @@ export default function ProfileScreen() {
 
             <AnimatedPressable
               onPress={() => {
-                console.log('[Profile] Legal pressed — navigating to /legal');
+                console.log('[Profile] Terms & Conditions pressed — navigating to /legal');
                 router.push('/legal');
               }}
             >
@@ -945,13 +994,13 @@ export default function ProfileScreen() {
                 <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: colors.primaryMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
                   <FileText size={18} color={colors.primary} />
                 </View>
-                <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>Legal</Text>
+                <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>Terms &amp; Conditions</Text>
                 <ChevronRight size={18} color={colors.textTertiary} />
               </View>
             </AnimatedPressable>
           </View>
 
-          <AnimatedPressable onPress={handleSignOut} style={{ marginTop: 4, marginBottom: 8 }}>
+          <AnimatedPressable onPress={handleSignOut} style={{ marginTop: 16, marginBottom: 8 }}>
             <View
               style={{
                 backgroundColor: colors.surface,
@@ -988,8 +1037,153 @@ export default function ProfileScreen() {
               <Text style={{ color: colors.textTertiary, fontSize: 14, fontWeight: '500' }}>Delete Account</Text>
             </View>
           </AnimatedPressable>
+
+          {/* App version footer */}
+          <Text
+            style={{
+              textAlign: 'center',
+              fontSize: 12,
+              color: colors.textTertiary,
+              marginTop: 16,
+              marginBottom: 8,
+            }}
+          >
+            {versionLabel}
+          </Text>
         </View>
       </Animated.ScrollView>
+
+      {/* Data & Privacy Modal */}
+      <Modal
+        visible={dataPrivacyVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          console.log('[Profile] Data & Privacy modal closed');
+          setDataPrivacyVisible(false);
+        }}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          {/* Header */}
+          <View
+            style={{
+              alignItems: 'center',
+              paddingTop: 12,
+              paddingBottom: 4,
+              borderBottomWidth: 1,
+              borderBottomColor: colors.divider,
+            }}
+          >
+            {/* Drag handle */}
+            <View
+              style={{
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: colors.border,
+                marginBottom: 12,
+              }}
+            />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingBottom: 12,
+                width: '100%',
+              }}
+            >
+              <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: colors.text }}>
+                Data &amp; Privacy
+              </Text>
+              <Pressable
+                onPress={() => {
+                  console.log('[Profile] Data & Privacy modal close button pressed');
+                  setDataPrivacyVisible(false);
+                }}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: colors.surfaceSecondary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <X size={16} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+          </View>
+
+          <ScrollView
+            contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {[
+              {
+                heading: 'What We Collect',
+                body: 'The Roster collects your email address, profile information, and the data you choose to enter about people on your roster — including names, ratings, notes, dates, and interactions. We also collect basic usage data to improve the app.',
+              },
+              {
+                heading: 'How It\'s Protected',
+                body: 'All data is transmitted over HTTPS/TLS encrypted connections. Your account is protected by secure authentication tokens stored in your device\'s encrypted keychain. We use industry-standard security practices to protect your information.',
+              },
+              {
+                heading: 'Who Can See Your Data',
+                body: 'Your roster data is private to your account. We do not sell, share, or rent your personal data to third parties. Data may be shared only as required by law or with service providers operating under strict confidentiality agreements.',
+              },
+              {
+                heading: 'Your Rights (GDPR & CCPA)',
+                body: 'You have the right to access, export, correct, or delete your personal data at any time. To delete all your data, use the \'Delete Account\' option in Settings. For data requests or questions, contact us through the app\'s support channel.',
+              },
+              {
+                heading: 'Third-Party Data You Enter',
+                body: 'You may enter information about other people in this app. You are solely responsible for ensuring you have appropriate consent to store this information. The Roster does not verify third-party data you enter.',
+              },
+              {
+                heading: 'Data Retention',
+                body: 'Your data is retained as long as your account is active. When you delete your account, all personal data is permanently removed from our servers within 30 days, subject to legal retention requirements.',
+              },
+              {
+                heading: 'Contact',
+                body: 'For privacy-related questions or data requests, contact us through the Support option in Settings.',
+              },
+            ].map((section, index) => (
+              <View
+                key={section.heading}
+                style={{
+                  backgroundColor: colors.surface,
+                  borderRadius: 14,
+                  padding: 16,
+                  marginBottom: 12,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: '700',
+                    color: colors.text,
+                    marginBottom: 8,
+                  }}
+                >
+                  {section.heading}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: colors.textSecondary,
+                    lineHeight: 21,
+                  }}
+                >
+                  {section.body}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
