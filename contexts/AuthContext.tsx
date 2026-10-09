@@ -75,8 +75,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);   // true only during initial session check
   const [isReady, setIsReady] = useState(false);  // true once initial check is done
   const hasInitialized = useRef(false);
+  const safetyNetFired = useRef(false);
 
   useEffect(() => {
+    // Safety-net: if fetchUser never resolves (e.g. network hang), force-unblock after 8s
+    const safetyTimer = setTimeout(() => {
+      if (!hasInitialized.current) {
+        safetyNetFired.current = true;
+        console.warn('[Auth] Safety-net timeout fired — forcing isReady=true after 8s');
+        hasInitialized.current = true;
+        setLoading(false);
+        setIsReady(true);
+      }
+    }, 8000);
+
     // Initial session check on mount
     fetchUser();
 
@@ -94,14 +106,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, 5 * 60 * 1000);
 
     return () => {
+      clearTimeout(safetyTimer);
       subscription.remove();
       clearInterval(intervalId);
     };
   }, []);
 
   const fetchUser = async (): Promise<User | null> => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const session = await authClient.getSession();
+      const session = await authClient.getSession({ fetchOptions: { signal: controller.signal } });
       if (session?.data?.user) {
         const u = session.data.user as User;
         setUser(prev => (prev?.id === u.id ? prev : u));
@@ -114,11 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await clearAuthTokens();
         return null;
       }
-    } catch (error) {
-      console.error("Failed to fetch user:", error);
+    } catch (error: any) {
+      if (error?.name === 'AbortError') {
+        console.warn('[Auth] getSession timed out after 10s, falling back to auth screen');
+      } else {
+        console.error("Failed to fetch user:", error);
+      }
       setUser(null);
       return null;
     } finally {
+      clearTimeout(timeout);
       // Only flip loading/isReady on the very first call (app startup)
       // Subsequent calls (after sign-in, background refresh) must NOT re-trigger the layout guard
       if (!hasInitialized.current) {
@@ -130,9 +150,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchUserWithRetry = async (attempts = 3, delayMs = 400): Promise<User | null> => {
+    const overallDeadline = Date.now() + 8000;
     for (let i = 0; i < attempts; i++) {
       if (i > 0) {
         await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+      if (Date.now() >= overallDeadline) {
+        console.warn('[Auth] fetchUserWithRetry: 8s overall cap reached, giving up');
+        break;
       }
       const u = await fetchUser();
       if (u) return u;

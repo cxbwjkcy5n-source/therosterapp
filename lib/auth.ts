@@ -21,12 +21,12 @@ const storage = Platform.OS === "web"
 
 // iOS native fetch (NSURLSession) cannot coerce a URL object to a string.
 // This wrapper ensures the first argument is always a plain string.
+// NOTE: Never inject an Origin header on native — it is a browser-only header
+// and causes Better Auth to treat the request as a cross-origin browser request,
+// which stalls/rejects the session fetch.
 const safeFetch: typeof fetch = (input, init?) => {
   const url = input instanceof URL ? input.toString() : typeof input === "string" ? input : (input as Request).url;
-  const headers = new Headers((init?.headers as HeadersInit | undefined) ?? {});
-  headers.set("Origin", API_URL);
-  console.log("[Auth] safeFetch: injecting Origin header for request to", url);
-  return fetch(url, { ...init, headers });
+  return fetch(url, init);
 };
 
 export const authClient = createAuthClient({

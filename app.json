@@ -59,7 +59,6 @@
       "expo-camera",
       "expo-image-picker",
       "expo-contacts",
-      "expo-audio"
     ],
     "scheme": "roster",
     "experiments": {
