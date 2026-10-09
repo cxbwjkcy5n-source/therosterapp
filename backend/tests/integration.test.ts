@@ -15,6 +15,11 @@ describe("API Integration Tests", () => {
   let shareToken: string;
   let deleteAccountToken: string;
   let photoId: string;
+  let milestoneId: string;
+  let dealBreakerId: string;
+  let goalId: string;
+  let moodJournalEntryId: string;
+  let voiceNoteId: string;
 
   // ========== Auth Setup ==========
   test("Sign up test user", async () => {
@@ -200,6 +205,54 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 404);
   });
 
+  test("Update person's last contacted time", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/last-contacted`,
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          occurred_at: "2026-10-08T15:30:00Z",
+        }),
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.person_id).toBe(personId);
+    expect(data.last_contacted_at).toBeDefined();
+  });
+
+  test("Update last-contacted with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/last-contacted",
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          occurred_at: "2026-10-08T15:30:00Z",
+        }),
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Update last-contacted for nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/last-contacted",
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          occurred_at: "2026-10-08T15:30:00Z",
+        }),
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
   test("Bench a person", async () => {
     const res = await authenticatedApi(
       `/api/persons/${personId}/bench`,
@@ -347,6 +400,62 @@ describe("API Integration Tests", () => {
     expect(typeof data.active_count).toBe("number");
     expect(typeof data.benched_count).toBe("number");
     expect(typeof data.dates_count).toBe("number");
+  });
+
+  test("Archive a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId2}/archive`,
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.person).toBeDefined();
+  });
+
+  test("Unarchive a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId2}/unarchive`,
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.person).toBeDefined();
+  });
+
+  test("Get archived and benched persons", async () => {
+    const res = await authenticatedApi("/api/persons/archived", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.persons).toBeDefined();
+    expect(Array.isArray(data.persons)).toBe(true);
+  });
+
+  test("Archive person with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/archive",
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Unarchive person with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/unarchive",
+      authToken,
+      {
+        method: "POST",
+      }
+    );
+    await expectStatus(res, 400);
   });
 
   // ========== Generate Conversation Starters Tests ==========
@@ -1099,52 +1208,111 @@ describe("API Integration Tests", () => {
     expect(typeof data.summary.this_week_dates).toBe("number");
   });
 
-  // ========== AI & Date Plan Tests ==========
-  test("Get AI date suggestions for a person", async () => {
-    const res = await authenticatedApi("/api/date-plan", authToken, {
+  // ========== Chat Message Tests ==========
+  test("Send a message to dating coach", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        person_id: personId,
-        location: "San Francisco",
-        budget: 75,
-        date_time: "2026-05-20T18:00:00Z",
+        messages: [
+          {
+            role: "user",
+            content: "How do I start a conversation?",
+          },
+        ],
       }),
     });
     await expectStatus(res, 200);
     const data = await res.json();
-    expect(data.suggestions).toBeDefined();
-    expect(Array.isArray(data.suggestions)).toBe(true);
-    if (data.suggestions.length > 0) {
-      const sugg = data.suggestions[0];
-      expect(sugg.title).toBeDefined();
-      expect(sugg.description).toBeDefined();
-      expect(sugg.category).toBeDefined();
-    }
+    expect(data.message).toBeDefined();
+    expect(data.message.role).toBeDefined();
+    expect(data.message.content).toBeDefined();
   });
 
-  test("Get date plan fails with nonexistent person", async () => {
-    const res = await authenticatedApi("/api/date-plan", authToken, {
+  test("Send message without messages array fails", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Send message with optional person_id", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        messages: [
+          {
+            role: "user",
+            content: "Tell me about this person",
+          },
+        ],
+        person_id: personId,
+      }),
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.message).toBeDefined();
+  });
+
+  test("Send message with invalid person_id format returns 400", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "user",
+            content: "Test message",
+          },
+        ],
+        person_id: "invalid-uuid",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Send message with nonexistent person returns 404", async () => {
+    const res = await authenticatedApi("/api/chat/message", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "user",
+            content: "Test message",
+          },
+        ],
         person_id: "00000000-0000-0000-0000-000000000000",
-        location: "San Francisco",
-        budget: 75,
       }),
     });
     await expectStatus(res, 404);
   });
 
-  test("Get date plan fails without required fields", async () => {
-    const res = await authenticatedApi("/api/date-plan", authToken, {
+  // ========== Chat Stream Tests ==========
+  test("Stream a message from dating coach", async () => {
+    const res = await authenticatedApi("/api/chat/message/stream", authToken, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        person_id: personId,
-        location: "San Francisco",
-        // missing budget
+        messages: [
+          {
+            role: "user",
+            content: "What should I ask on a first date?",
+          },
+        ],
       }),
+    });
+    await expectStatus(res, 200);
+  });
+
+  test("Stream message without messages array fails", async () => {
+    const res = await authenticatedApi("/api/chat/message/stream", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
     });
     await expectStatus(res, 400);
   });
@@ -1176,96 +1344,11 @@ describe("API Integration Tests", () => {
         person_description: "Test",
       }),
     });
-    // Should succeed as person_id is optional in the schema
     await expectStatus(res, 201);
-  });
-
-  // ========== Chat Tests ==========
-  test("Get chat messages (initially empty)", async () => {
-    const res = await authenticatedApi("/api/chat", authToken);
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.messages).toBeDefined();
-    expect(Array.isArray(data.messages)).toBe(true);
-  });
-
-  test("Send a message to dating coach", async () => {
-    const res = await authenticatedApi("/api/chat", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "How do I start a conversation?",
-      }),
-    });
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.reply).toBeDefined();
-    expect(typeof data.reply).toBe("string");
-  });
-
-  test("Send another message", async () => {
-    const res = await authenticatedApi("/api/chat", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "Any tips for first dates?",
-      }),
-    });
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.reply).toBeDefined();
-  });
-
-  test("Send message via /api/chat/message endpoint", async () => {
-    const res = await authenticatedApi("/api/chat/message", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "What should I ask on a first date?",
-      }),
-    });
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.reply).toBeDefined();
-    expect(typeof data.reply).toBe("string");
-  });
-
-  test("Get updated chat messages", async () => {
-    const res = await authenticatedApi("/api/chat", authToken);
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.messages).toBeDefined();
-    expect(Array.isArray(data.messages)).toBe(true);
-  });
-
-  test("Get chat message history", async () => {
-    const res = await authenticatedApi("/api/chat/history", authToken);
-    await expectStatus(res, 200);
-    const data = await res.json();
-    expect(data.messages).toBeDefined();
-    expect(Array.isArray(data.messages)).toBe(true);
-    // Each message should have the expected structure
-    if (data.messages.length > 0) {
-      const msg = data.messages[0];
-      expect(msg.id).toBeDefined();
-      expect(msg.role).toBeDefined();
-      expect(msg.content).toBeDefined();
-      expect(msg.createdAt).toBeDefined();
-    }
-  });
-
-  test("Send message without content fails", async () => {
-    const res = await authenticatedApi("/api/chat", authToken, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    await expectStatus(res, 400);
   });
 
   // ========== Photo Upload Tests ==========
   test("Upload a photo with both required fields", async () => {
-    // Simple base64 encoded 1x1 transparent PNG
     const base64Png =
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
@@ -1402,7 +1485,6 @@ describe("API Integration Tests", () => {
     const data = await res.json();
     expect(data.interaction).toBeDefined();
     expect(data.interaction.occurredAt).toBeDefined();
-    // Should be approximately now (within a few seconds)
     const occurredTime = new Date(data.interaction.occurredAt).getTime();
     const now = new Date().getTime();
     expect(Math.abs(now - occurredTime)).toBeLessThan(5000);
@@ -1445,7 +1527,6 @@ describe("API Integration Tests", () => {
     const data = await res.json();
     expect(data.interactions).toBeDefined();
     expect(Array.isArray(data.interactions)).toBe(true);
-    // Should contain interactions we created
     const titles = data.interactions.map((i: any) => i.title);
     expect(titles).toContain("Had coffee");
     expect(titles).toContain("Sent message");
@@ -1586,7 +1667,6 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 200);
     const data = await res.json();
     expect(Array.isArray(data.notes)).toBe(true);
-    // Should contain notes we created
     if (data.notes.length > 0) {
       const note = data.notes[0];
       expect(note.id).toBeDefined();
@@ -1740,7 +1820,6 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 200);
     const data = await res.json();
     expect(Array.isArray(data)).toBe(true);
-    // Should contain reminders we created
     if (data.length > 0) {
       const reminder = data[0];
       expect(reminder.id).toBeDefined();
@@ -2023,9 +2102,613 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 400);
   });
 
+  // ========== Milestones Tests ==========
+  test("Create a milestone for a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/milestones`,
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "first_date",
+          label: "First Date",
+          occurred_at: "2026-04-10T19:00:00Z",
+          notes: "Amazing first date at the park",
+        }),
+      }
+    );
+    await expectStatus(res, 201);
+    const data = await res.json();
+    milestoneId = data.milestone.id;
+    expect(data.milestone).toBeDefined();
+  });
+
+  test("Create milestone fails without required type", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/milestones`,
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: "Some milestone",
+          occurred_at: "2026-04-10T19:00:00Z",
+        }),
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Create milestone fails without required label", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/milestones`,
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "first_date",
+          occurred_at: "2026-04-10T19:00:00Z",
+        }),
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Create milestone fails without required occurred_at", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/milestones`,
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "first_date",
+          label: "First Date",
+        }),
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Get milestones for a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/milestones`,
+      authToken
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.milestones).toBeDefined();
+    expect(Array.isArray(data.milestones)).toBe(true);
+  });
+
+  test("Get milestones with invalid person ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/milestones",
+      authToken
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Get milestones for nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/milestones",
+      authToken
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Delete a milestone", async () => {
+    const res = await authenticatedApi(
+      `/api/milestones/${milestoneId}`,
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test("Delete milestone with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/milestones/invalid-uuid",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Delete nonexistent milestone returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/milestones/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  // ========== Deal Breakers Tests ==========
+  test("Create a deal breaker", async () => {
+    const res = await authenticatedApi("/api/deal-breakers", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        label: "Doesn't want kids",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    dealBreakerId = data.deal_breaker.id;
+    expect(data.deal_breaker).toBeDefined();
+  });
+
+  test("Create deal breaker fails without required label", async () => {
+    const res = await authenticatedApi("/api/deal-breakers", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Get all deal breakers for user", async () => {
+    const res = await authenticatedApi("/api/deal-breakers", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.deal_breakers).toBeDefined();
+    expect(Array.isArray(data.deal_breakers)).toBe(true);
+  });
+
+  test("Delete a deal breaker", async () => {
+    const res = await authenticatedApi(
+      `/api/deal-breakers/${dealBreakerId}`,
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test("Delete deal breaker with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/deal-breakers/invalid-uuid",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Delete nonexistent deal breaker returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/deal-breakers/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Get persons with deal breaker matches", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/deal-breaker-flags",
+      authToken
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.flags).toBeDefined();
+    expect(Array.isArray(data.flags)).toBe(true);
+  });
+
+  // ========== Dating Goals Tests ==========
+  test("Create a dating goal", async () => {
+    const res = await authenticatedApi("/api/dating-goals", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Go on 5 dates this month",
+        target_date: "2026-10-31T23:59:59Z",
+        person_id: personId,
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    goalId = data.goal.id;
+    expect(data.goal).toBeDefined();
+  });
+
+  test("Create dating goal fails without required title", async () => {
+    const res = await authenticatedApi("/api/dating-goals", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        target_date: "2026-10-31T23:59:59Z",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Get all dating goals for user", async () => {
+    const res = await authenticatedApi("/api/dating-goals", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.goals).toBeDefined();
+    expect(Array.isArray(data.goals)).toBe(true);
+  });
+
+  test("Update a dating goal", async () => {
+    const res = await authenticatedApi(
+      `/api/dating-goals/${goalId}`,
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          completed: true,
+        }),
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.goal).toBeDefined();
+  });
+
+  test("Update dating goal with partial data", async () => {
+    const res = await authenticatedApi(
+      `/api/dating-goals/${goalId}`,
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Updated goal",
+        }),
+      }
+    );
+    await expectStatus(res, 200);
+  });
+
+  test("Update dating goal with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/dating-goals/invalid-uuid",
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Test" }),
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Update nonexistent dating goal returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/dating-goals/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Ghost goal" }),
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Delete a dating goal", async () => {
+    const res = await authenticatedApi(
+      `/api/dating-goals/${goalId}`,
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test("Delete dating goal with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/dating-goals/invalid-uuid",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Delete nonexistent dating goal returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/dating-goals/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  // ========== Mood Journal Tests ==========
+  test("Create a mood journal entry", async () => {
+    const res = await authenticatedApi("/api/mood-journal", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mood: 8,
+        note: "Feeling great after the date!",
+      }),
+    });
+    await expectStatus(res, 201);
+    const data = await res.json();
+    moodJournalEntryId = data.entry.id;
+    expect(data.entry).toBeDefined();
+  });
+
+  test("Create mood journal entry fails without required mood", async () => {
+    const res = await authenticatedApi("/api/mood-journal", authToken, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        note: "Just a note",
+      }),
+    });
+    await expectStatus(res, 400);
+  });
+
+  test("Get recent mood journal entries", async () => {
+    const res = await authenticatedApi("/api/mood-journal", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.entries).toBeDefined();
+    expect(Array.isArray(data.entries)).toBe(true);
+  });
+
+  test("Delete a mood journal entry", async () => {
+    const res = await authenticatedApi(
+      `/api/mood-journal/${moodJournalEntryId}`,
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test("Delete mood journal entry with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/mood-journal/invalid-uuid",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Delete nonexistent mood journal entry returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/mood-journal/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  // ========== Voice Notes Tests ==========
+  test("Create a voice note for a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/voice-notes`,
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audio_url: "https://example.com/audio.mp3",
+          transcript: "She mentioned she loves hiking",
+          duration_seconds: 45,
+        }),
+      }
+    );
+    await expectStatus(res, 201);
+    const data = await res.json();
+    voiceNoteId = data.voice_note.id;
+    expect(data.voice_note).toBeDefined();
+  });
+
+  test("Create voice note fails without required audio_url", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/voice-notes`,
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: "Some notes",
+        }),
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Get voice notes for a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/voice-notes`,
+      authToken
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.voice_notes).toBeDefined();
+    expect(Array.isArray(data.voice_notes)).toBe(true);
+  });
+
+  test("Get voice notes with invalid person ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/voice-notes",
+      authToken
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Get voice notes for nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/voice-notes",
+      authToken
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Delete a voice note", async () => {
+    const res = await authenticatedApi(
+      `/api/voice-notes/${voiceNoteId}`,
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test("Delete voice note with invalid ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/voice-notes/invalid-uuid",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Delete nonexistent voice note returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/voice-notes/00000000-0000-0000-0000-000000000000",
+      authToken,
+      {
+        method: "DELETE",
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  // ========== Insights Tests ==========
+  test("Get roster health score and insights", async () => {
+    const res = await authenticatedApi("/api/roster-health", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.score).toBeDefined();
+    expect(typeof data.score).toBe("number");
+    expect(data.grade).toBeDefined();
+    expect(data.summary).toBeDefined();
+    expect(data.insights).toBeDefined();
+    expect(Array.isArray(data.insights)).toBe(true);
+    expect(data.breakdown).toBeDefined();
+  });
+
+  test("Get benchmarks (anonymous user data)", async () => {
+    const res = await authenticatedApi("/api/benchmarks", authToken);
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.avg_roster_size).toBeDefined();
+    expect(data.most_valued_trait).toBeDefined();
+    expect(data.avg_dates_before_bench).toBeDefined();
+    expect(data.top_green_flags).toBeDefined();
+    expect(data.top_red_flags).toBeDefined();
+    expect(Array.isArray(data.top_green_flags)).toBe(true);
+    expect(Array.isArray(data.top_red_flags)).toBe(true);
+  });
+
+  test("Analyze dating patterns using AI", async () => {
+    const res = await authenticatedApi("/api/ai/patterns", authToken, {
+      method: "POST",
+    });
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.patterns).toBeDefined();
+    expect(Array.isArray(data.patterns)).toBe(true);
+    expect(data.summary).toBeDefined();
+  });
+
+  test("Generate date ideas for a person", async () => {
+    const res = await authenticatedApi(
+      `/api/persons/${personId}/date-ideas`,
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          past_dates: ["Coffee", "Dinner"],
+        }),
+      }
+    );
+    await expectStatus(res, 200);
+    const data = await res.json();
+    expect(data.ideas).toBeDefined();
+    expect(Array.isArray(data.ideas)).toBe(true);
+  });
+
+  test("Generate date ideas with invalid person ID format returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/invalid-uuid/date-ideas",
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+    await expectStatus(res, 400);
+  });
+
+  test("Generate date ideas for nonexistent person returns 404", async () => {
+    const res = await authenticatedApi(
+      "/api/persons/00000000-0000-0000-0000-000000000000/date-ideas",
+      authToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+    await expectStatus(res, 404);
+  });
+
+  test("Get zodiac compatibility", async () => {
+    const res = await authenticatedApi(
+      "/api/zodiac-compatibility?sign1=aries&sign2=leo",
+      authToken
+    );
+    await expectStatus(res, 200);
+  });
+
+  test("Get zodiac compatibility with invalid signs returns 400", async () => {
+    const res = await authenticatedApi(
+      "/api/zodiac-compatibility?sign1=invalid&sign2=leo",
+      authToken
+    );
+    await expectStatus(res, 400);
+  });
+
   // ========== Profile Tests ==========
   test("Get authenticated user profile", async () => {
-    // Create profile first with PUT
     await authenticatedApi("/api/profile", authToken, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -2035,7 +2718,6 @@ describe("API Integration Tests", () => {
       }),
     });
 
-    // Now test GET
     const res = await authenticatedApi("/api/profile", authToken);
     await expectStatus(res, 200);
     const data = await res.json();
@@ -2154,7 +2836,6 @@ describe("API Integration Tests", () => {
     const res = await api(`/api/share/redeem/${shareToken}`);
     await expectStatus(res, 200);
     const data = await res.json();
-    // Should have some profile fields defined
     expect(
       data.name !== undefined ||
       data.age !== undefined ||
@@ -2302,34 +2983,35 @@ describe("API Integration Tests", () => {
     await expectStatus(res, 401);
   });
 
-  test("Unauthenticated POST /api/date-plan returns 401", async () => {
-    const res = await api("/api/date-plan", {
+  test("Unauthenticated POST /api/chat/message returns 401", async () => {
+    const res = await api("/api/chat/message", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        person_id: "00000000-0000-0000-0000-000000000000",
-        budget: 100,
+        messages: [
+          {
+            role: "user",
+            content: "Test",
+          },
+        ],
       }),
     });
     await expectStatus(res, 401);
   });
 
-  test("Unauthenticated GET /api/chat returns 401", async () => {
-    const res = await api("/api/chat");
-    await expectStatus(res, 401);
-  });
-
-  test("Unauthenticated POST /api/chat returns 401", async () => {
-    const res = await api("/api/chat", {
+  test("Unauthenticated POST /api/chat/message/stream returns 401", async () => {
+    const res = await api("/api/chat/message/stream", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: "Test" }),
+      body: JSON.stringify({
+        messages: [
+          {
+            role: "user",
+            content: "Test",
+          },
+        ],
+      }),
     });
-    await expectStatus(res, 401);
-  });
-
-  test("Unauthenticated GET /api/chat/history returns 401", async () => {
-    const res = await api("/api/chat/history");
     await expectStatus(res, 401);
   });
 
@@ -2544,6 +3226,106 @@ describe("API Integration Tests", () => {
     const res = await api("/api/account", {
       method: "DELETE",
     });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/roster-health returns 401", async () => {
+    const res = await api("/api/roster-health");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/benchmarks returns 401", async () => {
+    const res = await api("/api/benchmarks");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/ai/patterns returns 401", async () => {
+    const res = await api("/api/ai/patterns", {
+      method: "POST",
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/persons/{id}/date-ideas returns 401", async () => {
+    const res = await api(
+      "/api/persons/00000000-0000-0000-0000-000000000000/date-ideas",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/zodiac-compatibility returns 401", async () => {
+    const res = await api("/api/zodiac-compatibility?sign1=aries&sign2=leo");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/persons/archived returns 401", async () => {
+    const res = await api("/api/persons/archived");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/deal-breakers returns 401", async () => {
+    const res = await api("/api/deal-breakers");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/deal-breakers returns 401", async () => {
+    const res = await api("/api/deal-breakers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label: "Test" }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/dating-goals returns 401", async () => {
+    const res = await api("/api/dating-goals");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/dating-goals returns 401", async () => {
+    const res = await api("/api/dating-goals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Test" }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/mood-journal returns 401", async () => {
+    const res = await api("/api/mood-journal");
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/mood-journal returns 401", async () => {
+    const res = await api("/api/mood-journal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mood: 8 }),
+    });
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated GET /api/persons/{id}/voice-notes returns 401", async () => {
+    const res = await api(
+      "/api/persons/00000000-0000-0000-0000-000000000000/voice-notes"
+    );
+    await expectStatus(res, 401);
+  });
+
+  test("Unauthenticated POST /api/persons/{id}/voice-notes returns 401", async () => {
+    const res = await api(
+      "/api/persons/00000000-0000-0000-0000-000000000000/voice-notes",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audio_url: "https://example.com/audio.mp3" }),
+      }
+    );
     await expectStatus(res, 401);
   });
 });

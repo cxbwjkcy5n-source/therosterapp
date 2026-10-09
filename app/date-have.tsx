@@ -10,6 +10,7 @@ import {
   Platform,
   Image,
   ImageSourcePropType,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { X, Calendar, Check, ChevronDown } from 'lucide-react-native';
@@ -130,7 +131,11 @@ export default function DateHaveScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={insets.top + 44}
+    >
       {/* FIXED HEADER */}
       <View
         style={{
@@ -452,6 +457,6 @@ export default function DateHaveScreen() {
           )}
         </AnimatedPressable>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

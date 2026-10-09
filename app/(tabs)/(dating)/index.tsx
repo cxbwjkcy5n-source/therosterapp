@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, Animated, useWindowDimensions, Pressable } from 'react-native';
+import { View, Text, ScrollView, Animated, useWindowDimensions, Pressable, ActivityIndicator } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import {
   Calendar,
@@ -9,6 +9,9 @@ import {
   Heart,
   Users,
   Star,
+  Brain,
+  BookHeart,
+  Target,
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -44,7 +47,209 @@ interface DateEntry {
   notes?: string;
 }
 
+interface RosterHealthInsight {
+  type: 'warning' | 'positive' | 'tip';
+  message: string;
+}
+
+interface RosterHealth {
+  score: number;
+  grade: string;
+  summary: string;
+  insights: RosterHealthInsight[];
+  breakdown: {
+    size_score: number;
+    engagement_score: number;
+    quality_score: number;
+    balance_score: number;
+  };
+}
+
 type ThemeColors = typeof COLORS;
+
+function getHealthColor(grade: string): string {
+  if (grade === 'A' || grade === 'B') return '#22C55E';
+  if (grade === 'C') return '#F59E0B';
+  return '#EF4444';
+}
+
+function HealthScoreSkeleton({ colors }: { colors: ThemeColors }) {
+  return (
+    <View
+      style={{
+        backgroundColor: colors.surface,
+        borderRadius: 18,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: colors.border,
+        gap: 14,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: colors.surfaceSecondary }} />
+        <View style={{ flex: 1, gap: 8 }}>
+          <View style={{ width: '60%', height: 16, backgroundColor: colors.surfaceSecondary, borderRadius: 6 }} />
+          <View style={{ width: '90%', height: 12, backgroundColor: colors.surfaceSecondary, borderRadius: 6 }} />
+        </View>
+      </View>
+      {[1, 2, 3, 4].map((i) => (
+        <View key={i} style={{ gap: 4 }}>
+          <View style={{ width: '40%', height: 11, backgroundColor: colors.surfaceSecondary, borderRadius: 4 }} />
+          <View style={{ height: 6, backgroundColor: colors.surfaceSecondary, borderRadius: 3 }} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function RosterHealthCard({ health, colors }: { health: RosterHealth; colors: ThemeColors }) {
+  const healthColor = getHealthColor(health.grade);
+  const scoreStr = String(health.score);
+
+  const breakdownItems = [
+    { label: 'Size', score: health.breakdown.size_score },
+    { label: 'Engagement', score: health.breakdown.engagement_score },
+    { label: 'Quality', score: health.breakdown.quality_score },
+    { label: 'Balance', score: health.breakdown.balance_score },
+  ];
+
+  return (
+    <View
+      style={{
+        backgroundColor: colors.surface,
+        borderRadius: 18,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: colors.border,
+        gap: 14,
+      }}
+    >
+      {/* Score row */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+        {/* Circle score */}
+        <View
+          style={{
+            width: 72,
+            height: 72,
+            borderRadius: 36,
+            borderWidth: 4,
+            borderColor: healthColor,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: healthColor + '10',
+          }}
+        >
+          <Text style={{ color: healthColor, fontSize: 24, fontWeight: '800', lineHeight: 28 }}>
+            {scoreStr}
+          </Text>
+        </View>
+
+        {/* Grade + summary */}
+        <View style={{ flex: 1, gap: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>
+              Roster Health
+            </Text>
+            <View
+              style={{
+                backgroundColor: healthColor + '20',
+                borderRadius: 8,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+              }}
+            >
+              <Text style={{ color: healthColor, fontSize: 14, fontWeight: '800' }}>
+                {health.grade}
+              </Text>
+            </View>
+          </View>
+          <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 18 }}>
+            {health.summary}
+          </Text>
+        </View>
+      </View>
+
+      {/* Breakdown bars */}
+      <View style={{ gap: 8 }}>
+        {breakdownItems.map((item) => {
+          const barWidth = `${item.score}%` as any;
+          const barColor = item.score >= 70 ? '#22C55E' : item.score >= 50 ? '#F59E0B' : '#EF4444';
+          const scoreLabel = String(item.score);
+          return (
+            <View key={item.label} style={{ gap: 3 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '500' }}>
+                  {item.label}
+                </Text>
+                <Text style={{ color: barColor, fontSize: 12, fontWeight: '700' }}>
+                  {scoreLabel}
+                </Text>
+              </View>
+              <View
+                style={{
+                  height: 5,
+                  backgroundColor: colors.surfaceSecondary,
+                  borderRadius: 3,
+                  overflow: 'hidden',
+                }}
+              >
+                <View
+                  style={{
+                    height: 5,
+                    width: barWidth,
+                    backgroundColor: barColor,
+                    borderRadius: 3,
+                  }}
+                />
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* Insights */}
+      {health.insights.length > 0 && (
+        <View style={{ gap: 6 }}>
+          {health.insights.map((insight, index) => {
+            const insightEmoji = insight.type === 'warning' ? '⚠️' : insight.type === 'positive' ? '✅' : '💡';
+            const insightColor =
+              insight.type === 'warning'
+                ? '#F59E0B'
+                : insight.type === 'positive'
+                ? '#22C55E'
+                : '#3B82F6';
+            const insightBg =
+              insight.type === 'warning'
+                ? 'rgba(245,158,11,0.08)'
+                : insight.type === 'positive'
+                ? 'rgba(34,197,94,0.08)'
+                : 'rgba(59,130,246,0.08)';
+            return (
+              <View
+                key={index}
+                style={{
+                  backgroundColor: insightBg,
+                  borderRadius: 10,
+                  padding: 10,
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  borderWidth: 1,
+                  borderColor: insightColor + '25',
+                }}
+              >
+                <Text style={{ fontSize: 14 }}>{insightEmoji}</Text>
+                <Text style={{ color: colors.text, fontSize: 13, lineHeight: 18, flex: 1 }}>
+                  {insight.message}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
 
 function StatCard({ label, value, icon, color, colors }: { label: string; value: string | number; icon: React.ReactNode; color: string; colors: ThemeColors }) {
   return (
@@ -204,6 +409,8 @@ export default function DatingScreen() {
   const [recentDates, setRecentDates] = useState<DateEntry[]>([]);
   const [persons, setPersons] = useState<Person[]>([]);
   const [weeklySummary, setWeeklySummary] = useState<any>(null);
+  const [rosterHealth, setRosterHealth] = useState<RosterHealth | null>(null);
+  const [healthLoading, setHealthLoading] = useState(true);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Card width: (screenWidth - 16 left - 16 right - 8 gap) / 2
@@ -212,7 +419,8 @@ export default function DatingScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!user) return;
-      console.log('[Dating] Loading analytics, persons, recent dates, and weekly summary');
+      console.log('[Dating] Loading analytics, persons, recent dates, weekly summary, and roster health');
+      setHealthLoading(true);
       Promise.all([
         apiGet<Analytics>('/api/analytics').catch((e) => {
           console.error('[Dating] Failed to load analytics:', e);
@@ -227,9 +435,13 @@ export default function DatingScreen() {
           return { dates: [] };
         }),
         apiGet<{ summary: any }>('/api/analytics/weekly-summary').catch(() => ({ summary: null })),
+        apiGet<RosterHealth>('/api/roster-health').catch((e) => {
+          console.error('[Dating] Failed to load roster health:', e);
+          return null;
+        }),
       ]).then((data) => {
-        const [analyticsData, personsData, datesData] = data;
-        console.log('[Dating] Analytics, persons, dates, and weekly summary loaded');
+        const [analyticsData, personsData, datesData, weeklySummaryData, healthData] = data;
+        console.log('[Dating] All data loaded, health score:', (healthData as RosterHealth | null)?.score);
         setAnalytics(analyticsData);
         setPersons(personsData.persons || []);
         const datesList = datesData.dates || [];
@@ -240,7 +452,9 @@ export default function DatingScreen() {
           return bTime - aTime;
         });
         setRecentDates(sorted.slice(0, 3));
-        setWeeklySummary(data[3]?.summary ?? null);
+        setWeeklySummary(weeklySummaryData?.summary ?? null);
+        setRosterHealth(healthData as RosterHealth | null);
+        setHealthLoading(false);
         Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -259,6 +473,18 @@ export default function DatingScreen() {
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
+        {/* Roster Health Card */}
+        <View>
+          <Text style={{ color: colors.textTertiary, fontSize: 11, fontWeight: '600', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
+            Roster Health
+          </Text>
+          {healthLoading ? (
+            <HealthScoreSkeleton colors={colors} />
+          ) : rosterHealth ? (
+            <RosterHealthCard health={rosterHealth} colors={colors} />
+          ) : null}
+        </View>
+
         {/* Quick Actions */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginBottom: 4 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
           {[
@@ -347,7 +573,7 @@ export default function DatingScreen() {
               }}
             />
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
             <ActionCard
               title="I'm on a Date"
               description="Safety check-in"
@@ -370,6 +596,58 @@ export default function DatingScreen() {
               onPress={() => {
                 console.log('[Dating] Dating Coach pressed');
                 router.push('/coach');
+              }}
+            />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+            <ActionCard
+              title="Patterns 🧠"
+              description="AI pattern recognition"
+              icon={<Brain size={22} color="#6366F1" />}
+              accentColor="#6366F1"
+              cardWidth={cardWidth}
+              colors={colors}
+              onPress={() => {
+                console.log('[Dating] Patterns pressed');
+                router.push('/patterns');
+              }}
+            />
+            <ActionCard
+              title="Mood Journal"
+              description="Track your feelings"
+              icon={<BookHeart size={22} color="#EC4899" />}
+              accentColor="#EC4899"
+              cardWidth={cardWidth}
+              colors={colors}
+              onPress={() => {
+                console.log('[Dating] Mood Journal pressed');
+                router.push('/mood-journal');
+              }}
+            />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+            <ActionCard
+              title="Dating Goals 🎯"
+              description="Set & track your goals"
+              icon={<Target size={22} color="#F59E0B" />}
+              accentColor="#F59E0B"
+              cardWidth={cardWidth}
+              colors={colors}
+              onPress={() => {
+                console.log('[Dating] Dating Goals pressed');
+                router.push('/dating-goals');
+              }}
+            />
+            <ActionCard
+              title="Date Calendar 📅"
+              description="View all your dates"
+              icon={<Calendar size={22} color="#06B6D4" />}
+              accentColor="#06B6D4"
+              cardWidth={cardWidth}
+              colors={colors}
+              onPress={() => {
+                console.log('[Dating] Date Calendar pressed');
+                router.push('/date-calendar');
               }}
             />
           </View>

@@ -504,6 +504,34 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
                 ),
               }}
             />
+            <Stack.Screen
+              name="milestones"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+            <Stack.Screen
+              name="deal-breakers"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="patterns"
+              options={{ presentation: 'modal', headerShown: false }}
+            />
+            <Stack.Screen
+              name="mood-journal"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="dating-goals"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="date-calendar"
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="archive"
+              options={{ headerShown: false }}
+            />
           </Stack>
       </View>
       {showPlaceholder && (

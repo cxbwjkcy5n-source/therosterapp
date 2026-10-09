@@ -847,6 +847,40 @@ function DatingTab({ ds, colors }: { ds: DateStats; colors: Colors }) {
         </Card>
       </View>
 
+      {/* Date Outcomes section */}
+      {ds.completed > 0 && (() => {
+        const wantPct = ds.wantAnotherTotal > 0 ? Math.round((ds.wantAnotherCount / ds.wantAnotherTotal) * 100) : 0;
+        const notInterestedCount = ds.wantAnotherTotal - ds.wantAnotherCount;
+        const notInterestedPct = ds.wantAnotherTotal > 0 ? Math.round((notInterestedCount / ds.wantAnotherTotal) * 100) : 0;
+        const avgRatingDisplay = ds.avgRating > 0 ? ds.avgRating.toFixed(1) : '—';
+        const wantPctStr = String(wantPct) + '%';
+        const notInterestedPctStr = String(notInterestedPct) + '%';
+        const totalStr = String(ds.completed);
+        return (
+          <Card style={{ minHeight: undefined }} colors={colors}>
+            <CardTitle colors={colors}>Date Outcomes</CardTitle>
+            <View style={{ flexDirection: 'row', gap: CARD_GAP }}>
+              <View style={{ flex: 1, alignItems: 'center', backgroundColor: colors.surfaceSecondary, borderRadius: 10, padding: 12 }}>
+                <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800', marginBottom: 2 }}>{totalStr}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 11, textAlign: 'center' }}>Total Dates</Text>
+              </View>
+              <View style={{ flex: 1, alignItems: 'center', backgroundColor: 'rgba(76,175,80,0.1)', borderRadius: 10, padding: 12 }}>
+                <Text style={{ color: '#2E7D32', fontSize: 22, fontWeight: '800', marginBottom: 2 }}>{wantPctStr}</Text>
+                <Text style={{ color: '#2E7D32', fontSize: 11, textAlign: 'center' }}>Want Another</Text>
+              </View>
+              <View style={{ flex: 1, alignItems: 'center', backgroundColor: 'rgba(229,57,53,0.08)', borderRadius: 10, padding: 12 }}>
+                <Text style={{ color: colors.danger, fontSize: 22, fontWeight: '800', marginBottom: 2 }}>{notInterestedPctStr}</Text>
+                <Text style={{ color: colors.danger, fontSize: 11, textAlign: 'center' }}>Not Interested</Text>
+              </View>
+              <View style={{ flex: 1, alignItems: 'center', backgroundColor: colors.surfaceSecondary, borderRadius: 10, padding: 12 }}>
+                <Text style={{ color: colors.text, fontSize: 22, fontWeight: '800', marginBottom: 2 }}>{avgRatingDisplay}</Text>
+                <Text style={{ color: colors.textSecondary, fontSize: 11, textAlign: 'center' }}>Avg Rating</Text>
+              </View>
+            </View>
+          </Card>
+        );
+      })()}
+
       {/* Dates Per Month bar chart */}
       <Card style={{ minHeight: undefined }} colors={colors}>
         <CardTitle colors={colors}>Dates Per Month</CardTitle>
@@ -919,6 +953,15 @@ interface AnalyticsSummary {
   total_dates: number;
 }
 
+interface BenchmarkData {
+  avg_roster_size: number;
+  most_valued_trait: string;
+  avg_dates_before_bench: number;
+  top_green_flags: string[];
+  top_red_flags: string[];
+  avg_compatibility_score: number;
+}
+
 export default function AnalyticsScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -929,28 +972,31 @@ export default function AnalyticsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'people' | 'dating'>('people');
+  const [benchmarks, setBenchmarks] = useState<BenchmarkData | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const loadData = useCallback(() => {
     setLoading(true);
     setError(null);
-    console.log('[Analytics] Fetching /api/persons (active+benched), /api/dates, and /api/analytics in parallel');
+    console.log('[Analytics] Fetching /api/persons (active+benched), /api/dates, /api/analytics, and /api/benchmarks in parallel');
     Promise.all([
       apiGet<{ persons: Person[] }>('/api/persons'),
       apiGet<{ persons: Person[] }>('/api/persons?benched=true'),
       apiGet<{ dates: DateEntry[] }>('/api/dates'),
       apiGet<any>('/api/analytics'),
+      apiGet<BenchmarkData>('/api/benchmarks').catch(() => null),
     ])
-      .then(([activeRes, benchedRes, datesRes, analyticsRes]) => {
+      .then(([activeRes, benchedRes, datesRes, analyticsRes, benchmarksRes]) => {
         const active = activeRes.persons || [];
         const benched = benchedRes.persons || [];
         const seen = new Set(active.map((p) => p.id));
         const allPersons = [...active, ...benched.filter((p) => !seen.has(p.id))];
         const d = datesRes.dates || [];
-        console.log('[Analytics] Data loaded — active:', active.length, 'benched:', benched.length, 'total:', allPersons.length, 'dates:', d.length, 'summary:', analyticsRes);
+        console.log('[Analytics] Data loaded — active:', active.length, 'benched:', benched.length, 'total:', allPersons.length, 'dates:', d.length, 'summary:', analyticsRes, 'benchmarks:', benchmarksRes);
         setPersons(allPersons);
         setDates(d);
         setAnalyticsSummary(analyticsRes ?? null);
+        setBenchmarks(benchmarksRes ?? null);
         fadeAnim.setValue(0);
         Animated.timing(fadeAnim, { toValue: 1, duration: 350, useNativeDriver: true }).start();
       })
@@ -1014,6 +1060,12 @@ export default function AnalyticsScreen() {
   const ps = computePeopleStats(persons);
   const ds = computeDateStats(dates, persons, analyticsSummary);
 
+  // Compute user's avg compatibility for benchmarking
+  const userAvgCompat = persons.length > 0
+    ? persons.reduce((sum, p) => sum + (p.overall_chemistry || 0), 0) / persons.length
+    : 0;
+  const userRosterSize = persons.filter((p) => !p.is_benched).length;
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Tab pills */}
@@ -1035,6 +1087,126 @@ export default function AnalyticsScreen() {
           <PeopleTab ps={ps} colors={colors} />
         ) : (
           <DatingTab ds={ds} colors={colors} />
+        )}
+
+        {/* How You Compare — Benchmarking */}
+        {benchmarks && (
+          <View style={{
+            backgroundColor: colors.surface,
+            borderRadius: 16,
+            padding: 16,
+            marginTop: 8,
+            marginBottom: 8,
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}>
+            <Text style={{
+              color: colors.text,
+              fontSize: 16,
+              fontWeight: '700',
+              marginBottom: 14,
+            }}>
+              How You Compare 📊
+            </Text>
+
+            {/* Roster size */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text, fontSize: 14, fontWeight: '500' }}>Roster size</Text>
+                <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 1 }}>
+                  {'Avg: '}
+                  {Number(benchmarks.avg_roster_size).toFixed(1)}
+                  {' people'}
+                </Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ color: colors.primary, fontSize: 18, fontWeight: '800' }}>{String(userRosterSize)}</Text>
+                <Text style={{ color: colors.textTertiary, fontSize: 11 }}>yours</Text>
+              </View>
+            </View>
+
+            {/* Compatibility score */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text, fontSize: 14, fontWeight: '500' }}>Avg compatibility</Text>
+                <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 1 }}>
+                  {'Avg: '}
+                  {Number(benchmarks.avg_compatibility_score).toFixed(1)}
+                  {'/10'}
+                </Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ color: colors.success, fontSize: 18, fontWeight: '800' }}>
+                  {userAvgCompat > 0 ? Number(userAvgCompat).toFixed(1) : '—'}
+                </Text>
+                <Text style={{ color: colors.textTertiary, fontSize: 11 }}>yours</Text>
+              </View>
+            </View>
+
+            {/* Most valued trait */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text, fontSize: 14, fontWeight: '500' }}>Most valued trait</Text>
+              </View>
+              <View style={{
+                backgroundColor: colors.primaryMuted,
+                borderRadius: 8,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+              }}>
+                <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>
+                  {benchmarks.most_valued_trait}
+                </Text>
+              </View>
+            </View>
+
+            {/* Top green flags */}
+            {benchmarks.top_green_flags && benchmarks.top_green_flags.length > 0 && (
+              <View style={{ marginBottom: 10 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
+                  Top Green Flags
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {benchmarks.top_green_flags.map((flag, i) => (
+                    <View key={i} style={{
+                      backgroundColor: 'rgba(34,197,94,0.12)',
+                      borderRadius: 8,
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                    }}>
+                      <Text style={{ color: colors.success, fontSize: 12, fontWeight: '500' }}>{flag}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Top red flags */}
+            {benchmarks.top_red_flags && benchmarks.top_red_flags.length > 0 && (
+              <View style={{ marginBottom: 12 }}>
+                <Text style={{ color: colors.textSecondary, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
+                  Top Red Flags
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {benchmarks.top_red_flags.map((flag, i) => (
+                    <View key={i} style={{
+                      backgroundColor: colors.dangerMuted,
+                      borderRadius: 8,
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                    }}>
+                      <Text style={{ color: colors.danger, fontSize: 12, fontWeight: '500' }}>{flag}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Disclaimer */}
+            <Text style={{ color: colors.textTertiary, fontSize: 11, textAlign: 'center', marginTop: 4 }}>
+              Anonymous · All data is aggregated
+            </Text>
+          </View>
         )}
       </Animated.ScrollView>
     </View>

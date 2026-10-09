@@ -14,16 +14,6 @@ export function registerShareRoutes(app: App) {
       schema: {
         description: 'Generate a profile share token with selective field sharing',
         tags: ['share'],
-        body: {
-          type: 'object',
-          properties: {
-            share_fields: {
-              type: 'array',
-              items: { type: 'string' },
-              description: 'Fields to share in the profile',
-            },
-          },
-        },
         response: {
           200: {
             description: 'Token generated successfully',
@@ -55,7 +45,7 @@ export function registerShareRoutes(app: App) {
 
       // Default share fields if not provided
       const defaultShareFields = ['photo', 'name', 'age', 'location'];
-      const shareFields = request.body.share_fields || defaultShareFields;
+      const shareFields = request.body?.share_fields || defaultShareFields;
 
       // Generate random 8-character uppercase alphanumeric token
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';

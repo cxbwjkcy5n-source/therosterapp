@@ -7,6 +7,8 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Star } from 'lucide-react-native';
@@ -134,8 +136,11 @@ export default function DateReviewScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
-
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={insets.top + 44}
+    >
       <ScrollView
         contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}
         showsVerticalScrollIndicator={false}
@@ -397,6 +402,6 @@ export default function DateReviewScreen() {
           )}
         </AnimatedPressable>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

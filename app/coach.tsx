@@ -7,13 +7,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { Send, MessageCircle } from 'lucide-react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useTheme } from '@/contexts/ThemeContext';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
-import { apiGet, apiPost } from '@/utils/api';
+import { apiGet, apiPost, getBearerToken, BACKEND_URL } from '@/utils/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ChatMessage {
@@ -30,10 +31,51 @@ interface PersonContext {
 }
 
 const SUGGESTED_PROMPTS = [
-  'How do I know if someone likes me?',
-  'Tips for a first date',
-  'How to set healthy boundaries',
+  "How do I know if they're genuinely interested?",
+  "What should I text after a great first date?",
+  "How do I bring up exclusivity without scaring them off?",
+  "Red flags I should take more seriously",
+  "How to stop overthinking between texts",
 ];
+
+const TypingDots = () => {
+  const dot1 = useRef(new Animated.Value(0)).current;
+  const dot2 = useRef(new Animated.Value(0)).current;
+  const dot3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animate = (dot: Animated.Value, delay: number) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dot, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+          Animated.delay(600 - delay),
+        ])
+      ).start();
+    animate(dot1, 0);
+    animate(dot2, 150);
+    animate(dot3, 300);
+  }, []);
+
+  return (
+    <View style={{ flexDirection: 'row', gap: 4, padding: 4 }}>
+      {[dot1, dot2, dot3].map((dot, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: 3.5,
+            backgroundColor: '#999',
+            opacity: dot,
+            transform: [{ translateY: dot.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
+          }}
+        />
+      ))}
+    </View>
+  );
+};
 
 export default function CoachScreen() {
   const insets = useSafeAreaInsets();
@@ -74,7 +116,7 @@ export default function CoachScreen() {
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
-    console.log('[Coach] Sending message:', trimmed.slice(0, 50), personId ? `(context: person ${personId})` : '');
+    console.log('[Coach] Send button pressed — message:', trimmed.slice(0, 50), personId ? `(context: person ${personId})` : '');
     setInput('');
 
     const tempUserMsg: ChatMessage = {
@@ -83,42 +125,122 @@ export default function CoachScreen() {
       content: trimmed,
       created_at: new Date().toISOString(),
     };
-
     setMessages((prev) => [...prev, tempUserMsg]);
     setLoading(true);
 
+    // Add an empty assistant message that we'll stream into
+    const assistantId = `assistant-${Date.now()}`;
+    const assistantMsg: ChatMessage = {
+      id: assistantId,
+      role: 'assistant',
+      content: '',
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, assistantMsg]);
+
     try {
-      console.log('[Coach] POST /api/chat/message with message and history');
+      const token = await getBearerToken();
+      const backendUrl = BACKEND_URL;
       const history = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
       const body: Record<string, any> = { message: trimmed, history };
-      if (personId) {
-        body.person_id = personId;
+      if (personId) body.person_id = personId;
+
+      console.log('[Coach] POST', `${backendUrl}/api/chat/message/stream`, '— streaming request');
+      const response = await fetch(`${backendUrl}/api/chat/message/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
-      const result = await apiPost<{ reply: string }>('/api/chat/message', body);
-      console.log('[Coach] Got reply from AI:', result?.reply?.slice(0, 60));
 
-      const assistantMsg: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: result?.reply || '',
-        created_at: new Date().toISOString(),
-      };
+      // Read the SSE stream
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulated = '';
 
-      setMessages((prev) => {
-        const filtered = prev.filter((m) => m.id !== tempUserMsg.id);
-        return [...filtered, tempUserMsg, assistantMsg];
-      });
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') break;
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.token) {
+                  accumulated += parsed.token;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantId ? { ...m, content: accumulated } : m
+                    )
+                  );
+                }
+                // Handle non-streaming fallback: if backend returns { reply: "..." }
+                if (parsed.reply) {
+                  accumulated = parsed.reply;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantId ? { ...m, content: accumulated } : m
+                    )
+                  );
+                }
+              } catch {}
+            }
+          }
+        }
+      }
+
+      console.log('[Coach] Stream complete, accumulated length:', accumulated.length);
+
+      // If streaming produced nothing, fall back to non-streaming endpoint
+      if (!accumulated) {
+        console.log('[Coach] Stream empty — falling back to POST /api/chat/message');
+        const result = await apiPost<{ reply: string }>('/api/chat/message', body);
+        accumulated = result?.reply || '';
+        console.log('[Coach] Fallback reply:', accumulated.slice(0, 60));
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId ? { ...m, content: accumulated } : m
+          )
+        );
+      }
     } catch (e: any) {
-      console.error('[Coach] Failed to send message:', e);
-      setMessages((prev) => {
-        const filtered = prev.filter((m) => m.id !== tempUserMsg.id);
-        return [...filtered, tempUserMsg, {
-          id: `error-${Date.now()}`,
-          role: 'assistant' as const,
-          content: "Sorry, I couldn't respond right now. Please try again.",
-          created_at: new Date().toISOString(),
-        }];
-      });
+      console.error('[Coach] Streaming failed, trying fallback:', e);
+      // Fallback to non-streaming
+      try {
+        const history = messages.slice(-20).map((m) => ({ role: m.role, content: m.content }));
+        const body: Record<string, any> = { message: trimmed, history };
+        if (personId) body.person_id = personId;
+        console.log('[Coach] Fallback POST /api/chat/message');
+        const result = await apiPost<{ reply: string }>('/api/chat/message', body);
+        console.log('[Coach] Fallback reply received:', result?.reply?.slice(0, 60));
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: result?.reply || "Sorry, I couldn't respond right now." }
+              : m
+          )
+        );
+      } catch {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? { ...m, content: "Sorry, I couldn't respond right now. Please try again." }
+              : m
+          )
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -128,6 +250,8 @@ export default function CoachScreen() {
     const isUser = item.role === 'user';
     const bubbleBg = isUser ? colors.primary : colors.surface;
     const textColor = isUser ? '#fff' : colors.text;
+    const isTyping = !isUser && item.content === '' && loading;
+    const timeStr = new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return (
       <View
         style={{
@@ -153,20 +277,35 @@ export default function CoachScreen() {
             <MessageCircle size={16} color="#A855F7" />
           </View>
         )}
-        <View
-          style={{
-            maxWidth: '75%',
-            backgroundColor: bubbleBg,
-            borderRadius: 16,
-            borderBottomRightRadius: isUser ? 4 : 16,
-            borderBottomLeftRadius: isUser ? 16 : 4,
-            padding: 12,
-            borderWidth: isUser ? 0 : 1,
-            borderColor: colors.border,
-          }}
-        >
-          <Text style={{ color: textColor, fontSize: 15, lineHeight: 21 }}>
-            {item.content}
+        <View style={{ maxWidth: '75%' }}>
+          <View
+            style={{
+              backgroundColor: bubbleBg,
+              borderRadius: 16,
+              borderBottomRightRadius: isUser ? 4 : 16,
+              borderBottomLeftRadius: isUser ? 16 : 4,
+              padding: 12,
+              borderWidth: isUser ? 0 : 1,
+              borderColor: colors.border,
+            }}
+          >
+            {isTyping ? (
+              <TypingDots />
+            ) : (
+              <Text style={{ color: textColor, fontSize: 15, lineHeight: 21 }}>
+                {item.content}
+              </Text>
+            )}
+          </View>
+          <Text
+            style={{
+              color: colors.textTertiary,
+              fontSize: 10,
+              marginTop: 3,
+              textAlign: isUser ? 'right' : 'left',
+            }}
+          >
+            {timeStr}
           </Text>
         </View>
       </View>
@@ -227,11 +366,7 @@ export default function CoachScreen() {
           borderColor: sendBtnBorder,
         }}
       >
-        {loading ? (
-          <ActivityIndicator color={sendIconColor} size="small" />
-        ) : (
-          <Send size={18} color={sendIconColor} />
-        )}
+        <Send size={18} color={sendIconColor} />
       </AnimatedPressable>
     </View>
   );
@@ -242,7 +377,7 @@ export default function CoachScreen() {
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top + 44 : 0}
     >
       {/* Person context banner */}
       {personContext && (
@@ -356,36 +491,6 @@ export default function CoachScreen() {
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
             showsVerticalScrollIndicator={false}
           />
-
-          {loading && (
-            <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: 'rgba(168,85,247,0.15)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <MessageCircle size={16} color="#A855F7" />
-              </View>
-              <View
-                style={{
-                  backgroundColor: colors.surface,
-                  borderRadius: 16,
-                  borderBottomLeftRadius: 4,
-                  padding: 12,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              >
-                <ActivityIndicator color={colors.textSecondary} size="small" />
-              </View>
-            </View>
-          )}
-
           {inputBar}
         </>
       )}
