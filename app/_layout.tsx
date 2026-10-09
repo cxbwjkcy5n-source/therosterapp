@@ -150,9 +150,22 @@ function AppContent({ showSplash, onSplashDone }: { showSplash: boolean; onSplas
   const { isDark } = useTheme();
   const hasNavigated = useRef(false); // only navigate once on initial load
   const onboardingChecked = useRef(false);
+  const [timedOut, setTimedOut] = useState(false);
 
-  // Show red placeholder while splash is playing OR while auth is still loading
-  const showPlaceholder = showSplash || loading;
+  // Last-resort: if isReady never flips after 12s, force the placeholder away
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isReady) {
+        console.warn('[AppContent] 12s layout timeout — forcing placeholder off');
+        setTimedOut(true);
+      }
+    }, 12000);
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show red placeholder while splash is playing OR while auth is still loading,
+  // but never if the safety-net timedOut flag has fired.
+  const showPlaceholder = !timedOut && (showSplash || loading);
 
   // Register push notifications once user is authenticated
   useEffect(() => {
