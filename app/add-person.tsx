@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Camera, Plus, X, ScanLine } from 'lucide-react-native';
@@ -288,6 +290,78 @@ export default function AddPersonScreen() {
   const [redFlags, setRedFlags] = useState<string[]>([]);
   const [saveToContacts, setSaveToContacts] = useState(false);
 
+  // Contacts import state
+  const [contactsModalVisible, setContactsModalVisible] = useState(false);
+  const [contactsList, setContactsList] = useState<Contacts.ExistingContact[]>([]);
+  const [contactsSearch, setContactsSearch] = useState('');
+  const [contactsLoading, setContactsLoading] = useState(false);
+
+  const filteredContacts = useMemo(() => {
+    if (!contactsSearch.trim()) return contactsList;
+    const q = contactsSearch.toLowerCase();
+    return contactsList.filter((c) => {
+      const n = (c.name || '').toLowerCase();
+      const phone = (c.phoneNumbers?.[0]?.number || '').toLowerCase();
+      return n.includes(q) || phone.includes(q);
+    });
+  }, [contactsList, contactsSearch]);
+
+  const openContactsPicker = async () => {
+    console.log('[AddPerson] Import from Contacts pressed');
+    setContactsLoading(true);
+    try {
+      const ContactsModule = await import('expo-contacts');
+      const { status } = await ContactsModule.requestPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('[AddPerson] Contacts permission denied');
+        Alert.alert('Permission needed', 'Please allow contacts access in Settings to import contacts.');
+        setContactsLoading(false);
+        return;
+      }
+      console.log('[AddPerson] Contacts permission granted, fetching contacts');
+      const { data } = await ContactsModule.getContactsAsync({
+        fields: [
+          ContactsModule.Fields.Name,
+          ContactsModule.Fields.PhoneNumbers,
+          ContactsModule.Fields.JobTitle,
+          ContactsModule.Fields.Birthday,
+        ],
+        sort: ContactsModule.SortTypes.FirstName,
+      });
+      console.log('[AddPerson] Loaded', data.length, 'contacts');
+      setContactsList(data);
+      setContactsSearch('');
+      setContactsModalVisible(true);
+    } catch (e) {
+      console.error('[AddPerson] Failed to load contacts:', e);
+      Alert.alert('Error', 'Could not load contacts. Please try again.');
+    } finally {
+      setContactsLoading(false);
+    }
+  };
+
+  const selectContact = (contact: Contacts.ExistingContact) => {
+    console.log('[AddPerson] Contact selected:', contact.name);
+    if (contact.name) setName(contact.name);
+    if (contact.phoneNumbers && contact.phoneNumbers.length > 0) {
+      setPhoneNumber(contact.phoneNumbers[0].number || '');
+    }
+    if ((contact as any).jobTitle) setCareer((contact as any).jobTitle);
+    if (contact.birthday) {
+      const bMonth = contact.birthday.month;
+      const bDay = contact.birthday.day;
+      if (bMonth && bDay) {
+        const mm = String(bMonth).padStart(2, '0');
+        const dd = String(bDay).padStart(2, '0');
+        const mmdd = `${mm}-${dd}`;
+        setBirthday(mmdd);
+        const z = getZodiacFromBirthday(mmdd);
+        if (z) setZodiac(z);
+      }
+    }
+    setContactsModalVisible(false);
+  };
+
   const canSave = name.trim().length > 0 && location.trim().length > 0;
 
   const pickPhoto = async () => {
@@ -477,10 +551,25 @@ export default function AddPersonScreen() {
         {/* Scan code shortcut */}
         <AnimatedPressable
           onPress={() => { console.log('[AddPerson] Scan their code pressed'); router.push('/scan-code'); }}
-          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.surface, borderRadius: 14, paddingVertical: 14, borderWidth: 1.5, borderColor: colors.primary, marginBottom: 20 }}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.surface, borderRadius: 14, paddingVertical: 14, borderWidth: 1.5, borderColor: colors.primary, marginBottom: 10 }}
         >
           <ScanLine size={20} color={colors.primary} />
           <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '700' }}>Scan Their Code</Text>
+        </AnimatedPressable>
+
+        {/* Import from Contacts */}
+        <AnimatedPressable
+          onPress={openContactsPicker}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: colors.surface, borderRadius: 14, paddingVertical: 14, borderWidth: 1.5, borderColor: colors.border, marginBottom: 20 }}
+        >
+          {contactsLoading ? (
+            <ActivityIndicator size="small" color={colors.textSecondary} />
+          ) : (
+            <>
+              <Text style={{ fontSize: 18 }}>📱</Text>
+              <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }}>Import from Contacts</Text>
+            </>
+          )}
         </AnimatedPressable>
 
         {/* Photo */}
@@ -899,6 +988,105 @@ export default function AddPersonScreen() {
           )}
         </AnimatedPressable>
       </ScrollView>
+
+      {/* Contacts Picker Modal */}
+      <Modal
+        visible={contactsModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setContactsModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{
+            backgroundColor: colors.surface,
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            height: '80%',
+            padding: 20,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ flex: 1, color: colors.text, fontSize: 17, fontWeight: '700' }}>
+                Import from Contacts 📱
+              </Text>
+              <Pressable
+                onPress={() => {
+                  console.log('[AddPerson] Contacts modal closed');
+                  setContactsModalVisible(false);
+                }}
+                hitSlop={8}
+              >
+                <X size={22} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            {/* Search */}
+            <TextInput
+              value={contactsSearch}
+              onChangeText={setContactsSearch}
+              placeholder="Search contacts..."
+              placeholderTextColor={colors.textTertiary}
+              style={{
+                backgroundColor: colors.surfaceSecondary,
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 11,
+                color: colors.text,
+                fontSize: 15,
+                borderWidth: 1,
+                borderColor: colors.border,
+                marginBottom: 12,
+              }}
+            />
+
+            <FlatList
+              data={filteredContacts}
+              keyExtractor={(item, index) => item.id ?? item.name ?? index.toString()}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => {
+                const phone = item.phoneNumbers?.[0]?.number || '';
+                return (
+                  <Pressable
+                    onPress={() => selectContact(item)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 12,
+                      paddingHorizontal: 4,
+                      borderBottomWidth: 1,
+                      borderBottomColor: colors.divider,
+                    }}
+                  >
+                    <View style={{
+                      width: 38, height: 38, borderRadius: 19,
+                      backgroundColor: colors.primaryMuted,
+                      alignItems: 'center', justifyContent: 'center',
+                      marginRight: 12,
+                    }}>
+                      <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '700' }}>
+                        {(item.name || '?').charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.text, fontSize: 15, fontWeight: '600' }} numberOfLines={1}>
+                        {item.name || 'Unknown'}
+                      </Text>
+                      {phone ? (
+                        <Text style={{ color: colors.textSecondary, fontSize: 13, marginTop: 1 }}>{phone}</Text>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              }}
+              ListEmptyComponent={
+                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                  <Text style={{ color: colors.textTertiary, fontSize: 14 }}>No contacts found</Text>
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

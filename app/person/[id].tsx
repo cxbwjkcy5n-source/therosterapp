@@ -14,6 +14,7 @@ import {
   KeyboardAvoidingView,
   Animated,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import {
@@ -251,6 +252,8 @@ function normalizePerson(raw: any): Person {
     tags: raw.tags,
     career: raw.career,
     excluded_ratings: raw.excluded_ratings ?? raw.excludedRatings ?? [],
+    last_contacted_at: raw.last_contacted_at ?? raw.lastContactedAt,
+    contact_cadence_days: raw.contact_cadence_days ?? raw.contactCadenceDays,
   };
 }
 
@@ -297,6 +300,8 @@ interface Person {
   tags?: string[];
   career?: string;
   excluded_ratings?: string[];
+  last_contacted_at?: string;
+  contact_cadence_days?: number;
 }
 
 interface DateEntry {
@@ -489,6 +494,7 @@ const EditableSlider = React.memo(function EditableSlider({ label, value, onChan
                 key={step}
                 onPress={() => {
                   console.log(`[PersonDetail] Slider "${label}" set to:`, step);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   onChange(step);
                 }}
                 style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
@@ -974,6 +980,11 @@ export default function PersonDetailScreen() {
   const [starters, setStarters] = useState<string[]>([]);
   const [startersModalVisible, setStartersModalVisible] = useState(false);
 
+  // date ideas
+  const [dateIdeasVisible, setDateIdeasVisible] = useState(false);
+  const [dateIdeas, setDateIdeas] = useState<{ title: string; description: string; vibe: string; cost: string }[]>([]);
+  const [dateIdeasLoading, setDateIdeasLoading] = useState(false);
+
   // compatibility report
   const [compatReportLoading, setCompatReportLoading] = useState(false);
   const [compatReport, setCompatReport] = useState<{
@@ -993,6 +1004,15 @@ export default function PersonDetailScreen() {
   const [personPhotos, setPersonPhotos] = useState<{ id: string; photo_url: string; sort_order?: number }[]>([]);
   const [photosLoading, setPhotosLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  // last contacted / cadence tracker
+  const [markingContacted, setMarkingContacted] = useState(false);
+  const [savingCadence, setSavingCadence] = useState(false);
+
+  // undo delete note
+  const [pendingDeleteNote, setPendingDeleteNote] = useState<Note | null>(null);
+  const undoBarAnim = useRef(new Animated.Value(0)).current;
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // scroll to end when note input appears so keyboard doesn't cover it
   useEffect(() => {
@@ -1359,22 +1379,39 @@ export default function PersonDetailScreen() {
   };
 
   const handleDeleteNote = (note: Note) => {
-    console.log('[PersonDetail] Delete note pressed:', note.id);
-    Alert.alert('Delete note?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: async () => {
-          try {
-            await apiDelete(`/api/notes/${note.id}`);
-            console.log('[PersonDetail] Note deleted:', note.id);
-            setNotes((prev) => prev.filter((n) => n.id !== note.id));
-          } catch (e) {
-            console.error('[PersonDetail] Failed to delete note:', e);
-          }
-        },
-      },
-    ]);
+    console.log('[PersonDetail] Delete note pressed — showing undo bar for:', note.id);
+    // Optimistically remove from list
+    setNotes((prev) => prev.filter((n) => n.id !== note.id));
+    setPendingDeleteNote(note);
+
+    // Clear any existing timer
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+
+    // Animate undo bar in
+    Animated.spring(undoBarAnim, { toValue: 1, useNativeDriver: true, friction: 8 }).start();
+
+    // After 4 seconds, commit the delete
+    undoTimerRef.current = setTimeout(async () => {
+      setPendingDeleteNote(null);
+      Animated.timing(undoBarAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      try {
+        await apiDelete(`/api/notes/${note.id}`);
+        console.log('[PersonDetail] Note deleted (after undo timeout):', note.id);
+      } catch (e) {
+        console.error('[PersonDetail] Failed to delete note:', e);
+        // Restore note on failure
+        setNotes((prev) => [note, ...prev]);
+      }
+    }, 4000);
+  };
+
+  const handleUndoDeleteNote = () => {
+    if (!pendingDeleteNote) return;
+    console.log('[PersonDetail] Undo delete note:', pendingDeleteNote.id);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setNotes((prev) => [pendingDeleteNote, ...prev]);
+    setPendingDeleteNote(null);
+    Animated.timing(undoBarAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
   };
 
   const handleSaveReminder = async () => {
@@ -1428,6 +1465,37 @@ export default function PersonDetailScreen() {
       return next;
     });
   }, []);
+
+  const handleMarkContacted = async () => {
+    if (!id) return;
+    console.log('[PersonDetail] Mark as Contacted pressed for person:', id);
+    setMarkingContacted(true);
+    try {
+      await apiPatch(`/api/persons/${id}/last-contacted`, {});
+      console.log('[PersonDetail] Last contacted updated successfully');
+      await loadPerson();
+    } catch (e: any) {
+      console.error('[PersonDetail] Failed to mark as contacted:', e);
+      Alert.alert('Error', 'Could not update. Try again.');
+    } finally {
+      setMarkingContacted(false);
+    }
+  };
+
+  const handleSetCadence = async (days: number) => {
+    if (!id) return;
+    console.log('[PersonDetail] Setting contact cadence to', days, 'days for person:', id);
+    setSavingCadence(true);
+    try {
+      await apiPatch(`/api/persons/${id}`, { contact_cadence_days: days });
+      console.log('[PersonDetail] Contact cadence saved:', days);
+      setPerson((prev) => prev ? { ...prev, contact_cadence_days: days } : prev);
+    } catch (e: any) {
+      console.error('[PersonDetail] Failed to set cadence:', e);
+    } finally {
+      setSavingCadence(false);
+    }
+  };
 
   // ── derived ───────────────────────────────────────────────────────────────
 
@@ -1950,6 +2018,140 @@ export default function PersonDetailScreen() {
           );
         })()}
 
+        {/* Progress section */}
+        {(() => {
+          const completedDates = dates.filter((d) => d.status === 'completed' || d.status === 'reviewed');
+          const dateCount = completedDates.length;
+          const datesWithWantAnother = completedDates.filter((d) => d.want_another_date === true);
+          const noPositiveDates = dateCount >= 3 && datesWithWantAnother.length === 0;
+          const interestLevel = displayData.interest_level ?? 0;
+          const addedAt = (person as any).created_at;
+          const weeksOnRoster = addedAt ? Math.floor((Date.now() - new Date(addedAt).getTime()) / (1000 * 60 * 60 * 24 * 7)) : 0;
+          const interestFading = weeksOnRoster >= 2 && interestLevel > 0 && interestLevel < 5;
+          const thingsHeating = interestLevel >= 8 && dateCount >= 2;
+
+          if (dateCount === 0 && !interestFading && !thingsHeating) return null;
+
+          return (
+            <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+              <SectionHeader label="Progress" />
+              <View style={{ gap: 10 }}>
+                {dateCount > 0 && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 16 }}>📅</Text>
+                    <Text style={{ color: colors.text, fontSize: 14 }}>
+                      <Text style={{ fontWeight: '700' }}>{String(dateCount)}</Text>
+                      <Text>{dateCount === 1 ? ' date logged' : ' dates logged'}</Text>
+                    </Text>
+                  </View>
+                )}
+                {interestFading && (
+                  <View style={{ backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 16 }}>⚠️</Text>
+                    <Text style={{ color: '#E65100', fontSize: 13, fontWeight: '600', flex: 1 }}>Interest fading</Text>
+                  </View>
+                )}
+                {noPositiveDates && (
+                  <View style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 10, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 16 }}>💭</Text>
+                    <Text style={{ color: colors.textSecondary, fontSize: 13, flex: 1 }}>Consider having a direct conversation</Text>
+                  </View>
+                )}
+                {thingsHeating && (
+                  <View style={{ backgroundColor: 'rgba(76,175,80,0.1)', borderRadius: 10, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ fontSize: 16 }}>🔥</Text>
+                    <Text style={{ color: '#2E7D32', fontSize: 13, fontWeight: '600', flex: 1 }}>Things are heating up!</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          );
+        })()}
+
+        {/* Last Contacted / Cadence Tracker */}
+        {(() => {
+          const lastContacted = displayData.last_contacted_at;
+          const cadenceDays = displayData.contact_cadence_days ?? 7;
+          const daysSince = lastContacted
+            ? Math.floor((Date.now() - new Date(lastContacted).getTime()) / (1000 * 60 * 60 * 24))
+            : null;
+          const isOverdue = daysSince !== null && daysSince > cadenceDays;
+          const isWarning = daysSince !== null && daysSince > cadenceDays - 3 && daysSince <= cadenceDays;
+          const statusColor = daysSince === null ? colors.textTertiary : isOverdue ? RED : isWarning ? '#FF9800' : '#4CAF50';
+          const statusText = daysSince === null ? 'Never contacted' : isOverdue ? `${String(daysSince)}d overdue` : isWarning ? `${String(daysSince)}d ago` : `${String(daysSince)}d ago`;
+          const CADENCE_OPTIONS = [3, 5, 7, 14, 30];
+
+          return (
+            <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
+              <SectionHeader label="Texting Cadence" />
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <View>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 2 }}>Last contacted</Text>
+                  <Text style={{ color: statusColor, fontSize: 15, fontWeight: '700' }}>{statusText}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 2 }}>Goal</Text>
+                  <Text style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}>
+                    {'Every '}
+                    {String(cadenceDays)}
+                    {'d'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Cadence stepper */}
+              <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 8 }}>Contact goal (days)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {CADENCE_OPTIONS.map((opt) => {
+                    const isSelected = cadenceDays === opt;
+                    const optStr = String(opt);
+                    return (
+                      <Pressable
+                        key={opt}
+                        onPress={() => {
+                          console.log('[PersonDetail] Cadence option selected:', opt);
+                          handleSetCadence(opt);
+                        }}
+                        disabled={savingCadence}
+                        style={{
+                          paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                          backgroundColor: isSelected ? RED : colors.surfaceSecondary,
+                          borderWidth: 1, borderColor: isSelected ? RED : colors.border,
+                        }}
+                      >
+                        <Text style={{ color: isSelected ? '#fff' : colors.text, fontSize: 13, fontWeight: '600' }}>
+                          {optStr}
+                          {'d'}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+
+              {/* Mark as contacted button */}
+              <AnimatedPressable
+                onPress={handleMarkContacted}
+                style={{
+                  backgroundColor: '#4CAF50', borderRadius: 12, paddingVertical: 12,
+                  alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8,
+                  opacity: markingContacted ? 0.7 : 1,
+                }}
+              >
+                {markingContacted ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Text style={{ fontSize: 16 }}>✅</Text>
+                    <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>Mark as Contacted</Text>
+                  </>
+                )}
+              </AnimatedPressable>
+            </View>
+          );
+        })()}
+
         {/* Conversation Starters card */}
         <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, ...CARD_SHADOW }}>
           <SectionHeader label="Conversation Starters" />
@@ -2026,6 +2228,45 @@ export default function PersonDetailScreen() {
                 <Text style={{ color: RED, fontSize: 14, fontWeight: '700' }}>Compatibility Report</Text>
               </>
             )}
+          </AnimatedPressable>
+
+          {/* Milestones button */}
+          <AnimatedPressable
+            onPress={() => {
+              console.log('[PersonDetail] Milestones pressed for person:', displayData.id);
+              router.push({ pathname: '/milestones', params: { personId: displayData.id, personName: displayData.name } });
+            }}
+            style={{ backgroundColor: 'rgba(236,72,153,0.08)', borderRadius: 12, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 10 }}
+          >
+            <Text style={{ fontSize: 16 }}>💑</Text>
+            <Text style={{ color: '#EC4899', fontSize: 14, fontWeight: '700' }}>Milestones</Text>
+          </AnimatedPressable>
+
+          {/* Date Ideas button */}
+          <AnimatedPressable
+            onPress={async () => {
+              console.log('[PersonDetail] Date Ideas pressed for person:', displayData.id);
+              setDateIdeasVisible(true);
+              setDateIdeasLoading(true);
+              try {
+                const pastDates = dates.map((d) => d.type || 'Date');
+                const res = await apiPost<{ ideas: { title: string; description: string; vibe: string; cost: string }[] }>(
+                  `/api/persons/${displayData.id}/date-ideas`,
+                  { past_dates: pastDates }
+                );
+                console.log('[PersonDetail] Date ideas loaded, count:', res.ideas?.length ?? 0);
+                setDateIdeas(res.ideas || []);
+              } catch (e) {
+                console.error('[PersonDetail] Failed to load date ideas:', e);
+                Alert.alert('Error', 'Could not load date ideas. Try again.');
+              } finally {
+                setDateIdeasLoading(false);
+              }
+            }}
+            style={{ backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: 12, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 10 }}
+          >
+            <Text style={{ fontSize: 16 }}>💡</Text>
+            <Text style={{ color: '#F59E0B', fontSize: 14, fontWeight: '700' }}>Date Ideas</Text>
           </AnimatedPressable>
         </View>
 
@@ -2148,6 +2389,11 @@ export default function PersonDetailScreen() {
                   const typeLabel = d.type ? (d.type.charAt(0).toUpperCase() + d.type.slice(1)) : 'Date';
                   const ratingVal = d.rating ?? 0;
                   const ratingStr = ratingVal > 0 ? `${ratingVal}/10` : '—';
+                  const isCompleted = d.status === 'completed' || d.status === 'reviewed';
+                  const wantAnother = (d as any).want_another_date;
+                  const outcomeBadgeColor = wantAnother === true ? '#4CAF50' : wantAnother === false ? RED : '#999999';
+                  const outcomeBadgeBg = wantAnother === true ? 'rgba(76,175,80,0.1)' : wantAnother === false ? 'rgba(229,57,53,0.1)' : 'rgba(153,153,153,0.1)';
+                  const outcomeBadgeText = wantAnother === true ? '✓ Want another' : wantAnother === false ? '✗ Not interested' : '?';
                   return (
                     <View key={item.id} style={{ flexDirection: 'row', gap: 12, marginBottom: isLast ? 0 : 16 }}>
                       <View style={{ alignItems: 'center', width: 28 }}>
@@ -2170,6 +2416,13 @@ export default function PersonDetailScreen() {
                             <Text style={{ color: colors.textTertiary, fontSize: 12 }} numberOfLines={1}>{d.location}</Text>
                           </View>
                         ) : null}
+                        {isCompleted && (
+                          <View style={{ marginTop: 6 }}>
+                            <View style={{ backgroundColor: outcomeBadgeBg, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start' }}>
+                              <Text style={{ color: outcomeBadgeColor, fontSize: 11, fontWeight: '700' }}>{outcomeBadgeText}</Text>
+                            </View>
+                          </View>
+                        )}
                       </View>
                     </View>
                   );
@@ -3548,6 +3801,106 @@ export default function PersonDetailScreen() {
         </Pressable>
       </Modal>
 
+      {/* ── Date Ideas Modal ────────────────────────────────────────────────── */}
+      <Modal visible={dateIdeasVisible} transparent animationType="slide" onRequestClose={() => setDateIdeasVisible(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={() => setDateIdeasVisible(false)}>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '85%' }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 16 }}>
+              💡 Date Ideas for {displayData.name}
+            </Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ gap: 12 }}>
+                {dateIdeasLoading ? (
+                  <>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <View key={i} style={{ backgroundColor: colors.surfaceSecondary, borderRadius: 14, padding: 16, gap: 8 }}>
+                        <View style={{ width: '60%', height: 16, backgroundColor: colors.border, borderRadius: 6 }} />
+                        <View style={{ width: '90%', height: 12, backgroundColor: colors.border, borderRadius: 6 }} />
+                        <View style={{ width: '40%', height: 12, backgroundColor: colors.border, borderRadius: 6 }} />
+                      </View>
+                    ))}
+                  </>
+                ) : dateIdeas.length === 0 ? (
+                  <View style={{ alignItems: 'center', paddingVertical: 30 }}>
+                    <Text style={{ color: colors.textTertiary, fontSize: 14 }}>No ideas available. Try again.</Text>
+                  </View>
+                ) : (
+                  dateIdeas.map((idea, index) => {
+                    const vibeColors: Record<string, { bg: string; text: string }> = {
+                      fun: { bg: 'rgba(168,85,247,0.1)', text: '#A855F7' },
+                      casual: { bg: 'rgba(34,197,94,0.1)', text: '#22C55E' },
+                      romantic: { bg: 'rgba(236,72,153,0.1)', text: '#EC4899' },
+                      adventurous: { bg: 'rgba(249,115,22,0.1)', text: '#F97316' },
+                    };
+                    const vibeBadge = vibeColors[idea.vibe] ?? { bg: 'rgba(99,102,241,0.1)', text: '#6366F1' };
+                    const vibeLabel = idea.vibe ? idea.vibe.charAt(0).toUpperCase() + idea.vibe.slice(1) : 'Fun';
+                    return (
+                      <View
+                        key={index}
+                        style={{
+                          backgroundColor: colors.surfaceSecondary,
+                          borderRadius: 14,
+                          padding: 16,
+                          gap: 8,
+                          borderWidth: 1,
+                          borderColor: colors.border,
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <Text style={{ color: colors.text, fontSize: 15, fontWeight: '700', flex: 1 }}>{idea.title}</Text>
+                          <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '700', marginLeft: 8 }}>{idea.cost}</Text>
+                        </View>
+                        <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>{idea.description}</Text>
+                        <View style={{ backgroundColor: vibeBadge.bg, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' }}>
+                          <Text style={{ color: vibeBadge.text, fontSize: 12, fontWeight: '700' }}>{vibeLabel}</Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </View>
+
+              {!dateIdeasLoading && (
+                <AnimatedPressable
+                  onPress={async () => {
+                    console.log('[PersonDetail] Regenerate date ideas pressed for person:', displayData.id);
+                    setDateIdeasLoading(true);
+                    try {
+                      const pastDates = dates.map((d) => d.type || 'Date');
+                      const res = await apiPost<{ ideas: { title: string; description: string; vibe: string; cost: string }[] }>(
+                        `/api/persons/${displayData.id}/date-ideas`,
+                        { past_dates: pastDates }
+                      );
+                      console.log('[PersonDetail] Regenerated', res.ideas?.length ?? 0, 'date ideas');
+                      setDateIdeas(res.ideas || []);
+                    } catch (e) {
+                      console.error('[PersonDetail] Failed to regenerate date ideas:', e);
+                      Alert.alert('Error', 'Could not regenerate ideas.');
+                    } finally {
+                      setDateIdeasLoading(false);
+                    }
+                  }}
+                  style={{ marginTop: 12, backgroundColor: colors.surfaceSecondary, borderRadius: 12, paddingVertical: 13, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: colors.border }}
+                >
+                  <Text style={{ fontSize: 14 }}>🔄</Text>
+                  <Text style={{ color: colors.textSecondary, fontSize: 14, fontWeight: '600' }}>Regenerate</Text>
+                </AnimatedPressable>
+              )}
+
+              <Pressable
+                onPress={() => {
+                  console.log('[PersonDetail] Date ideas modal closed');
+                  setDateIdeasVisible(false);
+                }}
+                style={{ marginTop: 12, backgroundColor: RED, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
+              >
+                <Text style={{ color: '#fff', fontSize: 15, fontWeight: '700' }}>Done</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
       <CallModal
         visible={showCallModal}
@@ -3603,6 +3956,40 @@ export default function PersonDetailScreen() {
         setDateVibe={setDateVibe}
         savingDate={savingDate}
       />
+
+      {/* ── Undo delete note bar ─────────────────────────────────────────── */}
+      {pendingDeleteNote && (
+        <Animated.View
+          style={{
+            position: 'absolute',
+            bottom: insets.bottom + 16,
+            left: 16,
+            right: 16,
+            transform: [{ translateY: undoBarAnim.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }],
+            opacity: undoBarAnim,
+          }}
+        >
+          <View style={{
+            backgroundColor: '#1A1A1A',
+            borderRadius: 14,
+            paddingHorizontal: 16,
+            paddingVertical: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            shadowColor: '#000',
+            shadowOpacity: 0.3,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 8,
+          }}>
+            <Text style={{ color: '#fff', fontSize: 14 }}>Note deleted</Text>
+            <Pressable onPress={handleUndoDeleteNote} hitSlop={8}>
+              <Text style={{ color: '#FF6B6B', fontSize: 14, fontWeight: '700' }}>Undo</Text>
+            </Pressable>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 }

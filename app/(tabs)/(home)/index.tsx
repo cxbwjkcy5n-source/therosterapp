@@ -576,21 +576,24 @@ export default function RosterScreen() {
   });
 
   // ── Who needs attention ──
-  // created_at is used as a proxy for last interaction (no last_interaction_at field yet)
+  // Use last_contacted_at if available, otherwise fall back to created_at
   const needsAttention = persons
     .filter((p) => {
-      if (!p.created_at) return false;
-      const safeDate = new Date(p.created_at);
+      const refDate = (p as any).last_contacted_at || p.created_at;
+      if (!refDate) return false;
+      const safeDate = new Date(refDate);
       const days = isNaN(safeDate.getTime()) ? 0 : Math.floor((Date.now() - safeDate.getTime()) / (1000 * 60 * 60 * 24));
       return days >= 14;
     })
     .sort((a, b) => {
-      const aDate = new Date(a.created_at!);
-      const bDate = new Date(b.created_at!);
+      const aRef = (a as any).last_contacted_at || a.created_at;
+      const bRef = (b as any).last_contacted_at || b.created_at;
+      const aDate = new Date(aRef!);
+      const bDate = new Date(bRef!);
       const aTime = isNaN(aDate.getTime()) ? 0 : aDate.getTime();
       const bTime = isNaN(bDate.getTime()) ? 0 : bDate.getTime();
-      // Descending: most recently added (but still neglected) first
-      return bTime - aTime;
+      // Ascending: longest neglected first
+      return aTime - bTime;
     })
     .slice(0, 5);
 
@@ -858,8 +861,9 @@ export default function RosterScreen() {
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, gap: 10 }}>
                 {needsAttention.map((p) => {
-                  const safeDate = new Date(p.created_at!);
-                  const days = isNaN(safeDate.getTime()) ? 0 : Math.floor((Date.now() - safeDate.getTime()) / (1000 * 60 * 60 * 24));
+                  const refDate = (p as any).last_contacted_at || p.created_at;
+                  const safeDate = refDate ? new Date(refDate) : null;
+                  const days = safeDate && !isNaN(safeDate.getTime()) ? Math.floor((Date.now() - safeDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
                   const hasPhoto = !!p.photo_url && p.photo_url.length > 10;
                   const initials = getInitials(p.name);
                   const daysStr = String(days) + 'd ago';

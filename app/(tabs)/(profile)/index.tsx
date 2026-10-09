@@ -31,6 +31,7 @@ import {
   Phone,
   Share2,
   Trash2,
+  AlertTriangle,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
@@ -236,7 +237,7 @@ function FormField({ label, value, onChangeText, placeholder, keyboardType, mult
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
-  const { isDark, toggleDark, colors } = useTheme();
+  const { isDark, toggleDark, oledMode, setOledMode, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [analytics, setAnalytics] = useState<Analytics>({});
   const [notifications, setNotifications] = useState(true);
@@ -836,6 +837,65 @@ export default function ProfileScreen() {
                 thumbColor="#fff"
               />
             </View>
+
+            {isDark && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  padding: 16,
+                  borderBottomWidth: 1,
+                  borderBottomColor: colors.divider,
+                }}
+              >
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: colors.border }}>
+                  <Text style={{ fontSize: 16 }}>⬛</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontSize: 15 }}>True Black (OLED)</Text>
+                  <Text style={{ color: colors.textTertiary, fontSize: 12, marginTop: 1 }}>Pure black backgrounds for OLED screens</Text>
+                </View>
+                <Switch
+                  value={oledMode}
+                  onValueChange={(v) => {
+                    console.log('[Profile] OLED mode toggled:', v);
+                    setOledMode(v);
+                  }}
+                  trackColor={{ false: colors.surfaceSecondary, true: colors.primary }}
+                  thumbColor="#fff"
+                />
+              </View>
+            )}
+
+            <AnimatedPressable
+              onPress={() => {
+                console.log('[Profile] Deal Breakers pressed');
+                router.push('/deal-breakers');
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(229,57,53,0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <AlertTriangle size={18} color="#E53935" />
+                </View>
+                <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>Deal Breakers</Text>
+                <ChevronRight size={18} color={colors.textTertiary} />
+              </View>
+            </AnimatedPressable>
+
+            <AnimatedPressable
+              onPress={() => {
+                console.log('[Profile] Archive pressed');
+                router.push('/archive');
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.divider }}>
+                <View style={{ width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(100,100,100,0.12)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Text style={{ fontSize: 16 }}>📦</Text>
+                </View>
+                <Text style={{ flex: 1, color: colors.text, fontSize: 15 }}>Archive</Text>
+                <ChevronRight size={18} color={colors.textTertiary} />
+              </View>
+            </AnimatedPressable>
 
             <AnimatedPressable
               onPress={() => {

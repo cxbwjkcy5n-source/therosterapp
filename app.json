@@ -58,7 +58,8 @@
       "expo-secure-store",
       "expo-camera",
       "expo-image-picker",
-      "expo-contacts"
+      "expo-contacts",
+      "expo-audio"
     ],
     "scheme": "roster",
     "experiments": {
