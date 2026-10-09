@@ -164,11 +164,19 @@ Use this context to give highly personalized, specific advice. Reference their a
 
         app.logger.debug({ messageCount: formattedMessages.length, systemPromptLength: systemPrompt.length }, 'Calling generateText');
 
-        const { text } = await generateText({
-          model: gateway('openai/gpt-4o-mini'),
-          system: systemPrompt,
-          messages: formattedMessages,
-        });
+        let text: string;
+        try {
+          const result = await generateText({
+            model: gateway('openai/gpt-4o-mini'),
+            system: systemPrompt,
+            messages: formattedMessages,
+          });
+          text = result.text;
+        } catch (aiError) {
+          app.logger.warn({ err: aiError, userId: session.user.id }, 'AI gateway error, using fallback');
+          // Fallback response for AI errors
+          text = "I appreciate you reaching out. I'm here to help you navigate your dating journey. What specific question or situation would you like to discuss?";
+        }
 
         // Save last user message to chat history
         const lastUserMsg = messages.filter(m => m.role === 'user').pop();
@@ -275,18 +283,24 @@ Use this context to give highly personalized, specific advice. Reference their a
 
         app.logger.debug({ messageCount: formattedMessages.length, systemPromptLength: systemPrompt.length }, 'Calling streamText');
 
-        const stream = await streamText({
-          model: gateway('openai/gpt-4o-mini'),
-          system: systemPrompt,
-          messages: formattedMessages,
-        });
-
         let fullResponse = '';
+        try {
+          const stream = await streamText({
+            model: gateway('openai/gpt-4o-mini'),
+            system: systemPrompt,
+            messages: formattedMessages,
+          });
 
-        // Stream tokens
-        for await (const chunk of stream.textStream) {
-          fullResponse += chunk;
-          reply.raw.write(`data: ${JSON.stringify({ token: chunk })}\n\n`);
+          // Stream tokens
+          for await (const chunk of stream.textStream) {
+            fullResponse += chunk;
+            reply.raw.write(`data: ${JSON.stringify({ token: chunk })}\n\n`);
+          }
+        } catch (aiError) {
+          app.logger.warn({ err: aiError, userId: session.user.id }, 'AI gateway error, using fallback for stream');
+          // Fallback response for AI errors
+          fullResponse = "I appreciate you reaching out. I'm here to help you navigate your dating journey. What specific question or situation would you like to discuss?";
+          reply.raw.write(`data: ${JSON.stringify({ token: fullResponse })}\n\n`);
         }
 
         // Save messages after streaming completes

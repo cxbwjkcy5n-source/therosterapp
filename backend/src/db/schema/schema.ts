@@ -83,6 +83,9 @@ export const persons = pgTable('persons', {
   isBenched: boolean('is_benched').default(false).notNull(),
   benchReason: text('bench_reason'),
   excludedRatings: text('excluded_ratings').array(),
+  lastContactedAt: timestamp('last_contacted_at', { withTimezone: true }),
+  contactCadenceDays: integer('contact_cadence_days').default(7),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -241,5 +244,52 @@ export const pushTokens = pgTable('push_tokens', {
   userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
   token: text('token').notNull().unique(),
   platform: text('platform').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const milestones = pgTable('milestones', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  personId: uuid('person_id').notNull().references(() => persons.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(),
+  label: text('label').notNull(),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const dealBreakers = pgTable('deal_breakers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  label: text('label').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const datingGoals = pgTable('dating_goals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  targetDate: timestamp('target_date', { withTimezone: true }),
+  completed: boolean('completed').notNull().default(false),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  personId: uuid('person_id').references(() => persons.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const moodJournal = pgTable('mood_journal', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  mood: integer('mood').notNull(),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const voiceNotes = pgTable('voice_notes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: text('user_id').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  personId: uuid('person_id').references(() => persons.id, { onDelete: 'cascade' }),
+  audioUrl: text('audio_url').notNull(),
+  transcript: text('transcript'),
+  durationSeconds: integer('duration_seconds'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });

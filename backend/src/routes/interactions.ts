@@ -144,6 +144,8 @@ export function registerInteractionsRoutes(app: App) {
         return reply.status(404).send({ error: 'Person not found' });
       }
 
+      const interactionDate = occurred_at ? new Date(occurred_at) : new Date();
+
       const [interaction] = await app.db
         .insert(schema.interactions)
         .values({
@@ -152,9 +154,15 @@ export function registerInteractionsRoutes(app: App) {
           type: type as any,
           title,
           notes: notes || null,
-          occurredAt: occurred_at ? new Date(occurred_at) : new Date(),
+          occurredAt: interactionDate,
         })
         .returning();
+
+      // Update person's last_contacted_at
+      await app.db
+        .update(schema.persons)
+        .set({ lastContactedAt: interactionDate, updatedAt: new Date() })
+        .where(eq(schema.persons.id, person_id));
 
       app.logger.info({ userId: session.user.id, interactionId: interaction.id }, 'Interaction logged');
       reply.status(201);

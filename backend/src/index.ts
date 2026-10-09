@@ -19,6 +19,12 @@ import { registerWeeklyCheckinsRoutes } from './routes/weekly-checkins.js';
 import { registerOnboardingRoutes } from './routes/onboarding.js';
 import { registerStreaksRoutes } from './routes/streaks.js';
 import { registerPushTokensRoutes } from './routes/push-tokens.js';
+import { registerMilestoneRoutes } from './routes/milestones.js';
+import { registerDealBreakerRoutes } from './routes/dealbreakers.js';
+import { registerDatingGoalRoutes } from './routes/dating-goals.js';
+import { registerMoodJournalRoutes } from './routes/mood-journal.js';
+import { registerVoiceNoteRoutes } from './routes/voice-notes.js';
+import { registerInsightRoutes } from './routes/insights.js';
 
 // Combine schemas
 const schema = { ...appSchema, ...authSchema };
@@ -60,6 +66,12 @@ registerWeeklyCheckinsRoutes(app);
 registerOnboardingRoutes(app);
 registerStreaksRoutes(app);
 registerPushTokensRoutes(app);
+registerMilestoneRoutes(app);
+registerDealBreakerRoutes(app);
+registerDatingGoalRoutes(app);
+registerMoodJournalRoutes(app);
+registerVoiceNoteRoutes(app);
+registerInsightRoutes(app);
 
 await app.run();
 app.logger.info('Application running');
