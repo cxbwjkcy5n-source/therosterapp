@@ -104,7 +104,7 @@ export default function AuthScreen() {
     setForgotLoading(true);
     setForgotError(null);
     try {
-      const res = await fetch(`https://rf3wg7c2y22u2ay9wwjht3cmquzdzkbv.app.specular.dev/api/auth/forget-password`, {
+      const res = await fetch(`https://jm74barr7r4uc6fksvzj98zjzm3uut3h.app.specular.dev/api/auth/forget-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail.trim(), redirectTo: 'roster://auth-callback' }),
