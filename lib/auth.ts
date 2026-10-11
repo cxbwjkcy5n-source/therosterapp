@@ -2,9 +2,11 @@ import { createAuthClient } from "better-auth/react";
 import { expoClient } from "@better-auth/expo/client";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 
+// Single source of truth: app.json extra.backendUrl
 // Must be a plain string — never a URL object — iOS NSURLSession requires it
-const API_URL = "https://jm74barr7r4uc6fksvzj98zjzm3uut3h.app.specular.dev";
+const API_URL: string = Constants.expoConfig?.extra?.backendUrl ?? "";
 
 export const BEARER_TOKEN_KEY = "roster_bearer_token";
 
