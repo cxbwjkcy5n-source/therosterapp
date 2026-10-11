@@ -58,7 +58,8 @@
       "expo-secure-store",
       "expo-camera",
       "expo-image-picker",
-      "expo-contacts"
+      "expo-contacts",
+      "./plugins/withDSYM"
     ],
     "scheme": "roster",
     "experiments": {
@@ -67,7 +68,7 @@
     "newArchEnabled": true,
     "extra": {
       "router": {},
-      "backendUrl": "https://uaxhw3cgtsaywuceh8acsw2e26ww2ycx.app.specular.dev",
+      "backendUrl": "https://jm74barr7r4uc6fksvzj98zjzm3uut3h.app.specular.dev",
       "oneSignalAppId": "ed7c5fe2-92c5-460b-b181-e96639aafafb"
     }
   }

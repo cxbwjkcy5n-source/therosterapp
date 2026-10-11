@@ -1,49 +1,32 @@
-const { withDangerousMod } = require('@expo/config-plugins');
-const fs = require('fs');
-const path = require('path');
-
-const MIN_IOS_VERSION = '16.0';
-
 /**
- * Patches the generated Podfile to enforce a minimum iOS deployment target
- * on all pods. This fixes build errors from RNCAsyncStorage, RNSVG, SDWebImage,
- * and other pods that default to a lower deployment target than the app target.
- * Survives every `expo prebuild` + `pod install` cycle.
+ * Sets IPHONEOS_DEPLOYMENT_TARGET in the Xcode project (pbxproj) for every
+ * build configuration of every target.  This approach avoids any Podfile
+ * post_install block entirely, so it cannot conflict with the one that
+ * React Native / Expo already generates.
  */
-module.exports = function withIosDeploymentTarget(config) {
-  return withDangerousMod(config, [
-    'ios',
-    async (config) => {
-      const podfilePath = path.join(config.modRequest.platformProjectRoot, 'Podfile');
-      if (!fs.existsSync(podfilePath)) return config;
+const { withXcodeProject } = require('@expo/config-plugins');
 
-      let podfile = fs.readFileSync(podfilePath, 'utf8');
+const DEPLOYMENT_TARGET = '16.0';
 
-      // Inject a post_install hook that raises every pod's deployment target
-      // to MIN_IOS_VERSION if it is lower. Insert before the final `end` of
-      // the file so it appends after any existing post_install hooks.
-      const patchComment = '# [withIosDeploymentTarget] auto-patched';
-      if (podfile.includes(patchComment)) return config; // already patched
+const withIosDeploymentTarget = (config) => {
+  return withXcodeProject(config, (cfg) => {
+    const project = cfg.modResults;
 
-      const postInstallHook = `
-${patchComment}
-post_install do |installer|
-  installer.pods_project.targets.each do |target|
-    target.build_configurations.each do |config|
-      deployment_target = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
-      if deployment_target.nil? || deployment_target.to_f < ${MIN_IOS_VERSION}
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '${MIN_IOS_VERSION}'
-      end
-    end
-  end
-end
-`;
+    // pbxproj stores build settings in XCBuildConfiguration sections.
+    // Iterate every build configuration and set the deployment target.
+    const configurations = project.pbxXCBuildConfigurationSection();
+    for (const key of Object.keys(configurations)) {
+      // Skip comment entries (they are plain strings, not objects)
+      if (typeof configurations[key] !== 'object') continue;
 
-      // Append after the last line
-      podfile = podfile.trimEnd() + '\n' + postInstallHook + '\n';
-      fs.writeFileSync(podfilePath, podfile);
+      const buildSettings = configurations[key].buildSettings;
+      if (!buildSettings) continue;
 
-      return config;
-    },
-  ]);
+      buildSettings.IPHONEOS_DEPLOYMENT_TARGET = DEPLOYMENT_TARGET;
+    }
+
+    return cfg;
+  });
 };
+
+module.exports = withIosDeploymentTarget;

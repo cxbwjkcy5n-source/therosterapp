@@ -26,12 +26,12 @@
     "@stardazed/streams-text-encoding": "^1.0.2",
     "@types/difflib": "^0.2.7",
     "@ungap/structured-clone": "^1.3.0",
+    "babel-preset-expo": "~54.0.0",
     "better-auth": "^1.3.34",
     "difflib": "^0.2.4",
     "eas": "^0.1.0",
     "expo": "~54.0.37",
     "expo-apple-authentication": "~8.0.8",
-    "expo-audio": "~1.1.1",
     "expo-blur": "^15.0.6",
     "expo-camera": "~17.0.10",
     "expo-clipboard": "~8.0.8",
@@ -57,6 +57,7 @@
     "expo-web-browser": "~15.0.10",
     "leaflet": "^1.9.4",
     "lucide-react-native": "^0.511.0",
+    "metro-cache": "0.83.3",
     "onesignal-expo-plugin": "^2.5.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -96,8 +97,16 @@
     "typescript": "^5.9.3",
     "webpack-cli": "^6.0.1"
   },
-  "resolutions": {
-    "@expo/prebuild-config": "latest"
-  },
-  "private": true
+  "private": true,
+  "expo": {
+    "install": {
+      "exclude": [
+        "react-native-gesture-handler",
+        "react-native-safe-area-context",
+        "react-native-svg",
+        "react-native-webview",
+        "@react-native-community/datetimepicker"
+      ]
+    }
+  }
 }
