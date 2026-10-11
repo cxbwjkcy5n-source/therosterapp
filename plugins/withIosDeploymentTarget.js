@@ -1,55 +1,32 @@
-const { withDangerousMod } = require('@expo/config-plugins');
-const fs = require('fs');
-const path = require('path');
-
-const MIN_IOS_VERSION = '16.0';
-const PATCH_COMMENT = '# [withIosDeploymentTarget] auto-patched';
-
-const DEPLOYMENT_TARGET_BLOCK = `  ${PATCH_COMMENT}
-  installer.pods_project.targets.each do |target|
-    target.build_configurations.each do |config|
-      deployment_target = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
-      if deployment_target.nil? || deployment_target.to_f < ${MIN_IOS_VERSION}
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '${MIN_IOS_VERSION}'
-      end
-    end
-  end`;
-
 /**
- * Patches the generated Podfile to enforce a minimum iOS deployment target
- * on all pods. Merges into the existing post_install block rather than
- * adding a second one (CocoaPods forbids multiple post_install hooks).
- * Survives every `expo prebuild --platform ios --clean` cycle.
+ * Sets IPHONEOS_DEPLOYMENT_TARGET in the Xcode project (pbxproj) for every
+ * build configuration of every target.  This approach avoids any Podfile
+ * post_install block entirely, so it cannot conflict with the one that
+ * React Native / Expo already generates.
  */
-module.exports = function withIosDeploymentTarget(config) {
-  return withDangerousMod(config, [
-    'ios',
-    async (config) => {
-      const podfilePath = path.join(config.modRequest.platformProjectRoot, 'Podfile');
-      if (!fs.existsSync(podfilePath)) return config;
+const { withXcodeProject } = require('@expo/config-plugins');
 
-      let podfile = fs.readFileSync(podfilePath, 'utf8');
+const DEPLOYMENT_TARGET = '16.0';
 
-      // Idempotency guard — already patched
-      if (podfile.includes(PATCH_COMMENT)) return config;
+const withIosDeploymentTarget = (config) => {
+  return withXcodeProject(config, (cfg) => {
+    const project = cfg.modResults;
 
-      // Strategy 1: inject into the existing post_install block
-      const existingHook = /^post_install do \|installer\|/m;
-      if (existingHook.test(podfile)) {
-        podfile = podfile.replace(
-          existingHook,
-          `post_install do |installer|\n${DEPLOYMENT_TARGET_BLOCK}\n`
-        );
-        fs.writeFileSync(podfilePath, podfile);
-        return config;
-      }
+    // pbxproj stores build settings in XCBuildConfiguration sections.
+    // Iterate every build configuration and set the deployment target.
+    const configurations = project.pbxXCBuildConfigurationSection();
+    for (const key of Object.keys(configurations)) {
+      // Skip comment entries (they are plain strings, not objects)
+      if (typeof configurations[key] !== 'object') continue;
 
-      // Strategy 2: no existing post_install — append a new one
-      const newHook = `\n${PATCH_COMMENT}\npost_install do |installer|\n${DEPLOYMENT_TARGET_BLOCK}\nend\n`;
-      podfile = podfile.trimEnd() + '\n' + newHook + '\n';
-      fs.writeFileSync(podfilePath, podfile);
+      const buildSettings = configurations[key].buildSettings;
+      if (!buildSettings) continue;
 
-      return config;
-    },
-  ]);
+      buildSettings.IPHONEOS_DEPLOYMENT_TARGET = DEPLOYMENT_TARGET;
+    }
+
+    return cfg;
+  });
 };
+
+module.exports = withIosDeploymentTarget;
