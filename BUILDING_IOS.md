@@ -36,7 +36,7 @@ corepack pnpm install
 
 The backend URL is embedded in `app.json` under `expo.extra.backendUrl` and in `lib/auth.ts` as `API_URL`. Both must point to the same production backend URL.
 
-Current production backend: `https://d7s3v6kjpr9sj8rr8bz3c2r8q2bfznwz.app.specular.dev`
+Current production backend: `https://ah56z3uw75gjh44vh9tjvjb99cnqkukc.app.specular.dev`
 
 No `.env` file is required for a standard production build. Do not add a `.env` file unless you are running a local backend.
 
