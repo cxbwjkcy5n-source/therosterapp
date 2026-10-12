@@ -18,6 +18,7 @@ import { API_URL } from '@/lib/auth';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 
 function AppleLogo({ size = 20, color = '#FFFFFF' }: { size?: number; color?: string }) {
   return (
@@ -50,11 +51,27 @@ export default function AuthScreen() {
   const submittingRef = useRef(false);
   const [socialLoading, setSocialLoading] = useState<'apple' | 'google' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [diagStatus, setDiagStatus] = useState<string>('checking…');
   const [forgotPassword, setForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotSuccess, setForgotSuccess] = useState(false);
   const [forgotError, setForgotError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        const res = await fetch(`${API_URL}/api/auth/get-session`, { signal: controller.signal });
+        clearTimeout(timer);
+        setDiagStatus(`${res.status}`);
+      } catch {
+        setDiagStatus('unreachable');
+      }
+    };
+    check();
+  }, []);
 
   const handleEmailAuth = async () => {
     if (submittingRef.current) return;
@@ -532,6 +549,13 @@ export default function AuthScreen() {
           <Pressable onPress={() => router.push('/privacy')}>
             <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '600' }}>Privacy Policy</Text>
           </Pressable>
+        </View>
+
+        {/* Diagnostic */}
+        <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 4 }}>
+          <Text style={{ color: '#888', fontSize: 11 }}>
+            Build {Constants.expoConfig?.ios?.buildNumber ?? '—'} · {(API_URL ?? '').replace('https://', '')} · HTTP {diagStatus}
+          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
