@@ -18,8 +18,6 @@ module.exports = function withDSYM(config) {
       const name = configurations[key].name;
       if (name === 'Release') {
         buildSettings.DEBUG_INFORMATION_FORMAT = 'dwarf-with-dsym';
-        buildSettings.DWARF_DSYM_FOLDER_PATH = '$(CONFIGURATION_BUILD_DIR)';
-        buildSettings.DWARF_DSYM_FILE_SHOULD_LOG_DEBUG_INFORMATION = 'YES';
       }
     }
 
