@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { Eye, EyeOff } from 'lucide-react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useAuth } from '@/contexts/AuthContext';
+import { API_URL } from '@/lib/auth';
 import { COLORS } from '@/constants/Colors';
 import { AnimatedPressable } from '@/components/AnimatedPressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -104,7 +105,7 @@ export default function AuthScreen() {
     setForgotLoading(true);
     setForgotError(null);
     try {
-      const res = await fetch(`https://jm74barr7r4uc6fksvzj98zjzm3uut3h.app.specular.dev/api/auth/forget-password`, {
+      const res = await fetch(`${API_URL}/api/auth/forget-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail.trim(), redirectTo: 'roster://auth-callback' }),
